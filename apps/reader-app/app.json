@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Agnisiragu",
+    "slug": "agnisiragu",
+    "scheme": "agnisiragu",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#000000"
+      },
+      "package": "com.agnisiragu.reader"
+    },
+    "ios": {
+      "bundleIdentifier": "com.agnisiragu.reader",
+      "supportsTablet": false
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "root": "src/app"
+        }
+      ],
+      "expo-font",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "router": {
+        "origin": false,
+        "root": "src/app"
+      },
+      "eas": {
+        "projectId": "bb5e005e-2ef5-4482-befe-76d8db54014b"
+      }
+    }
+  }
+}

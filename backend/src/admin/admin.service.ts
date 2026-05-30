@@ -1,0 +1,117 @@
+// src/admin/admin.service.ts
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class AdminService {
+  constructor(private prisma: PrismaService) {}
+
+  // ─── Stats ────────────────────────────────────────────────────────────────
+
+  async getStats() {
+    const [totalArticles, publishedArticles, totalUsers, breakingCount] = await Promise.all([
+      this.prisma.article.count({ where: { status: { not: 'DELETED' } } }),
+      this.prisma.article.count({ where: { status: 'PUBLISHED' } }),
+      this.prisma.user.count(),
+      this.prisma.article.count({ where: { status: 'PUBLISHED', isBreaking: true } }),
+    ]);
+
+    return {
+      data: {
+        totalArticles,
+        publishedArticles,
+        totalUsers,
+        breakingCount,
+      },
+    };
+  }
+
+  // ─── Users list ───────────────────────────────────────────────────────────
+
+  async getUsers(page = 1, limit = 20, search?: string) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search } },
+      ];
+    }
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          phone: true,
+          name: true,
+          role: true,
+          preferredLang: true,
+          articleReadCount: true,
+          isBanned: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      data: users,
+      meta: {
+        total,
+        page,
+        limit,
+        hasMore: skip + limit < total,
+      },
+    };
+  }
+
+  // ─── Ban user ─────────────────────────────────────────────────────────────
+
+  async banUser(id: string, adminId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { isBanned: true },
+      select: { id: true, phone: true, name: true, isBanned: true },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        adminId,
+        action: 'BAN_USER',
+        entityType: 'user',
+        entityId: id,
+      },
+    });
+
+    return { data: updated };
+  }
+
+  // ─── Audit logs ───────────────────────────────────────────────────────────
+
+  async getAuditLogs(page = 1, limit = 50) {
+    const skip = (page - 1) * limit;
+
+    const [logs, total] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { admin: { select: { id: true, name: true, email: true } } },
+      }),
+      this.prisma.auditLog.count(),
+    ]);
+
+    return {
+      data: logs,
+      meta: { total, page, limit, hasMore: skip + limit < total },
+    };
+  }
+}

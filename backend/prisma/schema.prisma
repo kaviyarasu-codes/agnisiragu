@@ -1,0 +1,218 @@
+// prisma/schema.prisma
+// Agnisiragu News Platform — Phase 1 Schema
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  READER
+  REPORTER
+  ADMIN
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+}
+
+enum ArticleStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  UNPUBLISHED
+  DELETED
+}
+
+enum ReporterStatus {
+  TEMPORARY
+  VERIFIED
+  SENIOR
+  PRESS_ID
+}
+
+enum NewsStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NewsPriority {
+  BREAKING
+  REGULAR
+  LOW
+}
+
+// ─── Phase 1 Models ──────────────────────────────────────────────────────────
+
+model User {
+  id               String        @id @default(uuid())
+  phone            String        @unique
+  name             String?
+  role             Role          @default(READER)
+  articleReadCount Int           @default(0)
+  fcmToken         String?
+  preferredLang    String        @default("ta") // "ta" | "en"
+  isBanned         Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  articleReads     ArticleRead[]
+  pushTokens       PushToken[]
+
+  // Legacy Phase 2 relations (kept for forward compatibility)
+  reporter         Reporter?
+  comments         Comment[]
+}
+
+model Admin {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  adminRole    AdminRole @default(EDITOR)
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+
+  articles     Article[]
+  auditLogs    AuditLog[]
+}
+
+model Category {
+  id           String    @id @default(uuid())
+  nameTa       String
+  nameEn       String
+  slug         String    @unique
+  iconUrl      String?
+  isActive     Boolean   @default(true)
+  displayOrder Int       @default(0)
+  createdAt    DateTime  @default(now())
+
+  articles     Article[]
+}
+
+model Article {
+  id           String        @id @default(uuid())
+  titleTa      String
+  titleEn      String
+  bodyTa       String
+  bodyEn       String
+  excerpt      String?
+  thumbnailUrl String?
+  categoryId   String
+  category     Category      @relation(fields: [categoryId], references: [id])
+  adminId      String
+  admin        Admin         @relation(fields: [adminId], references: [id])
+  status       ArticleStatus @default(DRAFT)
+  isBreaking   Boolean       @default(false)
+  scheduledAt  DateTime?
+  publishedAt  DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  reads        ArticleRead[]
+}
+
+model ArticleRead {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id])
+  readAt    DateTime @default(now())
+
+  @@unique([userId, articleId])
+}
+
+model PushToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  fcmToken  String   @unique
+  platform  String   // "android" | "ios"
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  adminId    String?
+  admin      Admin?   @relation(fields: [adminId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+}
+
+// ─── Legacy / Phase 2 Models (kept, not used in Phase 1 APIs) ────────────────
+
+model Reporter {
+  id          String         @id @default(uuid())
+  userId      String         @unique
+  user        User           @relation(fields: [userId], references: [id])
+  realName    String
+  penName     String
+  usePenName  Boolean        @default(true)
+  trustScore  Int            @default(50)
+  status      ReporterStatus @default(TEMPORARY)
+  strikeCount Int            @default(0)
+  verifiedAt  DateTime?
+  createdAt   DateTime       @default(now())
+
+  news        News[]
+  rewards     Reward[]
+}
+
+model News {
+  id          String       @id @default(uuid())
+  title       String
+  body        String
+  mediaUrl    String?
+  audioUrl    String?
+  category    String
+  reporterId  String
+  reporter    Reporter     @relation(fields: [reporterId], references: [id])
+  status      NewsStatus   @default(PENDING)
+  priority    NewsPriority @default(REGULAR)
+  location    String?
+  publishedAt DateTime?
+  createdAt   DateTime     @default(now())
+
+  comments    Comment[]
+  rewards     Reward[]
+}
+
+model Reward {
+  id         String   @id @default(uuid())
+  reporterId String
+  reporter   Reporter @relation(fields: [reporterId], references: [id])
+  newsId     String
+  news       News     @relation(fields: [newsId], references: [id])
+  points     Int
+  category   String
+  claimed    Boolean  @default(false)
+  week       String
+  paidAt     DateTime?
+  createdAt  DateTime @default(now())
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  newsId    String
+  news      News     @relation(fields: [newsId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  body      String
+  isToxic   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}

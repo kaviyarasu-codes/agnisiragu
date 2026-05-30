@@ -1,0 +1,23 @@
+{
+  "name": "agnisiragu-platform",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/reader-app",
+    "apps/admin-panel",
+    "backend"
+  ],
+  "scripts": {
+    "dev:backend": "cd backend && npm run start:dev",
+    "dev:admin": "cd apps/admin-panel && npm run dev",
+    "dev:reader": "cd apps/reader-app && npm run start",
+    "build:backend": "cd backend && npm run build",
+    "build:admin": "cd apps/admin-panel && npm run build",
+    "prisma:generate": "cd backend && npx prisma generate",
+    "prisma:migrate": "cd backend && npx prisma migrate dev",
+    "prisma:studio": "cd backend && npx prisma studio"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.0"
+  }
+}
