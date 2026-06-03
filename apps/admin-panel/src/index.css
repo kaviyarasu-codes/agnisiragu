@@ -51,9 +51,12 @@
   .btn-dark {
     @apply btn bg-ink-900 text-white hover:bg-ink-800 shadow-sm;
   }
+  .btn-accent {
+    @apply btn bg-red text-white hover:opacity-90 active:scale-[0.98] shadow-sm;
+  }
 
   /* ── Inputs ───────────────────────────────────────── */
-  .input {
+  .input, .input-field {
     @apply w-full bg-surface border border-border rounded px-3 py-2 text-sm
            text-text-primary placeholder:text-text-muted
            focus:outline-none focus:border-red focus:ring-2 focus:ring-red/10
@@ -78,11 +81,11 @@
   }
 
   /* ── Table ────────────────────────────────────────── */
-  .th {
+  .th, .table-header {
     @apply text-left text-2xs font-semibold text-text-muted uppercase tracking-widest
            px-4 py-3 bg-page border-b border-border whitespace-nowrap;
   }
-  .td {
+  .td, .table-cell {
     @apply px-4 py-3 text-sm text-text-primary border-b border-border
            align-middle;
   }

@@ -1,15 +1,13 @@
 // src/screens/CategoriesScreen.tsx
 
 import React from 'react';
-import {
-  FlatList,
+import { FlatList,
   View,
   Text,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Dimensions,
-} from 'react-native';
+  Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCategories } from '@/hooks/useCategories';
@@ -63,7 +61,7 @@ export default function CategoriesScreen() {
     return (
       <TouchableOpacity
         style={[styles.card, { backgroundColor: bgColor }]}
-        onPress={() => router.push(`/?categoryId=${item.id}`)}
+        onPress={() => router.push({ pathname: '/(tabs)', params: { categoryId: item.id } })}
         activeOpacity={0.85}
       >
         {item.iconUrl ? (

@@ -70,22 +70,30 @@ export class AdminService {
     };
   }
 
-  // ─── Ban user ─────────────────────────────────────────────────────────────
+  // ─── Ban / Unban user ────────────────────────────────────────────────────
 
   async banUser(id: string, adminId: string) {
+    return this.setBanStatus(id, adminId, true);
+  }
+
+  async unbanUser(id: string, adminId: string) {
+    return this.setBanStatus(id, adminId, false);
+  }
+
+  private async setBanStatus(id: string, adminId: string, isBanned: boolean) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
 
     const updated = await this.prisma.user.update({
       where: { id },
-      data: { isBanned: true },
+      data: { isBanned },
       select: { id: true, phone: true, name: true, isBanned: true },
     });
 
     await this.prisma.auditLog.create({
       data: {
         adminId,
-        action: 'BAN_USER',
+        action: isBanned ? 'BAN_USER' : 'UNBAN_USER',
         entityType: 'user',
         entityId: id,
       },
@@ -109,9 +117,34 @@ export class AdminService {
       this.prisma.auditLog.count(),
     ]);
 
+    // Flatten adminName for frontend
+    const data = logs.map(({ admin, ...log }) => ({
+      ...log,
+      adminName: admin?.name ?? null,
+    }));
+
     return {
-      data: logs,
+      data,
       meta: { total, page, limit, hasMore: skip + limit < total },
     };
+  }
+
+  // ─── Settings ─────────────────────────────────────────────────────────────
+
+  private settings = {
+    siteName: 'Agnisiragu',
+    adMobAndroidAppId: '',
+    adMobIosAppId: '',
+    msg91SenderId: process.env.MSG91_SENDER_ID ?? '',
+    msg91AuthKey: process.env.MSG91_AUTH_KEY ?? '',
+  };
+
+  async getSettings() {
+    return { data: this.settings };
+  }
+
+  async updateSettings(payload: Partial<typeof this.settings>) {
+    this.settings = { ...this.settings, ...payload };
+    return { data: this.settings };
   }
 }

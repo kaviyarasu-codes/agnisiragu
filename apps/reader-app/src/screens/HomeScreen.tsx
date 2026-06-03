@@ -1,6 +1,6 @@
 // src/screens/HomeScreen.tsx
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   FlatList,
   View,
@@ -9,7 +9,7 @@ import {
   RefreshControl,
   StyleSheet,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useArticles, useBreakingNews } from '@/hooks/useArticles';
 import { useCategories } from '@/hooks/useCategories';
 import { useAuthStore } from '@/store/auth.store';
@@ -29,7 +29,12 @@ type ListItem =
   | { type: 'ad'; key: string };
 
 export default function HomeScreen() {
+  const params = useLocalSearchParams<{ categoryId?: string }>();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (params.categoryId) setSelectedCategoryId(params.categoryId);
+  }, [params.categoryId]);
   const [showLoginGate, setShowLoginGate] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 

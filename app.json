@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "503309e3-8b43-453a-8a3f-b8bb7d57d2f1"
+      }
+    },
+    "android": {
+      "package": "com.kaviyarasu_kanthavel.agnisiraguplatform"
+    }
+  }
+}

@@ -165,6 +165,9 @@ export default function ArticleFormPage({ mode }: Props) {
       bodyTa,
       bodyEn,
       status: publishNow ? ('PUBLISHED' as ArticleStatus) : values.status,
+      scheduledAt: values.scheduledAt || undefined,
+      thumbnailUrl: values.thumbnailUrl || undefined,
+      excerpt: values.excerpt || undefined,
     };
 
     try {

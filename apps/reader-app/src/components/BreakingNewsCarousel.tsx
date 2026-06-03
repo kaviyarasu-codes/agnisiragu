@@ -1,14 +1,12 @@
 // src/components/BreakingNewsCarousel.tsx
 
 import React, { useRef, useEffect, useState } from 'react';
-import {
-  View,
+import { View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
-} from 'react-native';
+  Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { COLORS, STRINGS } from '@/constants';

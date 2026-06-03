@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '@/store/auth.store';
+import { useAppStore } from '@/store/app.store';
 import { getToken, getArticleReadCount } from '@/lib/storage';
 import { get } from '@/lib/api';
 import type { User } from '@/types';
@@ -26,6 +27,7 @@ const queryClient = new QueryClient({
 
 function AppBootstrap({ children }: { children: React.ReactNode }) {
   const { setUser, setAuthenticated, setArticleReadCount } = useAuthStore();
+  const { hydrateFromStorage } = useAppStore();
 
   useEffect(() => {
     async function bootstrap() {
@@ -33,9 +35,10 @@ function AppBootstrap({ children }: { children: React.ReactNode }) {
         const [token, readCount] = await Promise.all([
           getToken(),
           getArticleReadCount(),
+          hydrateFromStorage(),
         ]);
 
-        setArticleReadCount(readCount);
+        setArticleReadCount(readCount as number);
 
         if (token) {
           try {

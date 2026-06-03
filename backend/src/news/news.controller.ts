@@ -93,6 +93,24 @@ export class NewsController {
     return this.newsService.toggleBreaking(id);
   }
 
+  @Patch(':id/unpublish')
+  @ApiBearerAuth()
+  @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))
+  @Roles('SUPER_ADMIN', 'ADMIN', 'EDITOR')
+  @ApiOperation({ summary: 'Unpublish article' })
+  unpublish(@Param('id') id: string) {
+    return this.newsService.unpublish(id);
+  }
+
+  @Post('bulk/:action')
+  @ApiBearerAuth()
+  @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  @ApiOperation({ summary: 'Bulk publish or delete articles' })
+  bulk(@Param('action') action: 'publish' | 'delete', @Body('ids') ids: string[]) {
+    return this.newsService.bulkAction(ids, action);
+  }
+
   @Delete(':id')
   @ApiBearerAuth()
   @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))

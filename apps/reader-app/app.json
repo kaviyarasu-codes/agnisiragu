@@ -24,20 +24,14 @@
       "supportsTablet": false
     },
     "plugins": [
-      [
-        "expo-router",
-        {
-          "root": "src/app"
-        }
-      ],
+      "expo-router",
       "expo-font",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-status-bar",
+      "expo-splash-screen",
+      "expo-image"
     ],
     "extra": {
-      "router": {
-        "origin": false,
-        "root": "src/app"
-      },
       "eas": {
         "projectId": "bb5e005e-2ef5-4482-befe-76d8db54014b"
       }

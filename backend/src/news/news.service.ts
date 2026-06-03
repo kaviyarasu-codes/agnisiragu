@@ -185,6 +185,67 @@ export class NewsService {
     return { data: article };
   }
 
+  // ─── Admin: unpublish ────────────────────────────────────────────────────
+
+  async unpublish(id: string) {
+    const existing = await this.prisma.article.findUnique({ where: { id } });
+    if (!existing || existing.status === 'DELETED') throw new NotFoundException('Article not found');
+
+    const article = await this.prisma.article.update({
+      where: { id },
+      data: { status: 'UNPUBLISHED' },
+    });
+
+    return { data: article };
+  }
+
+  // ─── Admin: bulk action ───────────────────────────────────────────────────
+
+  async bulkAction(ids: string[], action: 'publish' | 'delete') {
+    const status = action === 'publish' ? 'PUBLISHED' : 'DELETED';
+    const data: any = { status };
+    if (action === 'publish') data.publishedAt = new Date();
+
+    await this.prisma.article.updateMany({
+      where: { id: { in: ids } },
+      data,
+    });
+
+    return { data: { updated: ids.length } };
+  }
+
+  // ─── Admin: list (with status filter) ────────────────────────────────────
+
+  async adminFindAll(query: ArticleListQueryDto & { status?: string; search?: string }) {
+    const limit = Math.min(query.limit ?? 20, 50);
+    const where: any = { status: { not: 'DELETED' } };
+    if (query.categoryId) where.categoryId = query.categoryId;
+    if (query.status) where.status = query.status;
+    if (query.search) {
+      where.OR = [
+        { titleTa: { contains: query.search, mode: 'insensitive' } },
+        { titleEn: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [articles, total] = await Promise.all([
+      this.prisma.article.findMany({
+        where,
+        take: limit + 1,
+        ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+        orderBy: { createdAt: 'desc' },
+        include: { category: true, admin: { select: { id: true, name: true } } },
+      }),
+      this.prisma.article.count({ where }),
+    ]);
+
+    const hasMore = articles.length > limit;
+    const data = hasMore ? articles.slice(0, limit) : articles;
+    const nextCursor = hasMore ? data[data.length - 1].id : null;
+
+    return { data, meta: { hasMore, nextCursor, total } };
+  }
+
   // ─── Admin: soft delete ───────────────────────────────────────────────────
 
   async remove(id: string) {

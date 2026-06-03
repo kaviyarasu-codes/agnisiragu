@@ -47,6 +47,7 @@ export interface User {
   name?: string;
   role: string;
   articleReadCount: number;
+  isBanned: boolean;
   createdAt: string;
 }
 
@@ -97,6 +98,8 @@ export interface Notification {
   id: string;
   titleTa: string;
   bodyTa: string;
+  titleEn: string;
+  bodyEn: string;
   target: string;
   categoryId?: string;
   status: string;

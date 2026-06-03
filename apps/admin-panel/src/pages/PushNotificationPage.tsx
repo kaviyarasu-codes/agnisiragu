@@ -11,8 +11,10 @@ import { useCategories } from '../hooks/useCategories';
 import type { Notification } from '../types';
 
 const schema = z.object({
-  titleTa: z.string().min(1, 'Title is required'),
-  bodyTa: z.string().min(1, 'Body is required'),
+  titleTa: z.string().min(1, 'Tamil title is required'),
+  bodyTa: z.string().min(1, 'Tamil body is required'),
+  titleEn: z.string().min(1, 'English title is required'),
+  bodyEn: z.string().min(1, 'English body is required'),
   target: z.enum(['ALL', 'CATEGORY']),
   categoryId: z.string().optional(),
 });
@@ -65,25 +67,48 @@ export default function PushNotificationPage() {
           </h3>
 
           <form onSubmit={handleSubmit((v) => sendMutation.mutate(v))} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Title (Tamil)</label>
-              <input
-                {...register('titleTa')}
-                className="input-field"
-                placeholder="அறிவிப்பு தலைப்பு"
-              />
-              {errors.titleTa && <p className="mt-1 text-xs text-accent">{errors.titleTa.message}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title (Tamil)</label>
+                <input
+                  {...register('titleTa')}
+                  className="input-field"
+                  placeholder="அறிவிப்பு தலைப்பு"
+                />
+                {errors.titleTa && <p className="mt-1 text-xs text-accent">{errors.titleTa.message}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title (English)</label>
+                <input
+                  {...register('titleEn')}
+                  className="input-field"
+                  placeholder="Notification title"
+                />
+                {errors.titleEn && <p className="mt-1 text-xs text-accent">{errors.titleEn.message}</p>}
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Body (Tamil)</label>
-              <textarea
-                {...register('bodyTa')}
-                rows={4}
-                className="input-field resize-none"
-                placeholder="அறிவிப்பு உடலை உள்ளிடுக..."
-              />
-              {errors.bodyTa && <p className="mt-1 text-xs text-accent">{errors.bodyTa.message}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Body (Tamil)</label>
+                <textarea
+                  {...register('bodyTa')}
+                  rows={3}
+                  className="input-field resize-none"
+                  placeholder="அறிவிப்பு உடலை உள்ளிடுக..."
+                />
+                {errors.bodyTa && <p className="mt-1 text-xs text-accent">{errors.bodyTa.message}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Body (English)</label>
+                <textarea
+                  {...register('bodyEn')}
+                  rows={3}
+                  className="input-field resize-none"
+                  placeholder="Notification body..."
+                />
+                {errors.bodyEn && <p className="mt-1 text-xs text-accent">{errors.bodyEn.message}</p>}
+              </div>
             </div>
 
             <div>

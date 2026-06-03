@@ -1,5 +1,5 @@
 // src/admin/admin.controller.ts
-import { Controller, Get, Patch, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Query, Body, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -48,6 +48,12 @@ export class AdminController {
     return this.adminService.banUser(id, adminId);
   }
 
+  @Patch('users/:id/unban')
+  @ApiOperation({ summary: 'Unban a user' })
+  unbanUser(@Param('id') id: string, @CurrentUser('id') adminId: string) {
+    return this.adminService.unbanUser(id, adminId);
+  }
+
   @Get('audit-logs')
   @ApiOperation({ summary: 'Get paginated audit logs' })
   @ApiQuery({ name: 'page', required: false })
@@ -57,5 +63,19 @@ export class AdminController {
       page ? Number(page) : 1,
       limit ? Number(limit) : 50,
     );
+  }
+
+  @Get('settings')
+  @Roles('SUPER_ADMIN')
+  @ApiOperation({ summary: 'Get site settings (super admin only)' })
+  getSettings() {
+    return this.adminService.getSettings();
+  }
+
+  @Patch('settings')
+  @Roles('SUPER_ADMIN')
+  @ApiOperation({ summary: 'Update site settings (super admin only)' })
+  updateSettings(@Body() body: Record<string, any>) {
+    return this.adminService.updateSettings(body);
   }
 }

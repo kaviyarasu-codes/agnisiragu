@@ -1,7 +1,7 @@
 // src/pages/UserManagementPage.tsx
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Loader2, Users, Ban } from 'lucide-react';
+import { Search, Loader2, Users, Ban, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import ConfirmModal from '../components/ConfirmModal';
@@ -38,13 +38,14 @@ export default function UserManagementPage() {
   const meta = data?.meta;
 
   const banMutation = useMutation({
-    mutationFn: (id: string) => apiPatch(`/admin/users/${id}/ban`, {}),
-    onSuccess: () => {
+    mutationFn: ({ id, isBanned }: { id: string; isBanned: boolean }) =>
+      apiPatch(`/admin/users/${id}/${isBanned ? 'unban' : 'ban'}`, {}),
+    onSuccess: (_, { isBanned }) => {
       void queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('User banned successfully');
+      toast.success(isBanned ? 'User unbanned successfully' : 'User banned successfully');
       setBanTarget(null);
     },
-    onError: () => toast.error('Failed to ban user'),
+    onError: () => toast.error('Failed to update user'),
   });
 
   const handleNext = () => {
@@ -112,12 +113,15 @@ export default function UserManagementPage() {
                       {format(new Date(user.createdAt), 'dd MMM yyyy')}
                     </td>
                     <td className="table-cell">
+                      <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mb-1 ${user.isBanned ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                        {user.isBanned ? 'Banned' : 'Active'}
+                      </span>
                       <button
                         onClick={() => setBanTarget(user)}
-                        className="flex items-center gap-1 p-1.5 text-gray-400 hover:text-accent hover:bg-red-50 rounded-lg transition-colors text-xs"
+                        className={`flex items-center gap-1 p-1.5 rounded-lg transition-colors text-xs ${user.isBanned ? 'text-gray-400 hover:text-green-600 hover:bg-green-50' : 'text-gray-400 hover:text-accent hover:bg-red-50'}`}
                       >
-                        <Ban size={14} />
-                        Ban
+                        {user.isBanned ? <ShieldCheck size={14} /> : <Ban size={14} />}
+                        {user.isBanned ? 'Unban' : 'Ban'}
                       </button>
                     </td>
                   </tr>
@@ -139,10 +143,15 @@ export default function UserManagementPage() {
 
       <ConfirmModal
         isOpen={!!banTarget}
-        title="Ban User"
-        message={`Are you sure you want to ban ${banTarget?.phone ?? 'this user'}? They will lose access to the platform.`}
-        confirmLabel="Ban User"
-        onConfirm={() => banTarget && banMutation.mutate(banTarget.id)}
+        title={banTarget?.isBanned ? 'Unban User' : 'Ban User'}
+        message={
+          banTarget?.isBanned
+            ? `Are you sure you want to unban ${banTarget?.phone ?? 'this user'}? They will regain access.`
+            : `Are you sure you want to ban ${banTarget?.phone ?? 'this user'}? They will lose access to the platform.`
+        }
+        confirmLabel={banTarget?.isBanned ? 'Unban User' : 'Ban User'}
+        danger={!banTarget?.isBanned}
+        onConfirm={() => banTarget && banMutation.mutate({ id: banTarget.id, isBanned: banTarget.isBanned })}
         onCancel={() => setBanTarget(null)}
       />
     </div>

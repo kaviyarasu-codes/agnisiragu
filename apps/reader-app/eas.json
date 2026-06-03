@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 10.0.0"
+    "version": ">= 10.0.0",
+    "appVersionSource": "local"
   },
   "build": {
     "preview": {
@@ -9,12 +10,14 @@
       },
       "env": {
         "NODE_ENV": "production"
-      }
+      },
+      "node": "22.0.0"
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
-      }
+      },
+      "node": "22.0.0"
     }
   },
   "submit": {

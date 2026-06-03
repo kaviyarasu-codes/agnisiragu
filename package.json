@@ -4,6 +4,7 @@
   "private": true,
   "workspaces": [
     "apps/reader-app",
+    "apps/reporter-app",
     "apps/admin-panel",
     "backend"
   ],
@@ -18,6 +19,6 @@
     "prisma:studio": "cd backend && npx prisma studio"
   },
   "devDependencies": {
-    "typescript": "^5.2.0"
+    "typescript": "~6.0.3"
   }
 }

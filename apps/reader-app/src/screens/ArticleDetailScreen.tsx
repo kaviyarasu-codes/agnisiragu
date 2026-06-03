@@ -1,15 +1,13 @@
 // src/screens/ArticleDetailScreen.tsx
 
 import React, { useEffect, useState } from 'react';
-import {
-  ScrollView,
+import { ScrollView,
   View,
   Text,
   TouchableOpacity,
   ActivityIndicator,
   Share,
-  StyleSheet,
-} from 'react-native';
+  StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 import { useArticle, useRelatedArticles } from '@/hooks/useArticles';
