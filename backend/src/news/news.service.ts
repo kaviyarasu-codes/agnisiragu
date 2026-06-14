@@ -119,6 +119,7 @@ export class NewsService {
     const category = await this.prisma.category.findUnique({ where: { id: dto.categoryId } });
     if (!category) throw new NotFoundException('Category not found');
 
+    const status = dto.status ?? 'DRAFT';
     const article = await this.prisma.article.create({
       data: {
         titleTa: dto.titleTa,
@@ -131,7 +132,8 @@ export class NewsService {
         adminId,
         isBreaking: dto.isBreaking ?? false,
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
-        status: 'DRAFT',
+        status,
+        publishedAt: status === 'PUBLISHED' ? new Date() : null,
       },
       include: { category: true },
     });
@@ -216,8 +218,11 @@ export class NewsService {
 
   // ─── Admin: list (with status filter) ────────────────────────────────────
 
-  async adminFindAll(query: ArticleListQueryDto & { status?: string; search?: string }) {
+  async adminFindAll(query: ArticleListQueryDto & { status?: string; search?: string; page?: number }) {
     const limit = Math.min(query.limit ?? 20, 50);
+    const page = query.page ? Number(query.page) : 1;
+    const skip = (page - 1) * limit;
+
     const where: any = { status: { not: 'DELETED' } };
     if (query.categoryId) where.categoryId = query.categoryId;
     if (query.status) where.status = query.status;
@@ -231,19 +236,15 @@ export class NewsService {
     const [articles, total] = await Promise.all([
       this.prisma.article.findMany({
         where,
-        take: limit + 1,
-        ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+        take: limit,
+        skip,
         orderBy: { createdAt: 'desc' },
         include: { category: true, admin: { select: { id: true, name: true } } },
       }),
       this.prisma.article.count({ where }),
     ]);
 
-    const hasMore = articles.length > limit;
-    const data = hasMore ? articles.slice(0, limit) : articles;
-    const nextCursor = hasMore ? data[data.length - 1].id : null;
-
-    return { data, meta: { hasMore, nextCursor, total } };
+    return { data: articles, meta: { total, page, limit, hasMore: skip + limit < total } };
   }
 
   // ─── Admin: soft delete ───────────────────────────────────────────────────

@@ -42,6 +42,11 @@ export class CreateArticleDto {
   @IsBoolean()
   isBreaking?: boolean;
 
+  @ApiPropertyOptional({ enum: ArticleStatus, default: 'DRAFT' })
+  @IsOptional()
+  @IsEnum(ArticleStatus)
+  status?: ArticleStatus;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
