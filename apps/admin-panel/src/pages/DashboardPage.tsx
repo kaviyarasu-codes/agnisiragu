@@ -8,13 +8,13 @@ import { useArticles } from '../hooks/useArticles';
 import { format } from 'date-fns';
 
 const WEEKLY_MOCK = [
-  { day: 'Mon', count: 4 },
-  { day: 'Tue', count: 7 },
-  { day: 'Wed', count: 3 },
-  { day: 'Thu', count: 9 },
-  { day: 'Fri', count: 6 },
-  { day: 'Sat', count: 2 },
-  { day: 'Sun', count: 5 },
+  { day: 'Mon', count: 0 },
+  { day: 'Tue', count: 0 },
+  { day: 'Wed', count: 0 },
+  { day: 'Thu', count: 0 },
+  { day: 'Fri', count: 0 },
+  { day: 'Sat', count: 0 },
+  { day: 'Sun', count: 0 },
 ];
 
 const CustomTooltip = ({ active, payload, label }: any) => {
