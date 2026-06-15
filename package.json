@@ -4,7 +4,6 @@
   "private": true,
   "workspaces": [
     "apps/reader-app",
-    "apps/reporter-app",
     "apps/admin-panel",
     "backend"
   ],
