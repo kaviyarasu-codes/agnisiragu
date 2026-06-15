@@ -1,0 +1,11 @@
+# Native directories — managed by Expo CNG (prebuild)
+/android
+/ios
+
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
