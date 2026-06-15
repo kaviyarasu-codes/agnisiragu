@@ -1,63 +1,38 @@
 // src/hooks/useAuth.ts
 
-import { useAuthStore } from '@/store/auth.store';
 import { post } from '@/lib/api';
-import { setToken, setRefreshToken, clearTokens } from '@/lib/storage';
-import { FREE_ARTICLE_LIMIT } from '@/constants';
-import type { User } from '@/types';
-
-interface VerifyOtpApiResponse {
-  data: {
-    accessToken: string;
-    refreshToken: string;
-    user: User;
-  };
-}
-
-interface SendOtpApiResponse {
-  message: string;
-}
+import { useAuthStore } from '@/store/auth.store';
+import { setToken, setRefreshToken, getRefreshToken } from '@/lib/storage';
+import type { OtpVerifyResponse } from '@/types';
 
 export function useAuth() {
-  const { user, isAuthenticated, articleReadCount, setUser, setAuthenticated, logout: storeLogout } =
-    useAuthStore();
+  const { setUser, setAuthenticated, logout: storeLogout } = useAuthStore();
 
-  async function sendOtp(phone: string): Promise<string> {
-    const response = await post<SendOtpApiResponse>('/auth/send-otp', { phone });
-    return response.message;
+  async function sendOtp(phone: string): Promise<void> {
+    await post('/auth/send-otp', { phone });
   }
 
   async function verifyOtp(phone: string, otp: string): Promise<void> {
-    const response = await post<VerifyOtpApiResponse>('/auth/verify-otp', { phone, otp });
-    await setToken(response.data.accessToken);
-    await setRefreshToken(response.data.refreshToken);
-    setUser(response.data.user);
+    const res = await post<{ data: OtpVerifyResponse }>('/auth/verify-otp', { phone, otp });
+    const { user, accessToken, refreshToken } = res.data;
+    await setToken(accessToken);
+    await setRefreshToken(refreshToken);
+    setUser(user);
     setAuthenticated(true);
   }
 
   async function logout(): Promise<void> {
     try {
-      await post('/auth/logout');
+      const refreshToken = await getRefreshToken();
+      if (refreshToken) {
+        await post('/auth/logout', { refreshToken });
+      }
     } catch {
-      // best effort
+      // ignore logout API errors
     } finally {
-      await clearTokens();
       storeLogout();
     }
   }
 
-  function checkArticleLimit(): boolean {
-    if (isAuthenticated) return false;
-    return articleReadCount >= FREE_ARTICLE_LIMIT;
-  }
-
-  return {
-    user,
-    isAuthenticated,
-    articleReadCount,
-    sendOtp,
-    verifyOtp,
-    logout,
-    checkArticleLimit,
-  };
+  return { sendOtp, verifyOtp, logout };
 }
