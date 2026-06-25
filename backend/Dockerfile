@@ -21,7 +21,10 @@ RUN npx prisma generate
 # Build NestJS
 RUN npm run build
 
+# Verify dist was created
+RUN echo "=== dist contents ===" && ls -la dist/
+
 EXPOSE 3000
 
 # Run migrations then start
-CMD ["sh", "-c", "echo '=== listing dist ===' && ls dist/ 2>&1 && echo '=== starting ===' && node dist/main.js 2>&1"]
+CMD ["node", "dist/main.js"]
