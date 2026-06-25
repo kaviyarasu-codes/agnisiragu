@@ -73,7 +73,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-5 max-w-7xl">
+    <div className="space-y-5">
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

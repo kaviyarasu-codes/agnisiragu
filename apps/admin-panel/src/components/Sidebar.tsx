@@ -1,8 +1,9 @@
 // src/components/Sidebar.tsx
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Newspaper, Tag, Users,
-  Image, Bell, ClipboardList, Settings, X, ChevronRight,
+  LayoutDashboard, Newspaper, Tag, Users, Image, Bell,
+  ClipboardList, Settings, X, ChevronRight, UserCog,
+  BarChart2, Smartphone,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 import logo from '../assets/logo.png';
@@ -13,25 +14,32 @@ const navGroups = [
   {
     label: 'Main',
     items: [
-      { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-      { to: '/articles', label: 'Articles', icon: Newspaper },
-      { to: '/categories', label: 'Categories', icon: Tag },
+      { to: '/',            label: 'Dashboard',    icon: LayoutDashboard, end: true },
+      { to: '/articles',    label: 'Articles',     icon: Newspaper },
+      { to: '/categories',  label: 'Categories',   icon: Tag },
     ],
   },
   {
     label: 'Manage',
     items: [
-      { to: '/users', label: 'Users', icon: Users },
-      { to: '/media', label: 'Media Library', icon: Image },
-      { to: '/notifications', label: 'Notifications', icon: Bell },
+      { to: '/users',         label: 'Users',          icon: Users },
+      { to: '/media',         label: 'Media Library',  icon: Image },
+      { to: '/notifications', label: 'Notifications',  icon: Bell },
     ],
   },
   {
-    label: 'System',
+    label: 'Analytics',
     items: [
-      { to: '/audit-logs', label: 'Audit Logs', icon: ClipboardList },
+      { to: '/reports',    label: 'Reports',     icon: BarChart2 },
+      { to: '/audit-logs', label: 'Audit Logs',  icon: ClipboardList },
     ],
   },
+];
+
+const adminOnlyItems = [
+  { to: '/accounts',   label: 'Admin Accounts', icon: UserCog },
+  { to: '/app-config', label: 'App Config',      icon: Smartphone },
+  { to: '/settings',   label: 'Settings',        icon: Settings },
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
@@ -57,8 +65,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:static lg:z-auto
       `}>
-
-        {/* Logo area */}
+        {/* Logo */}
         <div className="flex items-center justify-between px-4 py-5 border-b border-ink-700">
           <img src={logo} alt="Agnisiragu" className="h-9 w-auto" />
           <button onClick={onClose} className="lg:hidden text-gray-500 hover:text-white transition-colors p-1">
@@ -66,7 +73,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
-        {/* Nav groups */}
+        {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
           {navGroups.map((group) => (
             <div key={group.label}>
@@ -94,13 +101,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               <p className="text-2xs font-semibold uppercase tracking-widest text-ink-500 px-3 mb-2">
                 Admin
               </p>
-              <NavLink
-                to="/settings" onClick={onClose}
-                className={({ isActive }) => linkClass(isActive)}
-              >
-                <Settings size={16} className="flex-shrink-0" />
-                <span className="flex-1">Settings</span>
-              </NavLink>
+              <div className="space-y-0.5">
+                {adminOnlyItems.map(({ to, label, icon: Icon }) => (
+                  <NavLink
+                    key={to} to={to}
+                    onClick={onClose}
+                    className={({ isActive }) => linkClass(isActive)}
+                  >
+                    <Icon size={16} className="flex-shrink-0" />
+                    <span className="flex-1">{label}</span>
+                    <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+                  </NavLink>
+                ))}
+              </div>
             </div>
           )}
         </nav>

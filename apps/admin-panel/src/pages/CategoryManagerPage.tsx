@@ -121,7 +121,7 @@ export default function CategoryManagerPage() {
   };
 
   return (
-    <div className="space-y-4 max-w-4xl">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
         <p className="text-sm text-gray-500">{categories.length} categories</p>
         <button onClick={() => setShowAddForm(true)} className="btn-primary flex items-center gap-2">

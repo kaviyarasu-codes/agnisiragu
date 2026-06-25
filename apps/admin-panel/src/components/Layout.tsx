@@ -7,15 +7,18 @@ import { useAuthStore } from '../store/auth.store';
 import { clearToken } from '../lib/auth';
 
 const BREADCRUMBS: Record<string, string[]> = {
-  '/':               ['Dashboard'],
-  '/articles':       ['Content', 'Articles'],
-  '/articles/new':   ['Content', 'Articles', 'New Article'],
-  '/categories':     ['Content', 'Categories'],
-  '/users':          ['Manage', 'Users'],
-  '/media':          ['Manage', 'Media Library'],
-  '/notifications':  ['Manage', 'Notifications'],
-  '/audit-logs':     ['System', 'Audit Logs'],
-  '/settings':       ['System', 'Settings'],
+  '/':              ['Dashboard'],
+  '/articles':      ['Content', 'Articles'],
+  '/articles/new':  ['Content', 'Articles', 'New Article'],
+  '/categories':    ['Content', 'Categories'],
+  '/users':         ['Manage', 'Users'],
+  '/media':         ['Manage', 'Media Library'],
+  '/notifications': ['Manage', 'Notifications'],
+  '/reports':       ['Analytics', 'Reports'],
+  '/audit-logs':    ['Analytics', 'Audit Logs'],
+  '/accounts':      ['Admin', 'Admin Accounts'],
+  '/app-config':    ['Admin', 'App Config'],
+  '/settings':      ['Admin', 'Settings'],
 };
 
 function getBreadcrumb(pathname: string): string[] {
@@ -43,12 +46,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-
         {/* Header */}
         <header className="bg-surface border-b border-border flex-shrink-0">
           <div className="flex items-center justify-between px-5 h-14">
-
-            {/* Left: hamburger + breadcrumb */}
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setSidebarOpen(true)}
@@ -56,7 +56,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               >
                 <Menu size={18} />
               </button>
-
               <nav className="flex items-center gap-1.5 text-sm">
                 {crumbs.map((crumb, i) => (
                   <span key={i} className="flex items-center gap-1.5">
@@ -73,7 +72,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </nav>
             </div>
 
-            {/* Right: admin + logout */}
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2.5 px-3 py-1.5 rounded border border-border bg-page">
                 <div className="w-6 h-6 rounded-full bg-red flex items-center justify-center flex-shrink-0">
@@ -96,13 +94,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {/* Page title bar */}
           <div className="px-5 pb-3 pt-0">
             <h1 className="text-lg font-semibold text-text-primary">{pageTitle}</h1>
           </div>
         </header>
 
-        {/* Content */}
+        {/* Content — full width, no max-w constraint */}
         <main className="flex-1 overflow-y-auto p-5">
           {children}
         </main>

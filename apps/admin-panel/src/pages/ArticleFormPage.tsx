@@ -195,7 +195,7 @@ export default function ArticleFormPage({ mode }: Props) {
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <form onSubmit={handleSubmit((v) => onSubmit(v))} className="space-y-6 max-w-5xl">
+    <form onSubmit={handleSubmit((v) => onSubmit(v))} className="space-y-6">
       {/* Language Tabs */}
       <div className="card p-0">
         <div className="flex border-b border-gray-200">

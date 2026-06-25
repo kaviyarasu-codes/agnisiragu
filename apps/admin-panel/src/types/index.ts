@@ -1,6 +1,28 @@
 // src/types/index.ts
 
-export type AdminRole = 'SUPER_ADMIN' | 'ADMIN' | 'EDITOR';
+export type AdminRole =
+  | 'SUPER_ADMIN'
+  | 'ADMIN'
+  // Editor Team
+  | 'EDITOR_MANAGER'
+  | 'EDITOR_MEMBER'
+  // News Verification Team
+  | 'VERIFICATION_MANAGER'
+  | 'VERIFICATION_MEMBER'
+  // Reporter App Team
+  | 'REPORTER_APP_MANAGER'
+  | 'REPORTER_APP_MEMBER'
+  // Reporters Management Team
+  | 'REPORTERS_MANAGER'
+  | 'REPORTERS_MEMBER';
+
+export type TeamType =
+  | 'SYSTEM'
+  | 'EDITOR_TEAM'
+  | 'VERIFICATION_TEAM'
+  | 'REPORTER_APP_TEAM'
+  | 'REPORTERS_MANAGEMENT_TEAM';
+
 export type ArticleStatus = 'DRAFT' | 'REVIEW' | 'PUBLISHED' | 'UNPUBLISHED' | 'DELETED';
 export type Language = 'ta' | 'en';
 
@@ -9,6 +31,8 @@ export interface Admin {
   email: string;
   name: string;
   adminRole: AdminRole;
+  team?: TeamType;
+  isActive?: boolean;
   lastLoginAt?: string;
   createdAt: string;
 }
