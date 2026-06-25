@@ -10,6 +10,7 @@ import { NewsModule } from './news/news.module';
 import { MediaModule } from './media/media.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -19,7 +20,6 @@ import { AdminModule } from './admin/admin.module';
       validate: (config: Record<string, unknown>) => {
         const required = [
           'DATABASE_URL',
-          'REDIS_URL',
           'JWT_SECRET',
           'JWT_REFRESH_SECRET',
         ];
@@ -45,6 +45,7 @@ import { AdminModule } from './admin/admin.module';
     MediaModule,
     NotificationsModule,
     AdminModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
