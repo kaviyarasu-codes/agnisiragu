@@ -1,9 +1,27 @@
-FROM node:20-alpine
+# backend/Dockerfile
+FROM node:20-slim
+
+# Install OpenSSL — required by Prisma schema + query engine
+RUN apt-get update -y \
+    && apt-get install -y openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
-COPY package.json ./
-RUN npm install --legacy-peer-deps
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci
+
+# Copy source
 COPY . .
+
+# Generate Prisma client with correct binary for this container
 RUN npx prisma generate
+
+# Build NestJS
 RUN npm run build
+
 EXPOSE 3000
+
+# Run migrations then start
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]

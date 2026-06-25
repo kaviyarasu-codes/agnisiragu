@@ -1,13 +1,1 @@
-# nixpacks.toml — Railway build config for agnisiragu-backend
-
-[phases.setup]
-nixPkgs = ["openssl", "openssl.dev"]
-
-[phases.install]
-cmds = ["npm ci"]
-
-[phases.build]
-cmds = ["npx prisma generate", "npm run build"]
-
-[start]
-cmd = "npx prisma migrate deploy && node dist/main"
+# nixpacks.toml disabled — using Dockerfile instead
