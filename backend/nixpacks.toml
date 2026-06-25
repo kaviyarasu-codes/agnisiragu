@@ -1,8 +1,13 @@
+# nixpacks.toml — Railway build config for agnisiragu-backend
+
+[phases.setup]
+nixPkgs = ["openssl", "openssl.dev"]
+
 [phases.install]
-cmds = ["npm install --legacy-peer-deps"]
+cmds = ["npm ci"]
 
 [phases.build]
-cmds = ["npm run build"]
+cmds = ["npx prisma generate", "npm run build"]
 
 [start]
 cmd = "npx prisma migrate deploy && node dist/main"

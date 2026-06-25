@@ -2,8 +2,8 @@
   "name": "agnisiragu-backend",
   "version": "1.0.0",
   "scripts": {
-    "build": "prisma generate && nest build",
-    "start": "prisma migrate deploy && node dist/main",
+    "build": "nest build",
+    "start": "node dist/main",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
