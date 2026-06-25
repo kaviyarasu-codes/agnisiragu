@@ -4,8 +4,8 @@
 // Example: 'http://192.168.137.1:3000/api/v1'
 // PROD: 'https://api.agnisiragu.com/api/v1'
 export const API_BASE_URL = __DEV__
-  ? 'http://10.65.105.253:3000/api/v1'
-  : 'https://api.agnisiragu.com/api/v1';
+  ? 'http://10.65.105.253:3000/api/v1'   // ← replace with your laptop IP for local dev
+  : 'https://agnisiragu-backend-production.up.railway.app/api/v1';
 
 export const FREE_ARTICLE_LIMIT = 10;
 
