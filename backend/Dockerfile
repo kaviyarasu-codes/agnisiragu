@@ -24,4 +24,4 @@ RUN npm run build
 EXPOSE 3000
 
 # Run migrations then start
-CMD ["sh", "-c", "npx prisma migrate deploy 2>&1 && echo '=== dist folder ===' && ls dist/ && echo '=== starting server ===' && node dist/main.js 2>&1"]
+CMD ["sh", "-c", "(npx prisma migrate deploy || true) && echo '=== dist folder ===' && ls dist/ && echo '=== starting server ===' && node dist/main.js 2>&1"]
