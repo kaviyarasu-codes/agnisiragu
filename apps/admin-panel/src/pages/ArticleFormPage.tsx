@@ -17,6 +17,8 @@ import type { ArticleStatus } from '../types';
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
 
+// Draft: only title + category required
+// Publish: title + category + byline + thumbnail all required
 const schema = z.object({
   titleTa: z.string().min(1, 'Tamil title is required'),
   titleEn: z.string().optional(),
@@ -28,6 +30,17 @@ const schema = z.object({
   scheduledAt: z.string().optional(),
   excerpt: z.string().optional(),
 });
+
+// Extra validation for publishing
+function validateForPublish(values: FormValues, bodyTa: string): string[] {
+  const errors: string[] = [];
+  if (!values.titleTa?.trim()) errors.push('Tamil title is required');
+  if (!values.categoryId) errors.push('Category is required');
+  if (!values.byline?.trim()) errors.push('Publisher name is required to publish');
+  if (!values.thumbnailUrl?.trim()) errors.push('Thumbnail image is required to publish');
+  if (!bodyTa || bodyTa === '<p></p>') errors.push('Tamil body content is required');
+  return errors;
+}
 
 type FormValues = z.infer<typeof schema>;
 interface Props { mode: 'create' | 'edit'; }
@@ -130,15 +143,36 @@ export default function ArticleFormPage({ mode }: Props) {
   const onSubmit = async (values: FormValues, publishNow = false) => {
     const bodyTa = tamilEditor?.getHTML() ?? '';
     const rawBodyEn = englishEditor?.getHTML() ?? '';
-    if (!bodyTa || bodyTa === '<p></p>') { toast.error('Tamil body is required'); setActiveTab('ta'); return; }
+
+    // Draft: only needs Tamil title + category (already validated by zod)
+    // Publish: needs everything
+    if (publishNow) {
+      const publishErrors = validateForPublish(values, bodyTa);
+      if (publishErrors.length > 0) {
+        publishErrors.forEach((e) => toast.error(e));
+        // Switch to Tamil tab if body is missing
+        if (!bodyTa || bodyTa === '<p></p>') setActiveTab('ta');
+        return;
+      }
+    } else {
+      // For draft, at least check Tamil body if it's partially filled
+      if (bodyTa === '<p></p>' && !values.titleTa?.trim()) {
+        toast.error('Tamil title is required');
+        return;
+      }
+    }
+
     const bodyEn = (!rawBodyEn || rawBodyEn === '<p></p>') ? bodyTa : rawBodyEn;
     const payload = {
       ...values,
       titleEn: values.titleEn?.trim() || values.titleTa,
-      bodyTa, bodyEn,
+      bodyTa,
+      bodyEn,
       status: publishNow ? ('PUBLISHED' as ArticleStatus) : values.status,
       scheduledAt: values.scheduledAt || undefined,
       excerpt: values.excerpt || undefined,
+      byline: values.byline || undefined,
+      thumbnailUrl: values.thumbnailUrl || undefined,
     };
     try {
       if (mode === 'create') { await createMutation.mutateAsync(payload); toast.success('Article created'); }
