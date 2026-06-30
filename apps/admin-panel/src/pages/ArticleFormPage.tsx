@@ -20,11 +20,11 @@ const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET |
 const schema = z.object({
   titleTa: z.string().min(1, 'Tamil title is required'),
   titleEn: z.string().optional(),
-  byline: z.string().min(1, 'Publisher name is required'),
+  byline: z.string().optional(),
   categoryId: z.string().min(1, 'Category is required'),
   status: z.enum(['DRAFT', 'REVIEW', 'PUBLISHED', 'UNPUBLISHED', 'DELETED']),
   isBreaking: z.boolean(),
-  thumbnailUrl: z.string().min(1, 'Thumbnail is required'),
+  thumbnailUrl: z.string().optional(),
   scheduledAt: z.string().optional(),
   excerpt: z.string().optional(),
 });
@@ -45,7 +45,7 @@ function Label({ children, required }: { children: React.ReactNode; required?: b
 function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
   if (!editor) return null;
   const btn = (active: boolean) =>
-    `p-1.5 rounded transition-colors ${active ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`;
+    `p-1.5 rounded transition-colors ${active ? 'bg-red text-white' : 'text-gray-500 hover:bg-gray-100'}`;
   return (
     <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-gray-100 bg-gray-50">
       <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={btn(editor.isActive('bold'))}><Bold size={13} /></button>
@@ -148,7 +148,7 @@ export default function ArticleFormPage({ mode }: Props) {
   };
 
   if (mode === 'edit' && articleLoading) {
-    return <div className="flex items-center justify-center h-64"><Loader2 size={28} className="animate-spin text-primary" /></div>;
+    return <div className="flex items-center justify-center h-64"><Loader2 size={28} className="animate-spin text-red" /></div>;
   }
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
@@ -163,7 +163,7 @@ export default function ArticleFormPage({ mode }: Props) {
           {(['ta', 'en'] as const).map((lang) => (
             <button key={lang} type="button" onClick={() => setActiveTab(lang)}
               className={`relative px-6 py-3 text-sm font-medium transition-colors flex items-center gap-1.5
-                ${activeTab === lang ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}>
+                ${activeTab === lang ? 'text-red' : 'text-gray-400 hover:text-gray-600'}`}>
               {lang === 'ta' ? 'தமிழ் / Tamil' : 'English'}
               {lang === 'ta' && <span className="text-red-400 text-xs leading-none">*</span>}
               {lang === 'en' && <span className="text-[10px] text-gray-300 font-normal">(optional)</span>}
@@ -171,7 +171,7 @@ export default function ArticleFormPage({ mode }: Props) {
                 <span className="w-1.5 h-1.5 rounded-full bg-red-400 absolute top-2.5 right-2" />
               )}
               {activeTab === lang && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-red" />
               )}
             </button>
           ))}
@@ -188,7 +188,7 @@ export default function ArticleFormPage({ mode }: Props) {
             </div>
             <div>
               <Label required>Tamil Body</Label>
-              <div className="border border-gray-200 rounded-lg overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+              <div className="border border-gray-200 rounded-lg overflow-hidden focus-within:border-red-DEFAULT focus-within:ring-1 focus-within:ring-primary transition-all">
                 <EditorToolbar editor={tamilEditor} />
                 <EditorContent editor={tamilEditor} className="min-h-[220px] px-3 py-2 text-sm" />
               </div>
@@ -202,7 +202,7 @@ export default function ArticleFormPage({ mode }: Props) {
             </div>
             <div>
               <Label>English Body <span className="normal-case font-normal text-gray-400">(falls back to Tamil)</span></Label>
-              <div className="border border-gray-200 rounded-lg overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+              <div className="border border-gray-200 rounded-lg overflow-hidden focus-within:border-red-DEFAULT focus-within:ring-1 focus-within:ring-primary transition-all">
                 <EditorToolbar editor={englishEditor} />
                 <EditorContent editor={englishEditor} className="min-h-[220px] px-3 py-2 text-sm" />
               </div>
@@ -290,13 +290,13 @@ export default function ArticleFormPage({ mode }: Props) {
                 </button>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-primary hover:bg-blue-50/50 transition-all mb-3 group">
+              <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-red-DEFAULT hover:bg-blue-50/50 transition-all mb-3 group">
                 {uploading ? (
-                  <Loader2 size={20} className="animate-spin text-primary" />
+                  <Loader2 size={20} className="animate-spin text-red" />
                 ) : (
                   <>
-                    <Upload size={18} className="text-gray-300 group-hover:text-primary mb-1.5 transition-colors" />
-                    <span className="text-xs font-medium text-gray-500 group-hover:text-primary transition-colors">Click to upload</span>
+                    <Upload size={18} className="text-gray-300 group-hover:text-red mb-1.5 transition-colors" />
+                    <span className="text-xs font-medium text-gray-500 group-hover:text-red transition-colors">Click to upload</span>
                     <span className="text-[11px] text-gray-300 mt-0.5">JPG, PNG, WEBP · max 5MB</span>
                   </>
                 )}
@@ -361,20 +361,20 @@ export default function ArticleFormPage({ mode }: Props) {
           </div>
 
           {/* Actions card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-2.5">
+          <div className="card p-4 space-y-2">
             <button type="button" disabled={isSubmitting}
               onClick={handleSubmit((v) => onSubmit(v, true))}
-              className="w-full h-10 bg-primary hover:bg-primary/90 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-60">
+              className="btn-primary w-full justify-center">
               {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : null}
               Publish Now
             </button>
             <button type="submit" disabled={isSubmitting}
-              className="w-full h-10 bg-white border border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-60">
+              className="btn-secondary w-full justify-center">
               {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : null}
               Save Draft
             </button>
             <button type="button" onClick={() => navigate('/articles')}
-              className="w-full h-10 text-gray-400 hover:text-gray-600 text-sm rounded-lg transition-colors">
+              className="btn-ghost w-full justify-center">
               Cancel
             </button>
           </div>
