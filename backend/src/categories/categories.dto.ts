@@ -21,6 +21,11 @@ export class CreateCategoryDto {
   @IsString()
   iconUrl?: string;
 
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
   @IsInt()
