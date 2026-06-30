@@ -12,10 +12,19 @@ interface CategoryPayload {
   displayOrder?: number;
 }
 
+// ── Public: active categories only (for article form dropdowns) ──────────────
 export function useCategories() {
   return useQuery({
     queryKey: ['categories'],
     queryFn: () => apiGet<{ data: Category[] }>('/categories'),
+  });
+}
+
+// ── Admin: ALL categories including inactive (for category manager) ───────────
+export function useAdminCategories() {
+  return useQuery({
+    queryKey: ['categories', 'admin'],
+    queryFn: () => apiGet<{ data: Category[] }>('/categories/admin/all'),
   });
 }
 
@@ -51,22 +60,24 @@ export function useDeleteCategory() {
   });
 }
 
+// Toggle uses dedicated /toggle endpoint — never duplicates or deletes
 export function useToggleCategoryActive() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      apiPatch<{ data: Category }>(`/categories/${id}`, { isActive }),
+    mutationFn: (id: string) =>
+      apiPatch<{ data: Category }>(`/categories/${id}/toggle`, {}),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
   });
 }
 
+// Reorder uses dedicated /reorder endpoint — atomic swap, no duplicate orders
 export function useReorderCategory() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, displayOrder }: { id: string; displayOrder: number }) =>
-      apiPatch<{ data: Category }>(`/categories/${id}`, { displayOrder }),
+    mutationFn: ({ id, direction }: { id: string; direction: 'up' | 'down' }) =>
+      apiPatch<{ data: unknown }>(`/categories/${id}/reorder`, { direction }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['categories'] });
     },

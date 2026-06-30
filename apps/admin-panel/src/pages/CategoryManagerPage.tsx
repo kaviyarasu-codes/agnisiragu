@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { Plus, Edit2, Trash2, ChevronUp, ChevronDown, Loader2, Tag } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 import {
-  useCategories,
+  useAdminCategories,
   useCreateCategory,
   useUpdateCategory,
   useDeleteCategory,
@@ -43,7 +43,7 @@ function CategoryForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-2 gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
       <div>
-        <input {...register('nameTa')} placeholder="Tamil Name" className="input-field" />
+        <input {...register('nameTa')} placeholder="Tamil Name (தமிழ்)" className="input-field" />
         {errors.nameTa && <p className="text-xs text-accent mt-1">{errors.nameTa.message}</p>}
       </div>
       <div>
@@ -73,7 +73,8 @@ export default function CategoryManagerPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const { data, isLoading } = useCategories();
+  // Use admin endpoint — shows ALL categories including inactive
+  const { data, isLoading } = useAdminCategories();
   const categories = (data?.data ?? []).sort((a, b) => a.displayOrder - b.displayOrder);
 
   const createMutation = useCreateCategory();
@@ -83,7 +84,7 @@ export default function CategoryManagerPage() {
 
   const handleCreate = async (values: FormValues) => {
     try {
-      await createMutation.mutateAsync({ ...values, displayOrder: categories.length + 1, isActive: true });
+      await createMutation.mutateAsync({ ...values, isActive: true });
       toast.success('Category created');
       setShowAddForm(false);
     } catch {
@@ -104,26 +105,37 @@ export default function CategoryManagerPage() {
 
   const handleToggle = async (cat: Category) => {
     try {
-      await toggleMutation.mutateAsync({ id: cat.id, isActive: !cat.isActive });
+      // Passes only the ID — backend flips isActive, never deletes
+      await toggleMutation.mutateAsync(cat.id);
       toast.success(`Category ${cat.isActive ? 'deactivated' : 'activated'}`);
     } catch {
-      toast.error('Failed to update category');
+      toast.error('Failed to update category status');
     }
   };
 
   const handleReorder = async (cat: Category, direction: 'up' | 'down') => {
-    const newOrder = direction === 'up' ? cat.displayOrder - 1 : cat.displayOrder + 1;
     try {
-      await reorderMutation.mutateAsync({ id: cat.id, displayOrder: newOrder });
+      // Backend swaps displayOrder with adjacent category atomically
+      await reorderMutation.mutateAsync({ id: cat.id, direction });
     } catch {
       toast.error('Failed to reorder');
     }
   };
 
+  const activeCount = categories.filter((c) => c.isActive).length;
+  const inactiveCount = categories.length - activeCount;
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <p className="text-sm text-gray-500">{categories.length} categories</p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-gray-500">{categories.length} total</p>
+          {inactiveCount > 0 && (
+            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+              {inactiveCount} inactive
+            </span>
+          )}
+        </div>
         <button onClick={() => setShowAddForm(true)} className="btn-primary flex items-center gap-2">
           <Plus size={16} />
           Add Category
@@ -141,7 +153,7 @@ export default function CategoryManagerPage() {
       <div className="card p-0">
         {isLoading ? (
           <div className="flex items-center justify-center h-40">
-            <Loader2 size={24} className="animate-spin text-primary" />
+            <Loader2 size={24} className="animate-spin text-red-500" />
           </div>
         ) : categories.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-gray-400">
@@ -172,50 +184,71 @@ export default function CategoryManagerPage() {
                     </td>
                   </tr>
                 ) : (
-                  <tr key={cat.id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={cat.id}
+                    className={`transition-colors ${cat.isActive ? 'hover:bg-gray-50' : 'bg-gray-50 opacity-60'}`}
+                  >
+                    {/* Order with up/down arrows */}
                     <td className="table-cell">
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleReorder(cat, 'up')}
-                          disabled={index === 0}
-                          className="p-0.5 text-gray-300 hover:text-gray-600 disabled:opacity-20"
+                          disabled={index === 0 || reorderMutation.isPending}
+                          className="p-0.5 text-gray-300 hover:text-gray-600 disabled:opacity-20 disabled:cursor-not-allowed"
+                          title="Move up"
                         >
                           <ChevronUp size={14} />
                         </button>
                         <span className="text-sm font-medium w-5 text-center">{cat.displayOrder}</span>
                         <button
                           onClick={() => handleReorder(cat, 'down')}
-                          disabled={index === categories.length - 1}
-                          className="p-0.5 text-gray-300 hover:text-gray-600 disabled:opacity-20"
+                          disabled={index === categories.length - 1 || reorderMutation.isPending}
+                          className="p-0.5 text-gray-300 hover:text-gray-600 disabled:opacity-20 disabled:cursor-not-allowed"
+                          title="Move down"
                         >
                           <ChevronDown size={14} />
                         </button>
                       </div>
                     </td>
+
                     <td className="table-cell font-medium">{cat.nameTa}</td>
                     <td className="table-cell">{cat.nameEn}</td>
                     <td className="table-cell">
                       <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">{cat.slug}</code>
                     </td>
+
+                    {/* Toggle — flips isActive, never deletes */}
                     <td className="table-cell">
                       <button
                         onClick={() => handleToggle(cat)}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${cat.isActive ? 'bg-green-500' : 'bg-gray-300'}`}
+                        disabled={toggleMutation.isPending}
+                        title={cat.isActive ? 'Click to deactivate' : 'Click to activate'}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                          cat.isActive ? 'bg-green-500' : 'bg-gray-300'
+                        } ${toggleMutation.isPending ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                       >
-                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${cat.isActive ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        <span
+                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                            cat.isActive ? 'translate-x-4' : 'translate-x-0.5'
+                          }`}
+                        />
                       </button>
                     </td>
+
+                    {/* Actions */}
                     <td className="table-cell">
                       <div className="flex gap-1">
                         <button
                           onClick={() => setEditingId(cat.id)}
-                          className="p-1.5 text-gray-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit"
                         >
                           <Edit2 size={14} />
                         </button>
                         <button
                           onClick={() => setDeleteTarget(cat.id)}
-                          className="p-1.5 text-gray-400 hover:text-accent hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -228,6 +261,10 @@ export default function CategoryManagerPage() {
           </table>
         )}
       </div>
+
+      <p className="text-xs text-gray-400">
+        Inactive categories remain in the database. They are hidden from the public website and article form dropdowns, but visible here so you can re-enable them anytime.
+      </p>
 
       <ConfirmModal
         isOpen={!!deleteTarget}
