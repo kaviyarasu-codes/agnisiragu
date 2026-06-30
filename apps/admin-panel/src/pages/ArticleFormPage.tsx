@@ -9,7 +9,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import toast from 'react-hot-toast';
-import { Loader2, Upload, Bold, Italic, List, Heading2, User } from 'lucide-react';
+import { Loader2, Upload, Bold, Italic, List, Heading2 } from 'lucide-react';
 import { useArticle, useCreateArticle, useUpdateArticle, useAdminAccounts } from '../hooks/useArticles';
 import { useCategories } from '../hooks/useCategories';
 import type { ArticleStatus } from '../types';
@@ -30,39 +30,39 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
-
 interface Props { mode: 'create' | 'edit'; }
 
+/* ── Label helper ─────────────────────────────────────────────── */
+function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
+  return (
+    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+      {children}{required && <span className="text-red-500 ml-0.5">*</span>}
+    </label>
+  );
+}
+
+/* ── Editor toolbar ───────────────────────────────────────────── */
 function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
   if (!editor) return null;
+  const btn = (active: boolean) =>
+    `p-1.5 rounded transition-colors ${active ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`;
   return (
-    <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-200 bg-gray-50 flex-wrap">
-      <button type="button" onClick={() => editor.chain().focus().toggleBold().run()}
-        className={`p-1.5 rounded text-sm transition-colors ${editor.isActive('bold') ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-200'}`}>
-        <Bold size={14} />
-      </button>
-      <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()}
-        className={`p-1.5 rounded text-sm transition-colors ${editor.isActive('italic') ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-200'}`}>
-        <Italic size={14} />
-      </button>
-      <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-        className={`p-1.5 rounded text-sm transition-colors ${editor.isActive('heading', { level: 2 }) ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-200'}`}>
-        <Heading2 size={14} />
-      </button>
-      <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()}
-        className={`p-1.5 rounded text-sm transition-colors ${editor.isActive('bulletList') ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-200'}`}>
-        <List size={14} />
-      </button>
+    <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-gray-100 bg-gray-50">
+      <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={btn(editor.isActive('bold'))}><Bold size={13} /></button>
+      <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className={btn(editor.isActive('italic'))}><Italic size={13} /></button>
+      <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className={btn(editor.isActive('heading', { level: 2 }))}><Heading2 size={13} /></button>
+      <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()} className={btn(editor.isActive('bulletList'))}><List size={13} /></button>
     </div>
   );
 }
 
+/* ── Main component ───────────────────────────────────────────── */
 export default function ArticleFormPage({ mode }: Props) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'ta' | 'en'>('ta');
   const [uploading, setUploading] = useState(false);
-  const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
+  const [thumbnailPreview, setThumbnailPreview] = useState('');
   const [bylineMode, setBylineMode] = useState<'select' | 'custom'>('select');
 
   const { data: articleData, isLoading: articleLoading } = useArticle(id ?? '');
@@ -74,10 +74,7 @@ export default function ArticleFormPage({ mode }: Props) {
   const createMutation = useCreateArticle();
   const updateMutation = useUpdateArticle(id ?? '');
 
-  const {
-    register, handleSubmit, control, setValue, watch,
-    formState: { errors },
-  } = useForm<FormValues>({
+  const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { status: 'DRAFT', isBreaking: false, byline: '', thumbnailUrl: '' },
   });
@@ -90,19 +87,19 @@ export default function ArticleFormPage({ mode }: Props) {
 
   useEffect(() => {
     if (mode === 'edit' && articleData?.data) {
-      const article = articleData.data;
-      setValue('titleTa', article.titleTa);
-      setValue('titleEn', article.titleEn);
-      setValue('byline', article.byline ?? '');
-      setValue('categoryId', article.category.id);
-      setValue('status', article.status);
-      setValue('isBreaking', article.isBreaking);
-      setValue('thumbnailUrl', article.thumbnailUrl ?? '');
-      setValue('excerpt', article.excerpt ?? '');
-      setValue('scheduledAt', article.scheduledAt ?? '');
-      if (article.thumbnailUrl) setThumbnailPreview(article.thumbnailUrl);
-      tamilEditor?.commands.setContent(article.bodyTa);
-      englishEditor?.commands.setContent(article.bodyEn);
+      const a = articleData.data;
+      setValue('titleTa', a.titleTa);
+      setValue('titleEn', a.titleEn);
+      setValue('byline', a.byline ?? '');
+      setValue('categoryId', a.category.id);
+      setValue('status', a.status);
+      setValue('isBreaking', a.isBreaking);
+      setValue('thumbnailUrl', a.thumbnailUrl ?? '');
+      setValue('excerpt', a.excerpt ?? '');
+      setValue('scheduledAt', a.scheduledAt ?? '');
+      if (a.thumbnailUrl) setThumbnailPreview(a.thumbnailUrl);
+      tamilEditor?.commands.setContent(a.bodyTa);
+      englishEditor?.commands.setContent(a.bodyEn);
     }
   }, [articleData, mode, tamilEditor, englishEditor, setValue]);
 
@@ -113,15 +110,12 @@ export default function ArticleFormPage({ mode }: Props) {
     }
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-      formData.append('folder', 'agnisiragu');
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-        { method: 'POST', body: formData },
-      );
-      if (!res.ok) throw new Error('Upload failed');
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+      fd.append('folder', 'agnisiragu');
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: 'POST', body: fd });
+      if (!res.ok) throw new Error();
       const data = await res.json() as { secure_url: string };
       setValue('thumbnailUrl', data.secure_url);
       setThumbnailPreview(data.secure_url);
@@ -136,38 +130,21 @@ export default function ArticleFormPage({ mode }: Props) {
   const onSubmit = async (values: FormValues, publishNow = false) => {
     const bodyTa = tamilEditor?.getHTML() ?? '';
     const rawBodyEn = englishEditor?.getHTML() ?? '';
-
-    if (!bodyTa || bodyTa === '<p></p>') {
-      toast.error('Tamil body is required');
-      setActiveTab('ta');
-      return;
-    }
-
+    if (!bodyTa || bodyTa === '<p></p>') { toast.error('Tamil body is required'); setActiveTab('ta'); return; }
     const bodyEn = (!rawBodyEn || rawBodyEn === '<p></p>') ? bodyTa : rawBodyEn;
-    const titleEn = values.titleEn?.trim() || values.titleTa;
-
     const payload = {
       ...values,
-      titleEn,
-      bodyTa,
-      bodyEn,
+      titleEn: values.titleEn?.trim() || values.titleTa,
+      bodyTa, bodyEn,
       status: publishNow ? ('PUBLISHED' as ArticleStatus) : values.status,
       scheduledAt: values.scheduledAt || undefined,
       excerpt: values.excerpt || undefined,
     };
-
     try {
-      if (mode === 'create') {
-        await createMutation.mutateAsync(payload);
-        toast.success('Article created');
-      } else {
-        await updateMutation.mutateAsync(payload);
-        toast.success('Article updated');
-      }
+      if (mode === 'create') { await createMutation.mutateAsync(payload); toast.success('Article created'); }
+      else { await updateMutation.mutateAsync(payload); toast.success('Article updated'); }
       navigate('/articles');
-    } catch {
-      toast.error('Failed to save article');
-    }
+    } catch { toast.error('Failed to save article'); }
   };
 
   if (mode === 'edit' && articleLoading) {
@@ -177,150 +154,150 @@ export default function ArticleFormPage({ mode }: Props) {
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <form onSubmit={handleSubmit((v) => onSubmit(v))} className="space-y-5">
+    <form onSubmit={handleSubmit((v) => onSubmit(v))} className="space-y-4 max-w-6xl">
 
-      {/* ── Language Content Tabs ─────────────────────────────────────── */}
-      <div className="card p-0">
-        <div className="flex border-b border-gray-200">
-          <button type="button" onClick={() => setActiveTab('ta')}
-            className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'ta' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}>
-            தமிழ் / Tamil <span className="text-red-500 text-xs">*</span>
-            {errors.titleTa && <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />}
-          </button>
-          <button type="button" onClick={() => setActiveTab('en')}
-            className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'en' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}>
-            English <span className="text-xs text-gray-400">(optional)</span>
-          </button>
+      {/* ══ CONTENT (Language tabs) ══════════════════════════════════ */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        {/* Tab bar */}
+        <div className="flex border-b border-gray-100">
+          {(['ta', 'en'] as const).map((lang) => (
+            <button key={lang} type="button" onClick={() => setActiveTab(lang)}
+              className={`relative px-6 py-3 text-sm font-medium transition-colors flex items-center gap-1.5
+                ${activeTab === lang ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}>
+              {lang === 'ta' ? 'தமிழ் / Tamil' : 'English'}
+              {lang === 'ta' && <span className="text-red-400 text-xs leading-none">*</span>}
+              {lang === 'en' && <span className="text-[10px] text-gray-300 font-normal">(optional)</span>}
+              {lang === 'ta' && errors.titleTa && (
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 absolute top-2.5 right-2" />
+              )}
+              {activeTab === lang && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+              )}
+            </button>
+          ))}
         </div>
-        <div className="p-6">
-          <div className={activeTab === 'ta' ? 'block space-y-4' : 'hidden'}>
+
+        {/* Tab content */}
+        <div className="p-5">
+          {/* Tamil */}
+          <div className={activeTab === 'ta' ? 'space-y-4' : 'hidden'}>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tamil Title <span className="text-red-500">*</span>
-              </label>
-              <input {...register('titleTa')} className="input-field" placeholder="தலைப்பு உள்ளிடுக" />
+              <Label required>Tamil Title</Label>
+              <input {...register('titleTa')} className="input-field h-10" placeholder="தலைப்பு உள்ளிடுக" />
               {errors.titleTa && <p className="mt-1 text-xs text-red-500">{errors.titleTa.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tamil Body <span className="text-red-500">*</span>
-              </label>
-              <div className="border border-gray-300 rounded-lg overflow-hidden">
+              <Label required>Tamil Body</Label>
+              <div className="border border-gray-200 rounded-lg overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
                 <EditorToolbar editor={tamilEditor} />
-                <EditorContent editor={tamilEditor} className="min-h-[250px] px-3 py-2" />
+                <EditorContent editor={tamilEditor} className="min-h-[220px] px-3 py-2 text-sm" />
               </div>
             </div>
           </div>
-          <div className={activeTab === 'en' ? 'block space-y-4' : 'hidden'}>
+          {/* English */}
+          <div className={activeTab === 'en' ? 'space-y-4' : 'hidden'}>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                English Title <span className="text-xs text-gray-400 font-normal">(falls back to Tamil)</span>
-              </label>
-              <input {...register('titleEn')} className="input-field" placeholder="Enter title (optional)" />
+              <Label>English Title <span className="normal-case font-normal text-gray-400">(falls back to Tamil)</span></Label>
+              <input {...register('titleEn')} className="input-field h-10" placeholder="Enter title (optional)" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                English Body <span className="text-xs text-gray-400 font-normal">(falls back to Tamil)</span>
-              </label>
-              <div className="border border-gray-300 rounded-lg overflow-hidden">
+              <Label>English Body <span className="normal-case font-normal text-gray-400">(falls back to Tamil)</span></Label>
+              <div className="border border-gray-200 rounded-lg overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
                 <EditorToolbar editor={englishEditor} />
-                <EditorContent editor={englishEditor} className="min-h-[250px] px-3 py-2" />
+                <EditorContent editor={englishEditor} className="min-h-[220px] px-3 py-2 text-sm" />
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Main Grid ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      {/* ══ MAIN GRID ════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-        {/* Left column */}
-        <div className="lg:col-span-2 space-y-5">
+        {/* ── LEFT (2/3) ─────────────────────────────────────────── */}
+        <div className="lg:col-span-2 space-y-4">
 
-          {/* Publisher / Byline */}
-          <div className="card">
-            <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-              <User size={15} className="text-primary" />
-              Publisher Name <span className="text-red-500">*</span>
-            </label>
+          {/* Publisher Name */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <Label required>Publisher / By Line</Label>
 
-            {/* Mode toggle */}
-            <div className="flex gap-2 mb-3">
-              <button type="button" onClick={() => setBylineMode('select')}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${bylineMode === 'select' ? 'bg-primary text-white border-primary' : 'border-gray-300 text-gray-600 hover:border-primary'}`}>
+            {/* Segmented toggle */}
+            <div className="inline-flex bg-gray-100 rounded-lg p-0.5 mb-3">
+              <button type="button"
+                onClick={() => setBylineMode('select')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                  bylineMode === 'select'
+                    ? 'bg-white text-gray-800 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}>
                 Select from team
               </button>
-              <button type="button" onClick={() => setBylineMode('custom')}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${bylineMode === 'custom' ? 'bg-primary text-white border-primary' : 'border-gray-300 text-gray-600 hover:border-primary'}`}>
-                Enter custom name
+              <button type="button"
+                onClick={() => setBylineMode('custom')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                  bylineMode === 'custom'
+                    ? 'bg-white text-gray-800 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}>
+                Custom name
               </button>
             </div>
 
             {bylineMode === 'select' ? (
-              <select
-                className="input-field"
-                value={byline}
-                onChange={(e) => setValue('byline', e.target.value)}
-              >
+              <select className="input-field h-10" value={byline} onChange={(e) => setValue('byline', e.target.value)}>
                 <option value="">— Select publisher —</option>
                 {adminAccounts.map((a) => (
-                  <option key={a.id} value={a.name}>{a.name} ({a.adminRole})</option>
+                  <option key={a.id} value={a.name}>{a.name} · {a.adminRole}</option>
                 ))}
                 <option value="Agnisiragu Team">Agnisiragu Team</option>
                 <option value="அக்னிசிரகு குழு">அக்னிசிரகு குழு</option>
               </select>
             ) : (
-              <input
-                className="input-field"
+              <input className="input-field h-10"
                 placeholder="e.g. சிவா குமார் / Siva Kumar"
                 value={byline}
-                onChange={(e) => setValue('byline', e.target.value)}
-              />
+                onChange={(e) => setValue('byline', e.target.value)} />
             )}
 
             {byline && (
-              <p className="mt-2 text-xs text-gray-500 flex items-center gap-1">
-                <span className="text-gray-400">Preview:</span>
-                <span className="font-medium text-gray-700">By {byline}</span>
+              <p className="mt-2 text-xs text-gray-400">
+                Preview: <span className="text-gray-700 font-medium">By {byline}</span>
               </p>
             )}
             {errors.byline && <p className="mt-1 text-xs text-red-500">{errors.byline.message}</p>}
           </div>
 
           {/* Excerpt */}
-          <div className="card">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Excerpt <span className="text-xs text-gray-400 font-normal">(optional — short summary)</span>
-            </label>
-            <textarea {...register('excerpt')} rows={3} className="input-field resize-none"
-              placeholder="Short description shown in article list..." />
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <Label>Excerpt <span className="normal-case font-normal text-gray-400">(optional)</span></Label>
+            <textarea {...register('excerpt')} rows={2}
+              className="input-field resize-none text-sm leading-relaxed"
+              placeholder="Short summary shown in article list..." />
           </div>
 
           {/* Thumbnail — REQUIRED */}
-          <div className="card">
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Thumbnail Image <span className="text-red-500">*</span>
-            </label>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <Label required>Thumbnail Image</Label>
 
             {(thumbnailPreview || thumbnailUrl) ? (
-              <div className="relative mb-3">
+              <div className="relative rounded-lg overflow-hidden mb-3">
                 <img src={thumbnailPreview || thumbnailUrl} alt="Thumbnail"
-                  className="w-full h-48 object-cover rounded-lg border border-gray-200" />
+                  className="w-full h-44 object-cover" />
                 <button type="button"
                   onClick={() => { setValue('thumbnailUrl', ''); setThumbnailPreview(''); }}
-                  className="absolute top-2 right-2 bg-white rounded-full w-7 h-7 flex items-center justify-center text-gray-500 hover:text-red-500 shadow-md text-sm font-bold border">
+                  className="absolute top-2 right-2 w-7 h-7 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center text-xs transition-colors">
                   ✕
                 </button>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary hover:bg-blue-50 transition-colors mb-3">
+              <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-primary hover:bg-blue-50/50 transition-all mb-3 group">
                 {uploading ? (
-                  <Loader2 size={22} className="animate-spin text-primary" />
+                  <Loader2 size={20} className="animate-spin text-primary" />
                 ) : (
                   <>
-                    <Upload size={22} className="text-gray-400 mb-2" />
-                    <span className="text-sm text-gray-600 font-medium">Click to upload thumbnail</span>
-                    <span className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP — max 5MB</span>
+                    <Upload size={18} className="text-gray-300 group-hover:text-primary mb-1.5 transition-colors" />
+                    <span className="text-xs font-medium text-gray-500 group-hover:text-primary transition-colors">Click to upload</span>
+                    <span className="text-[11px] text-gray-300 mt-0.5">JPG, PNG, WEBP · max 5MB</span>
                   </>
                 )}
                 <input type="file" accept="image/*" className="hidden"
@@ -328,9 +305,9 @@ export default function ArticleFormPage({ mode }: Props) {
               </label>
             )}
 
-            <div>
-              <p className="text-xs text-gray-400 mb-1">Or paste image URL:</p>
-              <input type="url" className="input-field text-sm"
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-gray-400 whitespace-nowrap">Or paste URL:</span>
+              <input type="url" className="input-field h-9 text-xs flex-1"
                 placeholder="https://example.com/image.jpg"
                 value={thumbnailUrl || ''}
                 onChange={(e) => { const u = e.target.value.trim(); setValue('thumbnailUrl', u); setThumbnailPreview(u); }} />
@@ -340,14 +317,14 @@ export default function ArticleFormPage({ mode }: Props) {
           </div>
         </div>
 
-        {/* Right column — Settings */}
-        <div className="space-y-5">
-          <div className="card space-y-4">
+        {/* ── RIGHT (1/3) ────────────────────────────────────────── */}
+        <div className="space-y-4">
+
+          {/* Settings card */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category <span className="text-red-500">*</span>
-              </label>
-              <select {...register('categoryId')} className="input-field">
+              <Label required>Category</Label>
+              <select {...register('categoryId')} className="input-field h-10">
                 <option value="">Select category</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>{c.nameTa} / {c.nameEn}</option>
@@ -357,48 +334,59 @@ export default function ArticleFormPage({ mode }: Props) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select {...register('status')} className="input-field">
+              <Label>Status</Label>
+              <select {...register('status')} className="input-field h-10">
                 <option value="DRAFT">Draft</option>
-                <option value="REVIEW">Review</option>
+                <option value="REVIEW">Under Review</option>
                 <option value="PUBLISHED">Published</option>
                 <option value="UNPUBLISHED">Unpublished</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Schedule Publish</label>
-              <input {...register('scheduledAt')} type="datetime-local" className="input-field" />
+              <Label>Schedule Publish</Label>
+              <input {...register('scheduledAt')} type="datetime-local" className="input-field h-10 text-sm" />
             </div>
 
-            <div className="flex items-center gap-3 pt-1">
+            <div className="flex items-center gap-3 pt-1 pb-0.5">
               <Controller name="isBreaking" control={control} render={({ field }) => (
-                <input type="checkbox" id="isBreaking" checked={field.value}
-                  onChange={field.onChange}
-                  className="w-4 h-4 rounded border-gray-300 text-accent focus:ring-accent" />
+                <input type="checkbox" id="isBreaking" checked={field.value} onChange={field.onChange}
+                  className="w-4 h-4 rounded border-gray-300 text-red-500 focus:ring-red-400 cursor-pointer" />
               )} />
-              <label htmlFor="isBreaking" className="text-sm font-medium text-gray-700">
-                🔴 Breaking News
+              <label htmlFor="isBreaking" className="text-sm font-medium text-gray-700 cursor-pointer flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+                Breaking News
               </label>
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="card space-y-3">
-            <button type="submit" disabled={isSubmitting}
-              className="btn-outline w-full flex items-center justify-center gap-2">
-              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
-              Save Draft
-            </button>
+          {/* Actions card */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-2.5">
             <button type="button" disabled={isSubmitting}
               onClick={handleSubmit((v) => onSubmit(v, true))}
-              className="btn-primary w-full flex items-center justify-center gap-2">
-              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+              className="w-full h-10 bg-primary hover:bg-primary/90 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-60">
+              {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : null}
               Publish Now
             </button>
-            <button type="button" onClick={() => navigate('/articles')} className="btn-ghost w-full">
+            <button type="submit" disabled={isSubmitting}
+              className="w-full h-10 bg-white border border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-60">
+              {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : null}
+              Save Draft
+            </button>
+            <button type="button" onClick={() => navigate('/articles')}
+              className="w-full h-10 text-gray-400 hover:text-gray-600 text-sm rounded-lg transition-colors">
               Cancel
             </button>
+          </div>
+
+          {/* Tips */}
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+            <p className="text-xs font-semibold text-blue-700 mb-1.5">💡 Tips</p>
+            <ul className="space-y-1">
+              <li className="text-xs text-blue-600">• English fields are optional — fall back to Tamil automatically</li>
+              <li className="text-xs text-blue-600">• Thumbnail is required for better reader engagement</li>
+              <li className="text-xs text-blue-600">• Breaking news appears prominently at top</li>
+            </ul>
           </div>
         </div>
       </div>
