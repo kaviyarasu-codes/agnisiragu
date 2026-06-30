@@ -12,8 +12,11 @@ import toast from 'react-hot-toast';
 import { Loader2, Upload, Bold, Italic, List, Heading2 } from 'lucide-react';
 import { useArticle, useCreateArticle, useUpdateArticle } from '../hooks/useArticles';
 import { useCategories } from '../hooks/useCategories';
-import { api } from '../lib/api';
 import type { ArticleStatus } from '../types';
+
+// Cloudinary direct upload — no backend needed
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
+const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
 
 const schema = z.object({
   titleTa: z.string().min(1, 'Tamil title is required'),
@@ -130,18 +133,27 @@ export default function ArticleFormPage({ mode }: Props) {
   }, [articleData, mode, tamilEditor, englishEditor, setValue]);
 
   const handleThumbnailUpload = async (file: File) => {
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+      toast.error('Cloudinary not configured. Paste an image URL below instead.');
+      return;
+    }
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const response = await api.post<{ data: { url: string } }>('/media/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setValue('thumbnailUrl', response.data.data.url);
-      setThumbnailPreview(response.data.data.url);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+      formData.append('folder', 'agnisiragu');
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        { method: 'POST', body: formData },
+      );
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json() as { secure_url: string };
+      setValue('thumbnailUrl', data.secure_url);
+      setThumbnailPreview(data.secure_url);
       toast.success('Thumbnail uploaded');
     } catch {
-      toast.error('Upload failed');
+      toast.error('Upload failed — check Cloudinary env vars or paste a URL below');
     } finally {
       setUploading(false);
     }
@@ -278,13 +290,20 @@ export default function ArticleFormPage({ mode }: Props) {
 
           {/* Thumbnail */}
           <div className="card">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail <span className="text-xs text-gray-400 font-normal">(optional)</span></label>
             {(thumbnailPreview || thumbnailUrl) && (
-              <img
-                src={thumbnailPreview || thumbnailUrl}
-                alt="Thumbnail"
-                className="w-full h-40 object-cover rounded-lg mb-3"
-              />
+              <div className="relative mb-3">
+                <img
+                  src={thumbnailPreview || thumbnailUrl}
+                  alt="Thumbnail"
+                  className="w-full h-40 object-cover rounded-lg"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setValue('thumbnailUrl', ''); setThumbnailPreview(''); }}
+                  className="absolute top-2 right-2 bg-white rounded-full w-6 h-6 flex items-center justify-center text-gray-500 hover:text-red-500 shadow text-xs font-bold"
+                >✕</button>
+              </div>
             )}
             <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary hover:bg-blue-50 transition-colors">
               {uploading ? (
@@ -292,7 +311,7 @@ export default function ArticleFormPage({ mode }: Props) {
               ) : (
                 <>
                   <Upload size={20} className="text-gray-400 mb-1" />
-                  <span className="text-xs text-gray-500">Click or drag to upload thumbnail</span>
+                  <span className="text-xs text-gray-500">Click to upload image (jpg/png/webp, max 5MB)</span>
                 </>
               )}
               <input
@@ -305,6 +324,21 @@ export default function ArticleFormPage({ mode }: Props) {
                 }}
               />
             </label>
+            {/* URL paste fallback */}
+            <div className="mt-3">
+              <p className="text-xs text-gray-400 mb-1">Or paste image URL directly:</p>
+              <input
+                type="url"
+                className="input-field text-sm"
+                placeholder="https://example.com/image.jpg"
+                value={thumbnailUrl || ''}
+                onChange={(e) => {
+                  const url = e.target.value.trim();
+                  setValue('thumbnailUrl', url);
+                  setThumbnailPreview(url);
+                }}
+              />
+            </div>
             <Controller
               name="thumbnailUrl"
               control={control}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "455372928871",
+    "project_id": "agnisiragu-6908a",
+    "storage_bucket": "agnisiragu-6908a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:455372928871:android:353e713bb0b5178cc521c2",
+        "android_client_info": {
+          "package_name": "com.agnisiragu.reader"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfUDSVhdUGp3XOxKXWO-Ax5-6SM2iTB3g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

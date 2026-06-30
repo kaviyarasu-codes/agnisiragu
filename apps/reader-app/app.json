@@ -12,7 +12,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
-      "package": "com.agnisiragu.reader"
+      "package": "com.agnisiragu.reader",
+      "googleServicesFile": "./google-services.json"
     },
     "ios": {
       "bundleIdentifier": "com.agnisiragu.reader",
@@ -31,7 +32,8 @@
           "backgroundColor": "#000000"
         }
       ],
-      "expo-image"
+      "expo-image",
+      "expo-notifications"
     ],
     "extra": {
       "eas": {
