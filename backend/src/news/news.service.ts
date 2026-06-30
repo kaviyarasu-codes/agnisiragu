@@ -259,4 +259,6 @@ export class NewsService {
       data: { status: 'DELETED' },
     });
 
-    retu
+    return { data: article };
+  }
+}

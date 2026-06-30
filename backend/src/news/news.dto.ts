@@ -144,4 +144,12 @@ export class SearchArticleDto {
   categoryId?: string;
 
   @ApiPropertyOptional()
-  @IsOptiona
+  @IsOptional()
+  @Type(() => Number)
+  limit?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cursor?: string;
+}

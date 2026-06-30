@@ -80,4 +80,8 @@ export class AdminController {
 
   @Patch('settings')
   @Roles('SUPER_ADMIN')
-  @ApiOpe
+  @ApiOperation({ summary: 'Update site settings (super admin only)' })
+  updateSettings(@Body() body: Record<string, any>) {
+    return this.adminService.updateSettings(body);
+  }
+}

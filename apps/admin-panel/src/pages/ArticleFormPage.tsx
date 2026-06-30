@@ -321,4 +321,87 @@ export default function ArticleFormPage({ mode }: Props) {
                     <Upload size={22} className="text-gray-400 mb-2" />
                     <span className="text-sm text-gray-600 font-medium">Click to upload thumbnail</span>
                     <span className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP — max 5MB</span>
-                  
+                  </>
+                )}
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleThumbnailUpload(f); }} />
+              </label>
+            )}
+
+            <div>
+              <p className="text-xs text-gray-400 mb-1">Or paste image URL:</p>
+              <input type="url" className="input-field text-sm"
+                placeholder="https://example.com/image.jpg"
+                value={thumbnailUrl || ''}
+                onChange={(e) => { const u = e.target.value.trim(); setValue('thumbnailUrl', u); setThumbnailPreview(u); }} />
+            </div>
+            <Controller name="thumbnailUrl" control={control} render={({ field }) => <input {...field} type="hidden" />} />
+            {errors.thumbnailUrl && <p className="mt-2 text-xs text-red-500">{errors.thumbnailUrl.message}</p>}
+          </div>
+        </div>
+
+        {/* Right column — Settings */}
+        <div className="space-y-5">
+          <div className="card space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category <span className="text-red-500">*</span>
+              </label>
+              <select {...register('categoryId')} className="input-field">
+                <option value="">Select category</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nameTa} / {c.nameEn}</option>
+                ))}
+              </select>
+              {errors.categoryId && <p className="mt-1 text-xs text-red-500">{errors.categoryId.message}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select {...register('status')} className="input-field">
+                <option value="DRAFT">Draft</option>
+                <option value="REVIEW">Review</option>
+                <option value="PUBLISHED">Published</option>
+                <option value="UNPUBLISHED">Unpublished</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Schedule Publish</label>
+              <input {...register('scheduledAt')} type="datetime-local" className="input-field" />
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <Controller name="isBreaking" control={control} render={({ field }) => (
+                <input type="checkbox" id="isBreaking" checked={field.value}
+                  onChange={field.onChange}
+                  className="w-4 h-4 rounded border-gray-300 text-accent focus:ring-accent" />
+              )} />
+              <label htmlFor="isBreaking" className="text-sm font-medium text-gray-700">
+                🔴 Breaking News
+              </label>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="card space-y-3">
+            <button type="submit" disabled={isSubmitting}
+              className="btn-outline w-full flex items-center justify-center gap-2">
+              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+              Save Draft
+            </button>
+            <button type="button" disabled={isSubmitting}
+              onClick={handleSubmit((v) => onSubmit(v, true))}
+              className="btn-primary w-full flex items-center justify-center gap-2">
+              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+              Publish Now
+            </button>
+            <button type="button" onClick={() => navigate('/articles')} className="btn-ghost w-full">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+  );
+}

@@ -106,4 +106,10 @@ export function useDeleteArticle() {
 export function useBulkAction() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (
+    mutationFn: ({ ids, action }: { ids: string[]; action: 'publish' | 'delete' }) =>
+      apiPost<void>(`/articles/bulk/${action}`, { ids }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['articles'] });
+    },
+  });
+}

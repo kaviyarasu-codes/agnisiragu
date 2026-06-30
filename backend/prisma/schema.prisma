@@ -215,4 +215,6 @@ model Comment {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   body      String
-  is
+  isToxic   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}

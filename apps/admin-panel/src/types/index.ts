@@ -140,4 +140,9 @@ export interface Notification {
 }
 
 export interface SiteSettings {
-  s
+  siteName: string;
+  adMobAndroidAppId: string;
+  adMobIosAppId: string;
+  msg91SenderId: string;
+  msg91AuthKey: string;
+}

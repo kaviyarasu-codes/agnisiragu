@@ -142,4 +142,19 @@ export class AdminService {
   // ─── Settings ─────────────────────────────────────────────────────────────
 
   private settings = {
-  
+    siteName: 'Agnisiragu',
+    adMobAndroidAppId: '',
+    adMobIosAppId: '',
+    msg91SenderId: process.env.MSG91_SENDER_ID ?? '',
+    msg91AuthKey: process.env.MSG91_AUTH_KEY ?? '',
+  };
+
+  async getSettings() {
+    return { data: this.settings };
+  }
+
+  async updateSettings(payload: Partial<typeof this.settings>) {
+    this.settings = { ...this.settings, ...payload };
+    return { data: this.settings };
+  }
+}
