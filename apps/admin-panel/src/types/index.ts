@@ -47,6 +47,13 @@ export interface Category {
   displayOrder: number;
 }
 
+export interface AdminAccount {
+  id: string;
+  name: string;
+  email: string;
+  adminRole: string;
+}
+
 export interface Article {
   id: string;
   titleTa: string;
@@ -55,6 +62,7 @@ export interface Article {
   bodyEn: string;
   excerpt?: string;
   thumbnailUrl?: string;
+  byline?: string;
   category: Category;
   admin: { id: string; name: string };
   status: ArticleStatus;
@@ -132,9 +140,4 @@ export interface Notification {
 }
 
 export interface SiteSettings {
-  siteName: string;
-  adMobAndroidAppId: string;
-  adMobIosAppId: string;
-  msg91SenderId: string;
-  msg91AuthKey: string;
-}
+  s

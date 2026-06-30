@@ -128,6 +128,7 @@ export class NewsService {
         bodyEn: dto.bodyEn,
         excerpt: dto.excerpt,
         thumbnailUrl: dto.thumbnailUrl,
+        byline: dto.byline,
         categoryId: dto.categoryId,
         adminId,
         isBreaking: dto.isBreaking ?? false,
@@ -258,6 +259,4 @@ export class NewsService {
       data: { status: 'DELETED' },
     });
 
-    return { data: article };
-  }
-}
+    retu

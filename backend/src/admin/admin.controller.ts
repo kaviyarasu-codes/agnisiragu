@@ -19,6 +19,12 @@ const reflector = new Reflector();
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
+  @Get('accounts')
+  @ApiOperation({ summary: 'List all admin accounts (for byline selector)' })
+  getAdminAccounts() {
+    return this.adminService.getAdminAccounts();
+  }
+
   @Get('stats')
   @ApiOperation({ summary: 'Get platform statistics' })
   getStats() {
@@ -74,8 +80,4 @@ export class AdminController {
 
   @Patch('settings')
   @Roles('SUPER_ADMIN')
-  @ApiOperation({ summary: 'Update site settings (super admin only)' })
-  updateSettings(@Body() body: Record<string, any>) {
-    return this.adminService.updateSettings(body);
-  }
-}
+  @ApiOpe

@@ -109,6 +109,7 @@ model Article {
   bodyEn       String
   excerpt      String?
   thumbnailUrl String?
+  byline       String?       // "by Publisher Name" shown in reader app
   categoryId   String
   category     Category      @relation(fields: [categoryId], references: [id])
   adminId      String
@@ -214,6 +215,4 @@ model Comment {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   body      String
-  isToxic   Boolean  @default(false)
-  createdAt DateTime @default(now())
-}
+  is

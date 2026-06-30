@@ -9,62 +9,48 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import toast from 'react-hot-toast';
-import { Loader2, Upload, Bold, Italic, List, Heading2 } from 'lucide-react';
-import { useArticle, useCreateArticle, useUpdateArticle } from '../hooks/useArticles';
+import { Loader2, Upload, Bold, Italic, List, Heading2, User } from 'lucide-react';
+import { useArticle, useCreateArticle, useUpdateArticle, useAdminAccounts } from '../hooks/useArticles';
 import { useCategories } from '../hooks/useCategories';
 import type { ArticleStatus } from '../types';
 
-// Cloudinary direct upload — no backend needed
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
 
 const schema = z.object({
   titleTa: z.string().min(1, 'Tamil title is required'),
   titleEn: z.string().optional(),
+  byline: z.string().min(1, 'Publisher name is required'),
   categoryId: z.string().min(1, 'Category is required'),
   status: z.enum(['DRAFT', 'REVIEW', 'PUBLISHED', 'UNPUBLISHED', 'DELETED']),
   isBreaking: z.boolean(),
-  thumbnailUrl: z.string().optional(),
+  thumbnailUrl: z.string().min(1, 'Thumbnail is required'),
   scheduledAt: z.string().optional(),
   excerpt: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-interface Props {
-  mode: 'create' | 'edit';
-}
+interface Props { mode: 'create' | 'edit'; }
 
 function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
   if (!editor) return null;
   return (
     <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-200 bg-gray-50 flex-wrap">
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleBold().run()}
-        className={`p-1.5 rounded text-sm transition-colors ${editor.isActive('bold') ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-200'}`}
-      >
+      <button type="button" onClick={() => editor.chain().focus().toggleBold().run()}
+        className={`p-1.5 rounded text-sm transition-colors ${editor.isActive('bold') ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-200'}`}>
         <Bold size={14} />
       </button>
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-        className={`p-1.5 rounded text-sm transition-colors ${editor.isActive('italic') ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-200'}`}
-      >
+      <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()}
+        className={`p-1.5 rounded text-sm transition-colors ${editor.isActive('italic') ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-200'}`}>
         <Italic size={14} />
       </button>
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-        className={`p-1.5 rounded text-sm transition-colors ${editor.isActive('heading', { level: 2 }) ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-200'}`}
-      >
+      <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        className={`p-1.5 rounded text-sm transition-colors ${editor.isActive('heading', { level: 2 }) ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-200'}`}>
         <Heading2 size={14} />
       </button>
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
-        className={`p-1.5 rounded text-sm transition-colors ${editor.isActive('bulletList') ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-200'}`}
-      >
+      <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()}
+        className={`p-1.5 rounded text-sm transition-colors ${editor.isActive('bulletList') ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-200'}`}>
         <List size={14} />
       </button>
     </div>
@@ -77,49 +63,37 @@ export default function ArticleFormPage({ mode }: Props) {
   const [activeTab, setActiveTab] = useState<'ta' | 'en'>('ta');
   const [uploading, setUploading] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
+  const [bylineMode, setBylineMode] = useState<'select' | 'custom'>('select');
 
   const { data: articleData, isLoading: articleLoading } = useArticle(id ?? '');
   const { data: catData } = useCategories();
+  const { data: adminData } = useAdminAccounts();
   const categories = catData?.data ?? [];
+  const adminAccounts = adminData?.data ?? [];
 
   const createMutation = useCreateArticle();
   const updateMutation = useUpdateArticle(id ?? '');
 
   const {
-    register,
-    handleSubmit,
-    control,
-    setValue,
-    watch,
+    register, handleSubmit, control, setValue, watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      status: 'DRAFT',
-      isBreaking: false,
-    },
+    defaultValues: { status: 'DRAFT', isBreaking: false, byline: '', thumbnailUrl: '' },
   });
 
   const thumbnailUrl = watch('thumbnailUrl');
+  const byline = watch('byline');
 
-  // Tamil editor
-  const tamilEditor = useEditor({
-    extensions: [StarterKit, Image, Link],
-    content: '',
-  });
+  const tamilEditor = useEditor({ extensions: [StarterKit, Image, Link], content: '' });
+  const englishEditor = useEditor({ extensions: [StarterKit, Image, Link], content: '' });
 
-  // English editor
-  const englishEditor = useEditor({
-    extensions: [StarterKit, Image, Link],
-    content: '',
-  });
-
-  // Populate form in edit mode
   useEffect(() => {
     if (mode === 'edit' && articleData?.data) {
       const article = articleData.data;
       setValue('titleTa', article.titleTa);
       setValue('titleEn', article.titleEn);
+      setValue('byline', article.byline ?? '');
       setValue('categoryId', article.category.id);
       setValue('status', article.status);
       setValue('isBreaking', article.isBreaking);
@@ -134,7 +108,7 @@ export default function ArticleFormPage({ mode }: Props) {
 
   const handleThumbnailUpload = async (file: File) => {
     if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-      toast.error('Cloudinary not configured. Paste an image URL below instead.');
+      toast.error('Cloudinary not configured — paste a URL below');
       return;
     }
     setUploading(true);
@@ -153,7 +127,7 @@ export default function ArticleFormPage({ mode }: Props) {
       setThumbnailPreview(data.secure_url);
       toast.success('Thumbnail uploaded');
     } catch {
-      toast.error('Upload failed — check Cloudinary env vars or paste a URL below');
+      toast.error('Upload failed — paste URL below instead');
     } finally {
       setUploading(false);
     }
@@ -169,7 +143,6 @@ export default function ArticleFormPage({ mode }: Props) {
       return;
     }
 
-    // English is optional — fall back to Tamil content
     const bodyEn = (!rawBodyEn || rawBodyEn === '<p></p>') ? bodyTa : rawBodyEn;
     const titleEn = values.titleEn?.trim() || values.titleTa;
 
@@ -180,17 +153,16 @@ export default function ArticleFormPage({ mode }: Props) {
       bodyEn,
       status: publishNow ? ('PUBLISHED' as ArticleStatus) : values.status,
       scheduledAt: values.scheduledAt || undefined,
-      thumbnailUrl: values.thumbnailUrl || undefined,
       excerpt: values.excerpt || undefined,
     };
 
     try {
       if (mode === 'create') {
         await createMutation.mutateAsync(payload);
-        toast.success('Article created successfully');
+        toast.success('Article created');
       } else {
         await updateMutation.mutateAsync(payload);
-        toast.success('Article updated successfully');
+        toast.success('Article updated');
       }
       navigate('/articles');
     } catch {
@@ -199,238 +171,154 @@ export default function ArticleFormPage({ mode }: Props) {
   };
 
   if (mode === 'edit' && articleLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 size={28} className="animate-spin text-primary" />
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64"><Loader2 size={28} className="animate-spin text-primary" /></div>;
   }
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <form onSubmit={handleSubmit((v) => onSubmit(v))} className="space-y-6">
-      {/* Language Tabs */}
+    <form onSubmit={handleSubmit((v) => onSubmit(v))} className="space-y-5">
+
+      {/* ── Language Content Tabs ─────────────────────────────────────── */}
       <div className="card p-0">
         <div className="flex border-b border-gray-200">
-          <button
-            type="button"
-            onClick={() => setActiveTab('ta')}
-            className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'ta' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            தமிழ் / Tamil
-            <span className="text-red-500 text-xs">*</span>
-            {errors.titleTa && (
-              <span className="w-2 h-2 rounded-full bg-red-500 inline-block" title="Tamil tab has errors" />
-            )}
+          <button type="button" onClick={() => setActiveTab('ta')}
+            className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'ta' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}>
+            தமிழ் / Tamil <span className="text-red-500 text-xs">*</span>
+            {errors.titleTa && <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />}
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('en')}
-            className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'en' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            English
-            <span className="text-xs text-gray-400">(optional)</span>
+          <button type="button" onClick={() => setActiveTab('en')}
+            className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'en' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}>
+            English <span className="text-xs text-gray-400">(optional)</span>
           </button>
         </div>
-
-        <div className="p-6 space-y-4">
-          {/* Tamil Tab */}
-          <div className={activeTab === 'ta' ? 'block' : 'hidden'}>
-            <div className="mb-4">
+        <div className="p-6">
+          <div className={activeTab === 'ta' ? 'block space-y-4' : 'hidden'}>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Tamil Title <span className="text-red-500">*</span>
               </label>
               <input {...register('titleTa')} className="input-field" placeholder="தலைப்பு உள்ளிடுக" />
-              {errors.titleTa && <p className="mt-1 text-xs text-accent">{errors.titleTa.message}</p>}
+              {errors.titleTa && <p className="mt-1 text-xs text-red-500">{errors.titleTa.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tamil Body</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tamil Body <span className="text-red-500">*</span>
+              </label>
               <div className="border border-gray-300 rounded-lg overflow-hidden">
                 <EditorToolbar editor={tamilEditor} />
-                <EditorContent editor={tamilEditor} className="min-h-[250px]" />
+                <EditorContent editor={tamilEditor} className="min-h-[250px] px-3 py-2" />
               </div>
             </div>
           </div>
-
-          {/* English Tab */}
-          <div className={activeTab === 'en' ? 'block' : 'hidden'}>
-            <div className="mb-4">
+          <div className={activeTab === 'en' ? 'block space-y-4' : 'hidden'}>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                English Title <span className="text-xs text-gray-400 font-normal">(optional — falls back to Tamil title)</span>
+                English Title <span className="text-xs text-gray-400 font-normal">(falls back to Tamil)</span>
               </label>
               <input {...register('titleEn')} className="input-field" placeholder="Enter title (optional)" />
-              {errors.titleEn && <p className="mt-1 text-xs text-accent">{errors.titleEn.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                English Body <span className="text-xs text-gray-400 font-normal">(optional — falls back to Tamil body)</span>
+                English Body <span className="text-xs text-gray-400 font-normal">(falls back to Tamil)</span>
               </label>
               <div className="border border-gray-300 rounded-lg overflow-hidden">
                 <EditorToolbar editor={englishEditor} />
-                <EditorContent editor={englishEditor} className="min-h-[250px]" />
+                <EditorContent editor={englishEditor} className="min-h-[250px] px-3 py-2" />
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Excerpt */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="card">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Excerpt (optional)</label>
-            <textarea
-              {...register('excerpt')}
-              rows={3}
-              className="input-field resize-none"
-              placeholder="Short description of the article..."
-            />
-          </div>
+      {/* ── Main Grid ─────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-          {/* Thumbnail */}
+        {/* Left column */}
+        <div className="lg:col-span-2 space-y-5">
+
+          {/* Publisher / Byline */}
           <div className="card">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail <span className="text-xs text-gray-400 font-normal">(optional)</span></label>
-            {(thumbnailPreview || thumbnailUrl) && (
-              <div className="relative mb-3">
-                <img
-                  src={thumbnailPreview || thumbnailUrl}
-                  alt="Thumbnail"
-                  className="w-full h-40 object-cover rounded-lg"
-                />
-                <button
-                  type="button"
-                  onClick={() => { setValue('thumbnailUrl', ''); setThumbnailPreview(''); }}
-                  className="absolute top-2 right-2 bg-white rounded-full w-6 h-6 flex items-center justify-center text-gray-500 hover:text-red-500 shadow text-xs font-bold"
-                >✕</button>
-              </div>
-            )}
-            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary hover:bg-blue-50 transition-colors">
-              {uploading ? (
-                <Loader2 size={20} className="animate-spin text-primary" />
-              ) : (
-                <>
-                  <Upload size={20} className="text-gray-400 mb-1" />
-                  <span className="text-xs text-gray-500">Click to upload image (jpg/png/webp, max 5MB)</span>
-                </>
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void handleThumbnailUpload(file);
-                }}
-              />
+            <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+              <User size={15} className="text-primary" />
+              Publisher Name <span className="text-red-500">*</span>
             </label>
-            {/* URL paste fallback */}
-            <div className="mt-3">
-              <p className="text-xs text-gray-400 mb-1">Or paste image URL directly:</p>
-              <input
-                type="url"
-                className="input-field text-sm"
-                placeholder="https://example.com/image.jpg"
-                value={thumbnailUrl || ''}
-                onChange={(e) => {
-                  const url = e.target.value.trim();
-                  setValue('thumbnailUrl', url);
-                  setThumbnailPreview(url);
-                }}
-              />
-            </div>
-            <Controller
-              name="thumbnailUrl"
-              control={control}
-              render={({ field }) => (
-                <input {...field} type="hidden" />
-              )}
-            />
-          </div>
-        </div>
 
-        {/* Right: Settings */}
-        <div className="space-y-4">
-          <div className="card space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select {...register('categoryId')} className="input-field">
-                <option value="">Select category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nameTa} / {c.nameEn}</option>
-                ))}
-              </select>
-              {errors.categoryId && <p className="mt-1 text-xs text-accent">{errors.categoryId.message}</p>}
+            {/* Mode toggle */}
+            <div className="flex gap-2 mb-3">
+              <button type="button" onClick={() => setBylineMode('select')}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${bylineMode === 'select' ? 'bg-primary text-white border-primary' : 'border-gray-300 text-gray-600 hover:border-primary'}`}>
+                Select from team
+              </button>
+              <button type="button" onClick={() => setBylineMode('custom')}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${bylineMode === 'custom' ? 'bg-primary text-white border-primary' : 'border-gray-300 text-gray-600 hover:border-primary'}`}>
+                Enter custom name
+              </button>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select {...register('status')} className="input-field">
-                <option value="DRAFT">Draft</option>
-                <option value="REVIEW">Review</option>
-                <option value="PUBLISHED">Published</option>
-                <option value="UNPUBLISHED">Unpublished</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Schedule Publish</label>
-              <input
-                {...register('scheduledAt')}
-                type="datetime-local"
+            {bylineMode === 'select' ? (
+              <select
                 className="input-field"
+                value={byline}
+                onChange={(e) => setValue('byline', e.target.value)}
+              >
+                <option value="">— Select publisher —</option>
+                {adminAccounts.map((a) => (
+                  <option key={a.id} value={a.name}>{a.name} ({a.adminRole})</option>
+                ))}
+                <option value="Agnisiragu Team">Agnisiragu Team</option>
+                <option value="அக்னிசிரகு குழு">அக்னிசிரகு குழு</option>
+              </select>
+            ) : (
+              <input
+                className="input-field"
+                placeholder="e.g. சிவா குமார் / Siva Kumar"
+                value={byline}
+                onChange={(e) => setValue('byline', e.target.value)}
               />
-            </div>
+            )}
 
-            <div className="flex items-center gap-3">
-              <Controller
-                name="isBreaking"
-                control={control}
-                render={({ field }) => (
-                  <input
-                    type="checkbox"
-                    id="isBreaking"
-                    checked={field.value}
-                    onChange={field.onChange}
-                    className="w-4 h-4 rounded border-gray-300 text-accent focus:ring-accent"
-                  />
-                )}
-              />
-              <label htmlFor="isBreaking" className="text-sm font-medium text-gray-700">
-                Breaking News
-              </label>
-            </div>
+            {byline && (
+              <p className="mt-2 text-xs text-gray-500 flex items-center gap-1">
+                <span className="text-gray-400">Preview:</span>
+                <span className="font-medium text-gray-700">By {byline}</span>
+              </p>
+            )}
+            {errors.byline && <p className="mt-1 text-xs text-red-500">{errors.byline.message}</p>}
           </div>
 
-          {/* Actions */}
-          <div className="card space-y-3">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn-outline w-full flex items-center justify-center gap-2"
-            >
-              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
-              Save Draft
-            </button>
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={handleSubmit((v) => onSubmit(v, true))}
-              className="btn-primary w-full flex items-center justify-center gap-2"
-            >
-              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
-              Publish Now
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/articles')}
-              className="btn-ghost w-full"
-            >
-              Cancel
-            </button>
+          {/* Excerpt */}
+          <div className="card">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Excerpt <span className="text-xs text-gray-400 font-normal">(optional — short summary)</span>
+            </label>
+            <textarea {...register('excerpt')} rows={3} className="input-field resize-none"
+              placeholder="Short description shown in article list..." />
           </div>
-        </div>
-      </div>
-    </form>
-  );
-}
+
+          {/* Thumbnail — REQUIRED */}
+          <div className="card">
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Thumbnail Image <span className="text-red-500">*</span>
+            </label>
+
+            {(thumbnailPreview || thumbnailUrl) ? (
+              <div className="relative mb-3">
+                <img src={thumbnailPreview || thumbnailUrl} alt="Thumbnail"
+                  className="w-full h-48 object-cover rounded-lg border border-gray-200" />
+                <button type="button"
+                  onClick={() => { setValue('thumbnailUrl', ''); setThumbnailPreview(''); }}
+                  className="absolute top-2 right-2 bg-white rounded-full w-7 h-7 flex items-center justify-center text-gray-500 hover:text-red-500 shadow-md text-sm font-bold border">
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary hover:bg-blue-50 transition-colors mb-3">
+                {uploading ? (
+                  <Loader2 size={22} className="animate-spin text-primary" />
+                ) : (
+                  <>
+                    <Upload size={22} className="text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-600 font-medium">Click to upload thumbnail</span>
+                    <span className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP — max 5MB</span>
+                  

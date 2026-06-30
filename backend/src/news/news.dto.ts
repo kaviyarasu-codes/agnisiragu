@@ -33,6 +33,11 @@ export class CreateArticleDto {
   @IsString()
   thumbnailUrl?: string;
 
+  @ApiPropertyOptional({ example: 'சிவா குமார்' })
+  @IsOptional()
+  @IsString()
+  byline?: string;
+
   @ApiProperty({ example: 'uuid-of-category' })
   @IsUUID()
   categoryId: string;
@@ -139,12 +144,4 @@ export class SearchArticleDto {
   categoryId?: string;
 
   @ApiPropertyOptional()
-  @IsOptional()
-  @Type(() => Number)
-  limit?: number;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  cursor?: string;
-}
+  @IsOptiona

@@ -1,7 +1,7 @@
 // src/hooks/useArticles.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost, apiPatch, apiDelete } from '../lib/api';
-import type { Article, PaginatedResponse, ArticleStatus } from '../types';
+import type { Article, AdminAccount, PaginatedResponse, ArticleStatus } from '../types';
 
 interface ArticleFilters {
   status?: ArticleStatus;
@@ -18,10 +18,19 @@ interface CreateArticlePayload {
   bodyEn: string;
   excerpt?: string;
   thumbnailUrl?: string;
+  byline?: string;
   categoryId: string;
   status: ArticleStatus;
   isBreaking: boolean;
   scheduledAt?: string;
+}
+
+export function useAdminAccounts() {
+  return useQuery({
+    queryKey: ['admin-accounts'],
+    queryFn: () => apiGet<{ data: AdminAccount[] }>('/admin/accounts'),
+    staleTime: 5 * 60 * 1000,
+  });
 }
 
 export function useArticles(filters: ArticleFilters = {}) {
@@ -97,10 +106,4 @@ export function useDeleteArticle() {
 export function useBulkAction() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ ids, action }: { ids: string[]; action: 'publish' | 'delete' }) =>
-      apiPost<void>(`/articles/bulk/${action}`, { ids }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['articles'] });
-    },
-  });
-}
+    mutationFn: (
