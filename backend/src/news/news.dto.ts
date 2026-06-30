@@ -93,6 +93,11 @@ export class UpdateArticleDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsString()
+  byline?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsUUID()
   categoryId?: string;
 
