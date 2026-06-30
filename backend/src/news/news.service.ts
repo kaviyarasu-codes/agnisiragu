@@ -123,9 +123,9 @@ export class NewsService {
     const article = await this.prisma.article.create({
       data: {
         titleTa: dto.titleTa,
-        titleEn: dto.titleEn,
+        titleEn: dto.titleEn ?? dto.titleTa,
         bodyTa: dto.bodyTa,
-        bodyEn: dto.bodyEn,
+        bodyEn: dto.bodyEn ?? dto.bodyTa,
         excerpt: dto.excerpt,
         thumbnailUrl: dto.thumbnailUrl,
         byline: dto.byline,

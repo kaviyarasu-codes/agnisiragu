@@ -11,17 +11,19 @@ export class CreateArticleDto {
   @IsString()
   titleTa: string;
 
-  @ApiProperty({ example: 'Rain in Chennai' })
+  @ApiPropertyOptional({ example: 'Rain in Chennai' })
+  @IsOptional()
   @IsString()
-  titleEn: string;
+  titleEn?: string;
 
   @ApiProperty()
   @IsString()
   bodyTa: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  bodyEn: string;
+  bodyEn?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
