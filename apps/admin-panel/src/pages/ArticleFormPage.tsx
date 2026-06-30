@@ -17,7 +17,7 @@ import type { ArticleStatus } from '../types';
 
 const schema = z.object({
   titleTa: z.string().min(1, 'Tamil title is required'),
-  titleEn: z.string().min(1, 'English title is required'),
+  titleEn: z.string().optional(),
   categoryId: z.string().min(1, 'Category is required'),
   status: z.enum(['DRAFT', 'REVIEW', 'PUBLISHED', 'UNPUBLISHED', 'DELETED']),
   isBreaking: z.boolean(),
@@ -149,19 +149,21 @@ export default function ArticleFormPage({ mode }: Props) {
 
   const onSubmit = async (values: FormValues, publishNow = false) => {
     const bodyTa = tamilEditor?.getHTML() ?? '';
-    const bodyEn = englishEditor?.getHTML() ?? '';
+    const rawBodyEn = englishEditor?.getHTML() ?? '';
 
     if (!bodyTa || bodyTa === '<p></p>') {
       toast.error('Tamil body is required');
-      return;
-    }
-    if (!bodyEn || bodyEn === '<p></p>') {
-      toast.error('English body is required');
+      setActiveTab('ta');
       return;
     }
 
+    // English is optional — fall back to Tamil content
+    const bodyEn = (!rawBodyEn || rawBodyEn === '<p></p>') ? bodyTa : rawBodyEn;
+    const titleEn = values.titleEn?.trim() || values.titleTa;
+
     const payload = {
       ...values,
+      titleEn,
       bodyTa,
       bodyEn,
       status: publishNow ? ('PUBLISHED' as ArticleStatus) : values.status,
@@ -202,16 +204,21 @@ export default function ArticleFormPage({ mode }: Props) {
           <button
             type="button"
             onClick={() => setActiveTab('ta')}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === 'ta' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'ta' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
           >
             தமிழ் / Tamil
+            <span className="text-red-500 text-xs">*</span>
+            {errors.titleTa && (
+              <span className="w-2 h-2 rounded-full bg-red-500 inline-block" title="Tamil tab has errors" />
+            )}
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('en')}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === 'en' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'en' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
           >
             English
+            <span className="text-xs text-gray-400">(optional)</span>
           </button>
         </div>
 
@@ -219,7 +226,9 @@ export default function ArticleFormPage({ mode }: Props) {
           {/* Tamil Tab */}
           <div className={activeTab === 'ta' ? 'block' : 'hidden'}>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tamil Title</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tamil Title <span className="text-red-500">*</span>
+              </label>
               <input {...register('titleTa')} className="input-field" placeholder="தலைப்பு உள்ளிடுக" />
               {errors.titleTa && <p className="mt-1 text-xs text-accent">{errors.titleTa.message}</p>}
             </div>
@@ -235,12 +244,16 @@ export default function ArticleFormPage({ mode }: Props) {
           {/* English Tab */}
           <div className={activeTab === 'en' ? 'block' : 'hidden'}>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">English Title</label>
-              <input {...register('titleEn')} className="input-field" placeholder="Enter title" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                English Title <span className="text-xs text-gray-400 font-normal">(optional — falls back to Tamil title)</span>
+              </label>
+              <input {...register('titleEn')} className="input-field" placeholder="Enter title (optional)" />
               {errors.titleEn && <p className="mt-1 text-xs text-accent">{errors.titleEn.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">English Body</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                English Body <span className="text-xs text-gray-400 font-normal">(optional — falls back to Tamil body)</span>
+              </label>
               <div className="border border-gray-300 rounded-lg overflow-hidden">
                 <EditorToolbar editor={englishEditor} />
                 <EditorContent editor={englishEditor} className="min-h-[250px]" />
