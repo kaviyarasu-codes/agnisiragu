@@ -8,9 +8,6 @@
       "android": {
         "buildType": "apk"
       },
-      "env": {
-        "NODE_ENV": "production"
-      },
       "node": "22.0.0"
     },
     "production": {

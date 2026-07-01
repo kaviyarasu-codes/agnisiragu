@@ -1,13 +1,15 @@
 // src/pages/DashboardPage.tsx
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Newspaper, Users, Zap, CheckCircle, Plus, Bell, Loader2, ArrowRight, TrendingUp } from 'lucide-react';
 import ArticleStatusBadge from '../components/ArticleStatusBadge';
 import { useStats } from '../hooks/useStats';
 import { useArticles } from '../hooks/useArticles';
+import { apiGet } from '../lib/api';
 import { format } from 'date-fns';
 
-const WEEKLY_MOCK = [
+const WEEKLY_FALLBACK = [
   { day: 'Mon', count: 0 },
   { day: 'Tue', count: 0 },
   { day: 'Wed', count: 0 },
@@ -33,6 +35,13 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { data: statsData, isLoading: statsLoading } = useStats();
   const { data: articlesData, isLoading: articlesLoading } = useArticles({ limit: 5 });
+  const { data: trendData, isLoading: trendLoading } = useQuery({
+    queryKey: ['weekly-trend'],
+    queryFn: () => apiGet<{ data: { day: string; count: number }[] }>('/admin/stats/weekly-trend'),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const weeklyData = trendData?.data ?? WEEKLY_FALLBACK;
 
   const stats = statsData?.data;
   const recentArticles = articlesData?.data?.slice(0, 5) ?? [];
@@ -108,8 +117,13 @@ export default function DashboardPage() {
             <span className="text-2xs text-text-muted">Last 7 days</span>
           </div>
           <div className="p-5">
+            {trendLoading ? (
+              <div className="h-[200px] flex items-center justify-center">
+                <Loader2 size={22} className="animate-spin text-red" />
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={WEEKLY_MOCK} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+              <BarChart data={weeklyData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="2 4" stroke="#E4E6EA" vertical={false} />
                 <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
@@ -117,6 +131,7 @@ export default function DashboardPage() {
                 <Bar dataKey="count" fill="#CC1F2D" radius={[3, 3, 0, 0]} maxBarSize={32} />
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 

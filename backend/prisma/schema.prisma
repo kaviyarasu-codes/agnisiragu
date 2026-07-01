@@ -24,6 +24,14 @@ enum AdminRole {
   SUPER_ADMIN
   ADMIN
   EDITOR
+  EDITOR_MANAGER
+  EDITOR_MEMBER
+  VERIFICATION_MANAGER
+  VERIFICATION_MEMBER
+  REPORTER_APP_MANAGER
+  REPORTER_APP_MEMBER
+  REPORTERS_MANAGER
+  REPORTERS_MEMBER
 }
 
 enum ArticleStatus {
@@ -81,11 +89,15 @@ model Admin {
   passwordHash String
   name         String
   adminRole    AdminRole @default(EDITOR)
+  isActive     Boolean   @default(true)
+  phone        String?
+  teamType     String?
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
 
   articles     Article[]
   auditLogs    AuditLog[]
+  mediaFiles   MediaFile[]
 }
 
 model Category {
@@ -154,6 +166,25 @@ model AuditLog {
   metadata   Json?
   ip         String?
   createdAt  DateTime @default(now())
+}
+
+model MediaFile {
+  id        String   @id @default(uuid())
+  filename  String
+  url       String
+  publicId  String
+  mimeType  String
+  size      Int      @default(0)
+  adminId   String?
+  admin     Admin?   @relation(fields: [adminId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model AppConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
 }
 
 // ─── Legacy / Phase 2 Models (kept, not used in Phase 1 APIs) ────────────────

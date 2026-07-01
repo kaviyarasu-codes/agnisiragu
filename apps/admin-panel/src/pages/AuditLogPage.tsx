@@ -30,49 +30,37 @@ export default function AuditLogPage() {
   const [adminFilter, setAdminFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [cursor, setCursor] = useState<string | undefined>();
-  const [cursorStack, setCursorStack] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const LIMIT = 25;
 
-  const hasFilters = actionFilter || adminFilter || dateFrom || dateTo;
+  const hasFilters = !!(actionFilter || adminFilter || dateFrom || dateTo);
 
   const clearFilters = () => {
     setActionFilter('');
     setAdminFilter('');
     setDateFrom('');
     setDateTo('');
-    setCursor(undefined);
-    setCursorStack([]);
+    setPage(1);
   };
 
   const { data, isLoading } = useQuery({
-    queryKey: ['audit-logs', actionFilter, adminFilter, dateFrom, dateTo, cursor],
+    queryKey: ['audit-logs', actionFilter, adminFilter, dateFrom, dateTo, page],
     queryFn: () =>
-      apiGet<PaginatedResponse<AuditLog>>('/admin/audit-logs', {
-        action: actionFilter || undefined,
-        adminId: adminFilter || undefined,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-        cursor,
-        limit: 25,
+      apiGet<{ data: AuditLog[]; meta: { total: number; hasMore: boolean } }>('/admin/audit-logs', {
+        action:   actionFilter || undefined,
+        adminId:  adminFilter  || undefined,
+        dateFrom: dateFrom     || undefined,
+        dateTo:   dateTo       || undefined,
+        page,
+        limit: LIMIT,
       }),
   });
 
   const logs = data?.data ?? [];
   const meta = data?.meta;
 
-  const handleNext = () => {
-    if (meta?.nextCursor) {
-      setCursorStack((prev) => [...prev, cursor ?? '']);
-      setCursor(meta.nextCursor);
-    }
-  };
-
-  const handlePrev = () => {
-    const stack = [...cursorStack];
-    const prev = stack.pop();
-    setCursorStack(stack);
-    setCursor(prev || undefined);
-  };
+  const handleNext = () => { if (meta?.hasMore) setPage((p) => p + 1); };
+  const handlePrev = () => { if (page > 1) setPage((p) => p - 1); };
 
   return (
     <div className="space-y-4">
@@ -88,7 +76,7 @@ export default function AuditLogPage() {
               <input
                 type="text"
                 value={adminFilter}
-                onChange={(e) => { setAdminFilter(e.target.value); setCursor(undefined); }}
+                onChange={(e) => { setAdminFilter(e.target.value); setPage(1); }}
                 placeholder="Filter by admin..."
                 className="input pl-8 text-sm"
               />
@@ -97,7 +85,7 @@ export default function AuditLogPage() {
             {/* Action dropdown */}
             <select
               value={actionFilter}
-              onChange={(e) => { setActionFilter(e.target.value); setCursor(undefined); }}
+              onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
               className="input w-auto text-sm"
             >
               {ACTION_OPTIONS.map((o) => (
@@ -110,14 +98,14 @@ export default function AuditLogPage() {
               <input
                 type="date"
                 value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); setCursor(undefined); }}
+                onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
                 className="input w-auto text-sm"
               />
               <span className="text-text-muted text-xs font-medium">to</span>
               <input
                 type="date"
                 value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); setCursor(undefined); }}
+                onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
                 className="input w-auto text-sm"
               />
             </div>
@@ -173,9 +161,11 @@ export default function AuditLogPage() {
                     </td>
                     <td className="td text-text-secondary text-xs">{log.entityType}</td>
                     <td className="td">
-                      <code className="text-2xs text-text-muted bg-page border border-border px-1.5 py-0.5 rounded font-mono">
-                        {log.entityId.slice(0, 8)}…
-                      </code>
+                      {log.entityId ? (
+                        <code className="text-2xs text-text-muted bg-page border border-border px-1.5 py-0.5 rounded font-mono">
+                          {log.entityId.slice(0, 8)}…
+                        </code>
+                      ) : <span className="text-text-muted">—</span>}
                     </td>
                     <td className="td text-text-muted text-xs">{log.ip || '—'}</td>
                     <td className="td text-text-muted text-xs whitespace-nowrap">
@@ -192,7 +182,7 @@ export default function AuditLogPage() {
           total={meta?.total ?? 0}
           showing={logs.length}
           hasMore={meta?.hasMore ?? false}
-          hasPrev={cursorStack.length > 0}
+          hasPrev={page > 1}
           onNext={handleNext}
           onPrev={handlePrev}
         />

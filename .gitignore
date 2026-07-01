@@ -29,3 +29,7 @@ backend/prisma/migrations/dev/
 # Uploads / local media
 uploads/
 tmp/
+
+# Production secrets
+infra/.env.production
+infra/.env
