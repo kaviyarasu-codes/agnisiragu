@@ -1,9 +1,10 @@
 // src/pages/AuditLogPage.tsx
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, ClipboardList, Search } from 'lucide-react';
+import { Loader2, ClipboardList, Search, X } from 'lucide-react';
 import { format } from 'date-fns';
 import Pagination from '../components/Pagination';
+import EmptyState from '../components/EmptyState';
 import { apiGet } from '../lib/api';
 import type { AuditLog, PaginatedResponse } from '../types';
 
@@ -16,12 +17,12 @@ const ACTION_OPTIONS = [
   { value: 'LOGIN', label: 'Login' },
 ];
 
-const ACTION_COLORS: Record<string, string> = {
-  CREATE: 'bg-green-100 text-green-700',
-  UPDATE: 'bg-blue-100 text-blue-700',
-  DELETE: 'bg-red-100 text-red-700',
-  PUBLISH: 'bg-purple-100 text-purple-700',
-  LOGIN: 'bg-gray-100 text-gray-700',
+const ACTION_BADGE: Record<string, string> = {
+  CREATE:  'badge-green',
+  UPDATE:  'bg-blue-50 text-blue-700',
+  DELETE:  'badge-red',
+  PUBLISH: 'bg-purple-50 text-purple-700',
+  LOGIN:   'badge-gray',
 };
 
 export default function AuditLogPage() {
@@ -31,6 +32,17 @@ export default function AuditLogPage() {
   const [dateTo, setDateTo] = useState('');
   const [cursor, setCursor] = useState<string | undefined>();
   const [cursorStack, setCursorStack] = useState<string[]>([]);
+
+  const hasFilters = actionFilter || adminFilter || dateFrom || dateTo;
+
+  const clearFilters = () => {
+    setActionFilter('');
+    setAdminFilter('');
+    setDateFrom('');
+    setDateTo('');
+    setCursor(undefined);
+    setCursorStack([]);
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['audit-logs', actionFilter, adminFilter, dateFrom, dateTo, cursor],
@@ -64,95 +76,109 @@ export default function AuditLogPage() {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="card py-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={adminFilter}
-              onChange={(e) => setAdminFilter(e.target.value)}
-              placeholder="Filter by admin ID..."
-              className="input-field pl-8 w-48 text-sm"
-            />
-          </div>
 
-          <select
-            value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value)}
-            className="input-field w-auto text-sm"
-          >
-            {ACTION_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+      {/* ── Filters ──────────────────────────────────────────────────── */}
+      <div className="card">
+        <div className="card-body py-3">
+          <div className="flex flex-wrap items-center gap-3">
 
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="input-field w-auto text-sm"
-            />
-            <span className="text-gray-400 text-sm">to</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="input-field w-auto text-sm"
-            />
+            {/* Admin ID search */}
+            <div className="relative flex-1 min-w-[160px] max-w-[220px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+              <input
+                type="text"
+                value={adminFilter}
+                onChange={(e) => { setAdminFilter(e.target.value); setCursor(undefined); }}
+                placeholder="Filter by admin..."
+                className="input pl-8 text-sm"
+              />
+            </div>
+
+            {/* Action dropdown */}
+            <select
+              value={actionFilter}
+              onChange={(e) => { setActionFilter(e.target.value); setCursor(undefined); }}
+              className="input w-auto text-sm"
+            >
+              {ACTION_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+
+            {/* Date range */}
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setCursor(undefined); }}
+                className="input w-auto text-sm"
+              />
+              <span className="text-text-muted text-xs font-medium">to</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setCursor(undefined); }}
+                className="input w-auto text-sm"
+              />
+            </div>
+
+            {/* Clear filters */}
+            {hasFilters && (
+              <button
+                onClick={clearFilters}
+                className="btn-ghost text-xs flex items-center gap-1 text-text-muted"
+              >
+                <X size={13} /> Clear
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Table */}
+      {/* ── Table ────────────────────────────────────────────────────── */}
       <div className="card p-0">
         {isLoading ? (
-          <div className="flex items-center justify-center h-48">
-            <Loader2 size={28} className="animate-spin text-primary" />
+          <div className="flex items-center justify-center py-20">
+            <Loader2 size={28} className="animate-spin text-red" />
           </div>
         ) : logs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-gray-400">
-            <ClipboardList size={40} className="mb-2" />
-            <p className="text-sm">No audit logs found</p>
-          </div>
+          <EmptyState
+            icon={ClipboardList}
+            title="No audit logs found"
+            description={hasFilters ? 'Try adjusting your filters' : 'Admin actions will appear here as they happen'}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr>
-                  <th className="table-header">Admin</th>
-                  <th className="table-header">Action</th>
-                  <th className="table-header">Entity Type</th>
-                  <th className="table-header">Entity ID</th>
-                  <th className="table-header">IP</th>
-                  <th className="table-header">Timestamp</th>
+                  <th className="th">Admin</th>
+                  <th className="th">Action</th>
+                  <th className="th">Entity Type</th>
+                  <th className="th">Entity ID</th>
+                  <th className="th">IP Address</th>
+                  <th className="th">Timestamp</th>
                 </tr>
               </thead>
               <tbody>
                 {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="table-cell">
-                      <div>
-                        <p className="font-medium text-sm">{log.adminName || log.adminId}</p>
-                      </div>
+                  <tr key={log.id} className="tr-hover">
+                    <td className="td">
+                      <p className="font-medium text-text-primary text-sm">{log.adminName || log.adminId}</p>
                     </td>
-                    <td className="table-cell">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ACTION_COLORS[log.action] ?? 'bg-gray-100 text-gray-600'}`}>
+                    <td className="td">
+                      <span className={`badge ${ACTION_BADGE[log.action] ?? 'badge-gray'}`}>
                         {log.action}
                       </span>
                     </td>
-                    <td className="table-cell">
-                      <span className="text-xs text-gray-600">{log.entityType}</span>
-                    </td>
-                    <td className="table-cell">
-                      <code className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                        {log.entityId.slice(0, 8)}...
+                    <td className="td text-text-secondary text-xs">{log.entityType}</td>
+                    <td className="td">
+                      <code className="text-2xs text-text-muted bg-page border border-border px-1.5 py-0.5 rounded font-mono">
+                        {log.entityId.slice(0, 8)}…
                       </code>
                     </td>
-                    <td className="table-cell text-xs text-gray-400">{log.ip || '—'}</td>
-                    <td className="table-cell text-xs text-gray-400 whitespace-nowrap">
+                    <td className="td text-text-muted text-xs">{log.ip || '—'}</td>
+                    <td className="td text-text-muted text-xs whitespace-nowrap">
                       {format(new Date(log.createdAt), 'dd MMM yyyy, HH:mm:ss')}
                     </td>
                   </tr>

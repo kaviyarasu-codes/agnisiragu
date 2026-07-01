@@ -1,12 +1,13 @@
 // src/pages/ArticleListPage.tsx
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Loader2, Newspaper, Edit2, Trash2, CheckCircle, EyeOff } from 'lucide-react';
+import { Plus, Search, Loader2, Newspaper, Edit2, Trash2, CheckCircle, EyeOff, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import ArticleStatusBadge from '../components/ArticleStatusBadge';
 import ConfirmModal from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
+import EmptyState from '../components/EmptyState';
 import { useArticles, useDeleteArticle, usePublishArticle, useUnpublishArticle, useBulkAction } from '../hooks/useArticles';
 import { useCategories } from '../hooks/useCategories';
 import type { ArticleStatus, Article } from '../types';
@@ -30,11 +31,13 @@ export default function ArticleListPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  // Debounce search
   const handleSearchChange = useCallback((val: string) => {
     setSearch(val);
     clearTimeout(window.__searchTimeout);
-    window.__searchTimeout = window.setTimeout(() => setDebouncedSearch(val), 400);
+    window.__searchTimeout = window.setTimeout(() => {
+      setDebouncedSearch(val);
+      setCursor(undefined);
+    }, 400);
   }, []);
 
   const { data, isLoading } = useArticles({
@@ -120,174 +123,179 @@ export default function ArticleListPage() {
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 justify-between">
-        <div className="flex flex-wrap items-center gap-3 flex-1">
-          <div className="relative min-w-[200px]">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search articles..."
-              className="input-field pl-9"
-            />
-          </div>
 
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as ArticleStatus | '')}
-            className="input-field w-auto"
-          >
-            {STATUS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="input-field w-auto"
-          >
-            <option value="">All Categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.nameTa}</option>
-            ))}
-          </select>
+      {/* ── Toolbar ──────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[200px] flex-1 max-w-xs">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Search articles..."
+            className="input pl-9"
+          />
         </div>
 
-        <button onClick={() => navigate('/articles/new')} className="btn-primary flex items-center gap-2">
-          <Plus size={16} />
-          New Article
-        </button>
+        <select
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value as ArticleStatus | ''); setCursor(undefined); }}
+          className="input w-auto"
+        >
+          {STATUS_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+
+        <select
+          value={categoryFilter}
+          onChange={(e) => { setCategoryFilter(e.target.value); setCursor(undefined); }}
+          className="input w-auto"
+        >
+          <option value="">All Categories</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>{c.nameTa}</option>
+          ))}
+        </select>
+
+        <div className="ml-auto">
+          <button onClick={() => navigate('/articles/new')} className="btn-primary">
+            <Plus size={15} />
+            New Article
+          </button>
+        </div>
       </div>
 
-      {/* Bulk actions */}
+      {/* ── Bulk action bar ───────────────────────────────────────────── */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
-          <span className="text-sm font-medium text-primary">{selected.size} selected</span>
+        <div className="flex items-center gap-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5">
+          <span className="text-sm font-semibold text-blue-700">{selected.size} selected</span>
+          <div className="w-px h-4 bg-blue-200" />
           <button
             onClick={() => handleBulkAction('publish')}
-            className="text-sm text-green-700 hover:text-green-800 font-medium"
+            className="text-sm text-status-green hover:text-green-800 font-medium transition-colors"
           >
             Publish All
           </button>
           <button
             onClick={() => handleBulkAction('delete')}
-            className="text-sm text-accent hover:text-red-700 font-medium"
+            className="text-sm text-status-red hover:text-red-800 font-medium transition-colors"
           >
             Delete All
           </button>
         </div>
       )}
 
-      {/* Table */}
+      {/* ── Table ────────────────────────────────────────────────────── */}
       <div className="card p-0">
         {isLoading ? (
-          <div className="flex items-center justify-center h-48">
-            <Loader2 size={28} className="animate-spin text-primary" />
+          <div className="flex items-center justify-center py-20">
+            <Loader2 size={28} className="animate-spin text-red" />
           </div>
         ) : articles.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-gray-400">
-            <Newspaper size={40} className="mb-2" />
-            <p className="text-sm">No articles found</p>
-            <button onClick={() => navigate('/articles/new')} className="btn-primary mt-3 text-sm">
-              Create your first article
-            </button>
-          </div>
+          <EmptyState
+            icon={Newspaper}
+            title="No articles found"
+            description={debouncedSearch || statusFilter || categoryFilter ? 'Try adjusting your filters' : 'Create your first article to get started'}
+            action={
+              !debouncedSearch && !statusFilter && !categoryFilter ? (
+                <button onClick={() => navigate('/articles/new')} className="btn-primary text-sm">
+                  <Plus size={14} /> Create Article
+                </button>
+              ) : undefined
+            }
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr>
-                  <th className="table-header w-10">
+                  <th className="th w-10">
                     <input
                       type="checkbox"
                       checked={selected.size === articles.length && articles.length > 0}
                       onChange={toggleAll}
-                      className="rounded border-gray-300"
+                      className="rounded border-border"
                     />
                   </th>
-                  <th className="table-header">Article</th>
-                  <th className="table-header">Category</th>
-                  <th className="table-header">Status</th>
-                  <th className="table-header">Breaking</th>
-                  <th className="table-header">Published</th>
-                  <th className="table-header">Actions</th>
+                  <th className="th">Article</th>
+                  <th className="th">Category</th>
+                  <th className="th">Status</th>
+                  <th className="th">Breaking</th>
+                  <th className="th">Published</th>
+                  <th className="th text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {articles.map((article) => (
-                  <tr key={article.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="table-cell w-10">
+                  <tr key={article.id} className="tr-hover cursor-pointer" onClick={() => navigate(`/articles/${article.id}/edit`)}>
+                    <td className="td w-10" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selected.has(article.id)}
                         onChange={() => toggleSelect(article.id)}
-                        className="rounded border-gray-300"
+                        className="rounded border-border"
                       />
                     </td>
-                    <td className="table-cell">
+                    <td className="td">
                       <div className="flex items-center gap-3">
                         {article.thumbnailUrl ? (
                           <img
                             src={article.thumbnailUrl}
                             alt=""
-                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-border"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                            <Newspaper size={16} className="text-gray-400" />
+                          <div className="w-10 h-10 rounded-lg bg-page border border-border flex items-center justify-center flex-shrink-0">
+                            <Newspaper size={16} className="text-text-muted" />
                           </div>
                         )}
                         <div className="min-w-0">
-                          <p className="font-medium text-gray-800 truncate max-w-[200px]">{article.titleTa}</p>
-                          <p className="text-xs text-gray-400 truncate max-w-[200px]">{article.titleEn}</p>
+                          <p className="font-semibold text-text-primary truncate max-w-[220px] text-sm">{article.titleTa}</p>
+                          <p className="text-2xs text-text-muted truncate max-w-[220px] mt-0.5">{article.titleEn}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="table-cell">
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full whitespace-nowrap">
-                        {article.category.nameTa}
-                      </span>
+                    <td className="td">
+                      <span className="badge badge-gray">{article.category?.nameTa}</span>
                     </td>
-                    <td className="table-cell">
+                    <td className="td">
                       <ArticleStatusBadge status={article.status} />
                     </td>
-                    <td className="table-cell">
+                    <td className="td">
                       {article.isBreaking ? (
-                        <span className="text-xs bg-accent bg-opacity-10 text-accent font-medium px-2 py-0.5 rounded-full">
-                          Breaking
+                        <span className="badge bg-red/10 text-red flex items-center gap-1 w-fit">
+                          <Zap size={10} /> Breaking
                         </span>
                       ) : (
-                        <span className="text-gray-300 text-xs">—</span>
+                        <span className="text-text-muted text-xs">—</span>
                       )}
                     </td>
-                    <td className="table-cell text-gray-400 whitespace-nowrap text-xs">
+                    <td className="td text-text-muted text-xs whitespace-nowrap">
                       {article.publishedAt ? format(new Date(article.publishedAt), 'dd MMM yyyy') : '—'}
                     </td>
-                    <td className="table-cell">
-                      <div className="flex items-center gap-1">
+                    <td className="td" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1 justify-end">
                         <button
                           onClick={() => navigate(`/articles/${article.id}/edit`)}
-                          className="p-1.5 text-gray-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-text-muted hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           title="Edit"
                         >
-                          <Edit2 size={15} />
+                          <Edit2 size={14} />
                         </button>
                         <button
                           onClick={() => handlePublishToggle(article)}
-                          className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          className="p-1.5 text-text-muted hover:text-status-green hover:bg-status-green-bg rounded-lg transition-colors"
                           title={article.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
                         >
-                          {article.status === 'PUBLISHED' ? <EyeOff size={15} /> : <CheckCircle size={15} />}
+                          {article.status === 'PUBLISHED' ? <EyeOff size={14} /> : <CheckCircle size={14} />}
                         </button>
                         <button
                           onClick={() => setDeleteTarget(article.id)}
-                          className="p-1.5 text-gray-400 hover:text-accent hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1.5 text-text-muted hover:text-status-red hover:bg-status-red-bg rounded-lg transition-colors"
                           title="Delete"
                         >
-                          <Trash2 size={15} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
