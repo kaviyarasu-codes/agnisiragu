@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
 import { patch } from '@/lib/api';
 import { FREE_ARTICLE_LIMIT, COLORS } from '@/constants';
+import { useBookmarksStore } from '@/store/bookmarks.store';
 import ArticleCard from '@/components/ArticleCard';
 import AdBanner from '@/components/AdBanner';
 import LoginGateModal from '@/components/LoginGateModal';
@@ -34,6 +35,7 @@ export default function ArticleDetailScreen() {
   const { data: article, isLoading, isError } = useArticle(id);
   const { isAuthenticated, articleReadCount, incrementReadCount } = useAuthStore();
   const { language } = useAppStore();
+  const { isBookmarked, toggleBookmark } = useBookmarksStore();
   const [showLoginGate, setShowLoginGate] = useState(false);
 
   const shouldGate = !isAuthenticated && articleReadCount >= FREE_ARTICLE_LIMIT;
@@ -125,9 +127,19 @@ export default function ArticleDetailScreen() {
             <Text style={styles.body}>{body}</Text>
           )}
 
-          <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-            <Text style={styles.shareButtonText}>பகிர் / Share</Text>
-          </TouchableOpacity>
+          <View style={styles.actionRow}>
+            <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+              <Text style={styles.shareButtonText}>📤  பகிர் / Share</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.bookmarkButton, article && isBookmarked(article.id) && styles.bookmarkButtonSaved]}
+              onPress={() => article && toggleBookmark(article)}
+            >
+              <Text style={styles.bookmarkButtonText}>
+                {article && isBookmarked(article.id) ? '🔖 சேமிக்கப்பட்டது' : '🏷️ சேமி'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {!shouldGate && (
@@ -242,17 +254,40 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 8,
+  },
   shareButton: {
+    flex: 1,
     borderWidth: 1.5,
     borderColor: COLORS.primary,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
-    marginTop: 4,
-    marginBottom: 8,
   },
   shareButtonText: {
     color: COLORS.primary,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  bookmarkButton: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+  },
+  bookmarkButtonSaved: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#EEF3FA',
+  },
+  bookmarkButtonText: {
+    color: COLORS.text,
     fontWeight: '600',
     fontSize: 14,
   },

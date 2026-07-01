@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Newspaper, Tag, Users, Image, Bell,
   ClipboardList, Settings, X, ChevronRight, UserCog,
-  BarChart2, Smartphone,
+  BarChart2, Smartphone, Megaphone, UsersRound,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 import logo from '../assets/logo.png';
@@ -25,6 +25,7 @@ const navGroups = [
       { to: '/users',         label: 'Users',          icon: Users },
       { to: '/media',         label: 'Media Library',  icon: Image },
       { to: '/notifications', label: 'Notifications',  icon: Bell },
+      { to: '/local-ads',     label: 'Local Ads',      icon: Megaphone },
     ],
   },
   {
@@ -38,8 +39,9 @@ const navGroups = [
 
 const adminOnlyItems = [
   { to: '/accounts',   label: 'Admin Accounts', icon: UserCog },
-  { to: '/app-config', label: 'App Config',      icon: Smartphone },
-  { to: '/settings',   label: 'Settings',        icon: Settings },
+  { to: '/teams',      label: 'Team Management',icon: UsersRound },
+  { to: '/app-config', label: 'App Config',     icon: Smartphone },
+  { to: '/settings',   label: 'Settings',       icon: Settings },
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
@@ -128,7 +130,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
             <div className="min-w-0">
               <p className="text-xs font-medium text-white truncate">{admin?.name}</p>
-              <p className="text-2xs text-ink-500 truncate">{admin?.adminRole?.replace('_', ' ')}</p>
+              <p className="text-2xs text-ink-500 truncate">{admin?.adminRole?.replace(/_/g, ' ')}</p>
             </div>
           </div>
         </div>

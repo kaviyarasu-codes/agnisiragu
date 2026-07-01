@@ -16,6 +16,20 @@ export class NewsService {
     private usersService: UsersService,
   ) {}
 
+  // ─── Audit log helper ─────────────────────────────────────────────────────
+
+  private async log(opts: {
+    adminId?: string;
+    action: string;
+    entityType: string;
+    entityId?: string;
+    metadata?: Record<string, any>;
+    ip?: string;
+    device?: string;
+  }) {
+    try { await this.prisma.auditLog.create({ data: opts }); } catch { /* non-critical */ }
+  }
+
   // ─── Public: list articles ────────────────────────────────────────────────
 
   async findAll(query: ArticleListQueryDto) {
@@ -35,10 +49,7 @@ export class NewsService {
     const data = hasMore ? articles.slice(0, limit) : articles;
     const nextCursor = hasMore ? data[data.length - 1].id : null;
 
-    return {
-      data,
-      meta: { hasMore, nextCursor, count: data.length },
-    };
+    return { data, meta: { hasMore, nextCursor, count: data.length } };
   }
 
   // ─── Public: breaking news ────────────────────────────────────────────────
@@ -64,7 +75,6 @@ export class NewsService {
       throw new NotFoundException('Article not found');
     }
 
-    // Track read if user is authenticated
     if (userId) {
       try {
         await this.prisma.articleRead.upsert({
@@ -73,9 +83,7 @@ export class NewsService {
           create: { userId, articleId: id },
         });
         await this.usersService.incrementReadCount(userId);
-      } catch {
-        // Ignore tracking errors
-      }
+      } catch { /* ignore */ }
     }
 
     return { data: article };
@@ -114,8 +122,7 @@ export class NewsService {
 
   // ─── Admin: create ────────────────────────────────────────────────────────
 
-  async create(dto: CreateArticleDto, adminId: string) {
-    // Verify category exists
+  async create(dto: CreateArticleDto, adminId: string, ip?: string, device?: string) {
     const category = await this.prisma.category.findUnique({ where: { id: dto.categoryId } });
     if (!category) throw new NotFoundException('Category not found');
 
@@ -139,12 +146,22 @@ export class NewsService {
       include: { category: true },
     });
 
+    await this.log({
+      adminId,
+      action: status === 'PUBLISHED' ? 'ARTICLE_PUBLISH' : 'ARTICLE_CREATE',
+      entityType: 'article',
+      entityId: article.id,
+      metadata: { title: article.titleEn, category: category.nameEn, status },
+      ip,
+      device,
+    });
+
     return { data: article };
   }
 
   // ─── Admin: update ────────────────────────────────────────────────────────
 
-  async update(id: string, dto: UpdateArticleDto) {
+  async update(id: string, dto: UpdateArticleDto, adminId?: string, ip?: string, device?: string) {
     const existing = await this.prisma.article.findUnique({ where: { id } });
     if (!existing || existing.status === 'DELETED') throw new NotFoundException('Article not found');
 
@@ -153,8 +170,19 @@ export class NewsService {
       data: {
         ...dto,
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
+        ...(dto.status === 'PUBLISHED' && existing.status !== 'PUBLISHED' ? { publishedAt: new Date() } : {}),
       },
       include: { category: true },
+    });
+
+    await this.log({
+      adminId,
+      action: dto.status === 'PUBLISHED' ? 'ARTICLE_PUBLISH' : 'ARTICLE_UPDATE',
+      entityType: 'article',
+      entityId: id,
+      metadata: { title: existing.titleEn, changes: Object.keys(dto) },
+      ip,
+      device,
     });
 
     return { data: article };
@@ -162,7 +190,7 @@ export class NewsService {
 
   // ─── Admin: publish ───────────────────────────────────────────────────────
 
-  async publish(id: string) {
+  async publish(id: string, adminId?: string, ip?: string, device?: string) {
     const existing = await this.prisma.article.findUnique({ where: { id } });
     if (!existing || existing.status === 'DELETED') throw new NotFoundException('Article not found');
 
@@ -171,12 +199,22 @@ export class NewsService {
       data: { status: 'PUBLISHED', publishedAt: new Date() },
     });
 
+    await this.log({
+      adminId,
+      action: 'ARTICLE_PUBLISH',
+      entityType: 'article',
+      entityId: id,
+      metadata: { title: existing.titleEn },
+      ip,
+      device,
+    });
+
     return { data: article };
   }
 
   // ─── Admin: toggle breaking ───────────────────────────────────────────────
 
-  async toggleBreaking(id: string) {
+  async toggleBreaking(id: string, adminId?: string) {
     const existing = await this.prisma.article.findUnique({ where: { id } });
     if (!existing || existing.status === 'DELETED') throw new NotFoundException('Article not found');
 
@@ -185,12 +223,19 @@ export class NewsService {
       data: { isBreaking: !existing.isBreaking },
     });
 
+    await this.log({
+      adminId,
+      action: article.isBreaking ? 'ARTICLE_BREAKING_ON' : 'ARTICLE_BREAKING_OFF',
+      entityType: 'article',
+      entityId: id,
+    });
+
     return { data: article };
   }
 
   // ─── Admin: unpublish ────────────────────────────────────────────────────
 
-  async unpublish(id: string) {
+  async unpublish(id: string, adminId?: string, ip?: string, device?: string) {
     const existing = await this.prisma.article.findUnique({ where: { id } });
     if (!existing || existing.status === 'DELETED') throw new NotFoundException('Article not found');
 
@@ -199,19 +244,33 @@ export class NewsService {
       data: { status: 'UNPUBLISHED' },
     });
 
+    await this.log({
+      adminId,
+      action: 'ARTICLE_UNPUBLISH',
+      entityType: 'article',
+      entityId: id,
+      metadata: { title: existing.titleEn },
+      ip,
+      device,
+    });
+
     return { data: article };
   }
 
   // ─── Admin: bulk action ───────────────────────────────────────────────────
 
-  async bulkAction(ids: string[], action: 'publish' | 'delete') {
+  async bulkAction(ids: string[], action: 'publish' | 'delete', adminId?: string) {
     const status = action === 'publish' ? 'PUBLISHED' : 'DELETED';
     const data: any = { status };
     if (action === 'publish') data.publishedAt = new Date();
 
-    await this.prisma.article.updateMany({
-      where: { id: { in: ids } },
-      data,
+    await this.prisma.article.updateMany({ where: { id: { in: ids } }, data });
+
+    await this.log({
+      adminId,
+      action: action === 'publish' ? 'ARTICLE_BULK_PUBLISH' : 'ARTICLE_BULK_DELETE',
+      entityType: 'article',
+      metadata: { count: ids.length, ids },
     });
 
     return { data: { updated: ids.length } };
@@ -250,13 +309,23 @@ export class NewsService {
 
   // ─── Admin: soft delete ───────────────────────────────────────────────────
 
-  async remove(id: string) {
+  async remove(id: string, adminId?: string, ip?: string, device?: string) {
     const existing = await this.prisma.article.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Article not found');
 
     const article = await this.prisma.article.update({
       where: { id },
       data: { status: 'DELETED' },
+    });
+
+    await this.log({
+      adminId,
+      action: 'ARTICLE_DELETE',
+      entityType: 'article',
+      entityId: id,
+      metadata: { title: existing.titleEn },
+      ip,
+      device,
     });
 
     return { data: article };

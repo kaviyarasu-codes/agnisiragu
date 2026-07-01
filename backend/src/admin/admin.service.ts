@@ -242,14 +242,15 @@ export class AdminService {
 
   async getAuditLogs(options: {
     page?: number; limit?: number;
-    action?: string; adminId?: string;
+    action?: string; adminId?: string; team?: string;
     dateFrom?: string; dateTo?: string;
   }) {
-    const { page = 1, limit = 50, action, adminId, dateFrom, dateTo } = options;
+    const { page = 1, limit = 50, action, adminId, team, dateFrom, dateTo } = options;
     const skip = (page - 1) * limit;
     const where: any = {};
     if (action)  where.action  = { contains: action, mode: 'insensitive' };
     if (adminId) where.adminId = adminId;
+    if (team)    where.admin   = { teamType: team };
     if (dateFrom || dateTo) {
       where.createdAt = {};
       if (dateFrom) where.createdAt.gte = new Date(dateFrom);
@@ -258,11 +259,15 @@ export class AdminService {
     const [logs, total] = await Promise.all([
       this.prisma.auditLog.findMany({
         where, skip, take: limit, orderBy: { createdAt: 'desc' },
-        include: { admin: { select: { id: true, name: true, email: true } } },
+        include: { admin: { select: { id: true, name: true, email: true, teamType: true } } },
       }),
       this.prisma.auditLog.count({ where }),
     ]);
-    const data = logs.map(({ admin, ...log }) => ({ ...log, adminName: admin?.name ?? null }));
+    const data = logs.map(({ admin, ...log }) => ({
+      ...log,
+      adminName: admin?.name ?? null,
+      adminTeam: admin?.teamType ?? null,
+    }));
     return { data, meta: { total, page, limit, hasMore: skip + limit < total } };
   }
 
@@ -280,7 +285,7 @@ export class AdminService {
   // ─── Create admin account ─────────────────────────────────────────────────
 
   async createAdminAccount(dto: {
-    name: string; email: string; password: string; adminRole: string; team?: string;
+    name: string; email: string; password: string; adminRole: string; team?: string; phone?: string;
   }) {
     const existing = await this.prisma.admin.findUnique({ where: { email: dto.email } });
     if (existing) throw new ConflictException('Email already registered');
@@ -288,30 +293,40 @@ export class AdminService {
     const admin = await this.prisma.admin.create({
       data: {
         name: dto.name, email: dto.email, passwordHash,
-        adminRole: dto.adminRole as any, teamType: dto.team ?? null, isActive: true,
+        adminRole: dto.adminRole as any, teamType: dto.team ?? null,
+        phone: dto.phone ?? null, isActive: true,
       },
       select: { id: true, name: true, email: true, adminRole: true, isActive: true, teamType: true, createdAt: true },
     });
+    await this.prisma.auditLog.create({
+      data: { action: 'ADMIN_CREATE', entityType: 'admin', entityId: admin.id,
+        metadata: { name: admin.name, email: admin.email, role: admin.adminRole } },
+    }).catch(() => {});
     return { data: admin };
   }
 
   // ─── Update admin account ─────────────────────────────────────────────────
 
   async updateAdminAccount(id: string, dto: {
-    name?: string; adminRole?: string; password?: string; isActive?: boolean;
+    name?: string; adminRole?: string; password?: string; phone?: string; isActive?: boolean;
   }) {
     const existing = await this.prisma.admin.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Admin not found');
     const updateData: any = {};
     if (dto.name      !== undefined) updateData.name      = dto.name;
     if (dto.adminRole !== undefined) updateData.adminRole = dto.adminRole;
+    if (dto.phone     !== undefined) updateData.phone     = dto.phone || null;
     if (dto.isActive  !== undefined) updateData.isActive  = dto.isActive;
-    if (dto.password)                updateData.passwordHash = await bcrypt.hash(dto.password, 10);
+    if (dto.password && dto.password.trim() !== '') updateData.passwordHash = await bcrypt.hash(dto.password, 10);
     const updated = await this.prisma.admin.update({
       where: { id }, data: updateData,
       select: { id: true, name: true, email: true, adminRole: true,
         isActive: true, teamType: true, lastLoginAt: true },
     });
+    await this.prisma.auditLog.create({
+      data: { action: 'ADMIN_UPDATE', entityType: 'admin', entityId: id,
+        metadata: { name: updated.name, changes: Object.keys(updateData) } },
+    }).catch(() => {});
     return { data: updated };
   }
 
@@ -328,7 +343,11 @@ export class AdminService {
     }
     await this.prisma.auditLog.updateMany({ where: { adminId: id }, data: { adminId: null } });
     await this.prisma.mediaFile.updateMany({ where: { adminId: id }, data: { adminId: null } });
+    const name = existing.name;
     await this.prisma.admin.delete({ where: { id } });
+    await this.prisma.auditLog.create({
+      data: { action: 'ADMIN_DELETE', entityType: 'admin', metadata: { name, email: existing.email } },
+    }).catch(() => {});
     return { data: { message: 'Admin deleted' } };
   }
 
@@ -362,5 +381,352 @@ export class AdminService {
   async updateSettings(payload: Partial<typeof this.settings>) {
     this.settings = { ...this.settings, ...payload };
     return { data: this.settings };
+  }
+
+  // ─── Reports: all members summary ─────────────────────────────────────────
+
+  async getMembersReport(dateFrom?: string, dateTo?: string) {
+    const from = dateFrom ? new Date(dateFrom) : new Date('2020-01-01');
+    const to   = dateTo   ? new Date(dateTo)   : new Date();
+
+    // All admins (non-system)
+    const admins = await this.prisma.admin.findMany({
+      where: { adminRole: { notIn: ['SUPER_ADMIN', 'ADMIN'] as any } },
+      select: { id: true, name: true, email: true, adminRole: true, teamType: true, lastLoginAt: true, isActive: true, createdAt: true },
+      orderBy: { name: 'asc' },
+    });
+
+    // Article counts per admin in date range
+    const articleRows = await this.prisma.$queryRaw<{ adminId: string; published: bigint; draft: bigint; total: bigint }[]>`
+      SELECT
+        "adminId",
+        COUNT(*) FILTER (WHERE status = 'PUBLISHED') ::bigint AS published,
+        COUNT(*) FILTER (WHERE status = 'DRAFT')     ::bigint AS draft,
+        COUNT(*)                                      ::bigint AS total
+      FROM "Article"
+      WHERE "createdAt" BETWEEN ${from} AND ${to}
+      GROUP BY "adminId"
+    `;
+
+    // Edit counts (ARTICLE_UPDATE audit logs) per admin in date range
+    const editRows = await this.prisma.$queryRaw<{ adminId: string; edits: bigint }[]>`
+      SELECT "adminId", COUNT(*)::bigint AS edits
+      FROM "AuditLog"
+      WHERE action = 'ARTICLE_UPDATE'
+        AND "createdAt" BETWEEN ${from} AND ${to}
+        AND "adminId" IS NOT NULL
+      GROUP BY "adminId"
+    `;
+
+    // Login counts per admin in date range
+    const loginRows = await this.prisma.$queryRaw<{ adminId: string; logins: bigint }[]>`
+      SELECT "adminId", COUNT(*)::bigint AS logins
+      FROM "AuditLog"
+      WHERE action = 'ADMIN_LOGIN'
+        AND "createdAt" BETWEEN ${from} AND ${to}
+        AND "adminId" IS NOT NULL
+      GROUP BY "adminId"
+    `;
+
+    const articleMap = new Map(articleRows.map(r => [r.adminId, r]));
+    const editMap    = new Map(editRows.map(r    => [r.adminId, Number(r.edits)]));
+    const loginMap   = new Map(loginRows.map(r   => [r.adminId, Number(r.logins)]));
+
+    const members = admins.map(a => {
+      const arts      = articleMap.get(a.id);
+      const published = arts ? Number(arts.published) : 0;
+      const drafts    = arts ? Number(arts.draft)     : 0;
+      const edits     = editMap.get(a.id)    ?? 0;
+      const logins    = loginMap.get(a.id)   ?? 0;
+      // Performance score: weighted formula
+      const score = Math.min(100, Math.round((published * 4 + edits * 1.5 + logins * 0.5)));
+      return { ...a, published, drafts, edits, logins, score };
+    });
+
+    return { data: members };
+  }
+
+  // ─── Reports: team summary (group members by teamType) ───────────────────
+
+  async getTeamReport(dateFrom?: string, dateTo?: string) {
+    const { data: members } = await this.getMembersReport(dateFrom, dateTo);
+
+    const teamMap = new Map<string, {
+      teamType: string; memberCount: number; published: number;
+      drafts: number; edits: number; logins: number; score: number;
+      members: typeof members;
+    }>();
+
+    for (const m of members) {
+      const key = m.teamType ?? 'UNASSIGNED';
+      if (!teamMap.has(key)) {
+        teamMap.set(key, { teamType: key, memberCount: 0, published: 0, drafts: 0, edits: 0, logins: 0, score: 0, members: [] });
+      }
+      const t = teamMap.get(key)!;
+      t.memberCount++;
+      t.published += m.published;
+      t.drafts    += m.drafts;
+      t.edits     += m.edits;
+      t.logins    += m.logins;
+      t.members.push(m);
+    }
+
+    const teams = Array.from(teamMap.values()).map(t => ({
+      ...t,
+      score: t.memberCount > 0 ? Math.round(t.published / t.memberCount * 4 + t.edits / t.memberCount) : 0,
+    }));
+
+    return { data: teams };
+  }
+
+  // ─── Reports: individual member detail ───────────────────────────────────
+
+  async getMemberDetail(adminId: string, dateFrom?: string, dateTo?: string) {
+    const from = dateFrom ? new Date(dateFrom) : new Date('2020-01-01');
+    const to   = dateTo   ? new Date(dateTo)   : new Date();
+
+    const admin = await this.prisma.admin.findUnique({
+      where: { id: adminId },
+      select: { id: true, name: true, email: true, adminRole: true, teamType: true, lastLoginAt: true, createdAt: true, isActive: true },
+    });
+    if (!admin) throw new Error('Admin not found');
+
+    const [articles, auditLogs] = await Promise.all([
+      this.prisma.article.findMany({
+        where: { adminId, createdAt: { gte: from, lte: to } },
+        select: { id: true, titleEn: true, status: true, publishedAt: true, createdAt: true, updatedAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      this.prisma.auditLog.findMany({
+        where: { adminId, createdAt: { gte: from, lte: to } },
+        select: { id: true, action: true, entityType: true, createdAt: true, ip: true },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      }),
+    ]);
+
+    const published = articles.filter(a => a.status === 'PUBLISHED').length;
+    const drafts    = articles.filter(a => a.status === 'DRAFT').length;
+    const edits     = auditLogs.filter(l => l.action === 'ARTICLE_UPDATE').length;
+    const logins    = auditLogs.filter(l => l.action === 'ADMIN_LOGIN').length;
+    const score     = Math.min(100, Math.round(published * 4 + edits * 1.5 + logins * 0.5));
+
+    // Daily activity (logins per day)
+    const loginDays = new Map<string, number>();
+    for (const l of auditLogs.filter(x => x.action === 'ADMIN_LOGIN')) {
+      const day = l.createdAt.toISOString().slice(0, 10);
+      loginDays.set(day, (loginDays.get(day) ?? 0) + 1);
+    }
+    const loginActivity = Array.from(loginDays.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, count]) => ({ date, count }));
+
+    return { data: { admin, metrics: { published, drafts, edits, logins, score }, articles, loginActivity } };
+  }
+
+  // ─── Reports: reporter app users summary ─────────────────────────────────
+
+  async getReporterReport(dateFrom?: string, dateTo?: string) {
+    const from = dateFrom ? new Date(dateFrom) : new Date('2020-01-01');
+    const to   = dateTo   ? new Date(dateTo)   : new Date();
+
+    const [total, verified, active, newInRange] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.user.count({ where: { isVerified: true } }).catch(() => 0),
+      this.prisma.user.count({ where: { isBanned: false } }),
+      this.prisma.user.count({ where: { createdAt: { gte: from, lte: to } } }),
+    ]);
+
+    // Top reporters by article submissions (reporter_app submissions via Article model)
+    const topReporters = await this.prisma.$queryRaw<{ name: string; count: bigint }[]>`
+      SELECT u.name, COUNT(a.id)::bigint AS count
+      FROM "User" u
+      LEFT JOIN "Article" a ON a."byline" ILIKE '%' || u.name || '%'
+        AND a."createdAt" BETWEEN ${from} AND ${to}
+      GROUP BY u.id, u.name
+      ORDER BY count DESC
+      LIMIT 10
+    `.catch(() => [] as any[]);
+
+    return {
+      data: {
+        summary: { total, verified, active, newInRange },
+        topReporters: topReporters.map((r: any) => ({ name: r.name, count: Number(r.count) })),
+      },
+    };
+  }
+
+  // ─── Reports: advertisement team ─────────────────────────────────────────
+
+  async getAdReport(dateFrom?: string, dateTo?: string) {
+    const from = dateFrom ? new Date(dateFrom) : new Date('2020-01-01');
+    const to   = dateTo   ? new Date(dateTo)   : new Date();
+
+    const [ads, activeAds] = await Promise.all([
+      this.prisma.localAd.findMany({
+        where: { createdAt: { gte: from, lte: to } },
+        select: {
+          id: true, title: true, adType: true, status: true, placement: true,
+          clickCount: true, impressions: true, startDate: true, endDate: true,
+          admin: { select: { name: true } },
+        },
+        orderBy: { impressions: 'desc' },
+      }),
+      this.prisma.localAd.count({ where: { status: 'ACTIVE' } }),
+    ]);
+
+    const totalImpressions = ads.reduce((s, a) => s + (a.impressions ?? 0), 0);
+    const totalClicks      = ads.reduce((s, a) => s + (a.clickCount ?? 0), 0);
+    const avgCtr           = totalImpressions > 0
+      ? Math.round((totalClicks / totalImpressions) * 1000) / 10
+      : 0;
+
+    return {
+      data: {
+        summary: { total: ads.length, activeAds, totalImpressions, totalClicks, avgCtr },
+        ads,
+      },
+    };
+  }
+}
+
+  // ─── Reports: all members summary ─────────────────────────────────────────
+
+  async getMembersReport(dateFrom?: string, dateTo?: string) {
+    const from = dateFrom ? new Date(dateFrom) : new Date('2020-01-01');
+    const to   = dateTo   ? new Date(dateTo)   : new Date();
+
+    const admins = await this.prisma.admin.findMany({
+      where: { adminRole: { notIn: ['SUPER_ADMIN', 'ADMIN'] as any } },
+      select: { id: true, name: true, email: true, adminRole: true, teamType: true, lastLoginAt: true, isActive: true, createdAt: true },
+      orderBy: { name: 'asc' },
+    });
+
+    const articleRows = await this.prisma.$queryRaw<{ adminId: string; published: bigint; draft: bigint }[]>`
+      SELECT "adminId",
+        COUNT(*) FILTER (WHERE status = 'PUBLISHED')::bigint AS published,
+        COUNT(*) FILTER (WHERE status = 'DRAFT')    ::bigint AS draft
+      FROM "Article"
+      WHERE "createdAt" BETWEEN ${from} AND ${to}
+      GROUP BY "adminId"
+    `;
+    const editRows = await this.prisma.$queryRaw<{ adminId: string; edits: bigint }[]>`
+      SELECT "adminId", COUNT(*)::bigint AS edits
+      FROM "AuditLog"
+      WHERE action = 'ARTICLE_UPDATE' AND "createdAt" BETWEEN ${from} AND ${to} AND "adminId" IS NOT NULL
+      GROUP BY "adminId"
+    `;
+    const loginRows = await this.prisma.$queryRaw<{ adminId: string; logins: bigint }[]>`
+      SELECT "adminId", COUNT(*)::bigint AS logins
+      FROM "AuditLog"
+      WHERE action = 'ADMIN_LOGIN' AND "createdAt" BETWEEN ${from} AND ${to} AND "adminId" IS NOT NULL
+      GROUP BY "adminId"
+    `;
+
+    const articleMap = new Map(articleRows.map(r => [r.adminId, r]));
+    const editMap    = new Map(editRows.map(r    => [r.adminId, Number(r.edits)]));
+    const loginMap   = new Map(loginRows.map(r   => [r.adminId, Number(r.logins)]));
+
+    const members = admins.map(a => {
+      const arts      = articleMap.get(a.id);
+      const published = arts ? Number(arts.published) : 0;
+      const drafts    = arts ? Number(arts.draft)     : 0;
+      const edits     = editMap.get(a.id)  ?? 0;
+      const logins    = loginMap.get(a.id) ?? 0;
+      const score     = Math.min(100, Math.round(published * 4 + edits * 1.5 + logins * 0.5));
+      return { ...a, published, drafts, edits, logins, score };
+    });
+
+    return { data: members };
+  }
+
+  // ─── Reports: team summary ────────────────────────────────────────────────
+
+  async getTeamReport(dateFrom?: string, dateTo?: string) {
+    const { data: members } = await this.getMembersReport(dateFrom, dateTo);
+    const teamMap = new Map<string, any>();
+
+    for (const m of members) {
+      const key = m.teamType ?? 'UNASSIGNED';
+      if (!teamMap.has(key)) teamMap.set(key, { teamType: key, memberCount: 0, published: 0, drafts: 0, edits: 0, logins: 0, members: [] });
+      const t = teamMap.get(key)!;
+      t.memberCount++; t.published += m.published; t.drafts += m.drafts;
+      t.edits += m.edits; t.logins += m.logins; t.members.push(m);
+    }
+
+    const teams = Array.from(teamMap.values()).map(t => ({
+      ...t,
+      score: t.memberCount > 0 ? Math.min(100, Math.round((t.published / t.memberCount) * 4 + (t.edits / t.memberCount) * 1.5)) : 0,
+    }));
+
+    return { data: teams };
+  }
+
+  // ─── Reports: individual member detail ───────────────────────────────────
+
+  async getMemberDetail(adminId: string, dateFrom?: string, dateTo?: string) {
+    const from = dateFrom ? new Date(dateFrom) : new Date('2020-01-01');
+    const to   = dateTo   ? new Date(dateTo)   : new Date();
+
+    const admin = await this.prisma.admin.findUnique({
+      where: { id: adminId },
+      select: { id: true, name: true, email: true, adminRole: true, teamType: true, lastLoginAt: true, createdAt: true, isActive: true },
+    });
+    if (!admin) throw new Error('Admin not found');
+
+    const [articles, auditLogs] = await Promise.all([
+      this.prisma.article.findMany({
+        where: { adminId, createdAt: { gte: from, lte: to } },
+        select: { id: true, titleEn: true, status: true, publishedAt: true, createdAt: true },
+        orderBy: { createdAt: 'desc' }, take: 50,
+      }),
+      this.prisma.auditLog.findMany({
+        where: { adminId, createdAt: { gte: from, lte: to } },
+        select: { id: true, action: true, createdAt: true, ip: true },
+        orderBy: { createdAt: 'desc' }, take: 200,
+      }),
+    ]);
+
+    const published = articles.filter(a => a.status === 'PUBLISHED').length;
+    const drafts    = articles.filter(a => a.status === 'DRAFT').length;
+    const edits     = auditLogs.filter(l => l.action === 'ARTICLE_UPDATE').length;
+    const logins    = auditLogs.filter(l => l.action === 'ADMIN_LOGIN').length;
+    const score     = Math.min(100, Math.round(published * 4 + edits * 1.5 + logins * 0.5));
+
+    const loginDays = new Map<string, number>();
+    for (const l of auditLogs.filter(x => x.action === 'ADMIN_LOGIN')) {
+      const day = new Date(l.createdAt).toISOString().slice(0, 10);
+      loginDays.set(day, (loginDays.get(day) ?? 0) + 1);
+    }
+    const loginActivity = Array.from(loginDays.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, count]) => ({ date, count }));
+
+    return { data: { admin, metrics: { published, drafts, edits, logins, score }, articles, loginActivity } };
+  }
+
+  // ─── Reports: ad team ────────────────────────────────────────────────────
+
+  async getAdReport(dateFrom?: string, dateTo?: string) {
+    const from = dateFrom ? new Date(dateFrom) : new Date('2020-01-01');
+    const to   = dateTo   ? new Date(dateTo)   : new Date();
+
+    const [ads, activeAds] = await Promise.all([
+      this.prisma.localAd.findMany({
+        where: { createdAt: { gte: from, lte: to } },
+        select: { id: true, title: true, adType: true, status: true, placement: true,
+          clickCount: true, impressions: true, startDate: true, endDate: true,
+          admin: { select: { name: true } } },
+        orderBy: { impressions: 'desc' },
+      }),
+      this.prisma.localAd.count({ where: { status: 'ACTIVE' } }),
+    ]);
+
+    const totalImpressions = ads.reduce((s, a) => s + (a.impressions ?? 0), 0);
+    const totalClicks      = ads.reduce((s, a) => s + (a.clickCount  ?? 0), 0);
+    const avgCtr = totalImpressions > 0 ? Math.round((totalClicks / totalImpressions) * 1000) / 10 : 0;
+
+    return { data: { summary: { total: ads.length, activeAds, totalImpressions, totalClicks, avgCtr }, ads } };
   }
 }

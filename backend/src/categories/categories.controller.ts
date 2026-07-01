@@ -7,6 +7,7 @@ import { CreateCategoryDto, UpdateCategoryDto } from './categories.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Reflector } from '@nestjs/core';
 
 class ReorderDto {
@@ -45,8 +46,8 @@ export class CategoriesController {
   @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))
   @Roles('SUPER_ADMIN', 'ADMIN')
   @ApiOperation({ summary: 'Create category (admin only)' })
-  create(@Body() dto: CreateCategoryDto) {
-    return this.categoriesService.create(dto);
+  create(@Body() dto: CreateCategoryDto, @CurrentUser('id') adminId: string) {
+    return this.categoriesService.create(dto, adminId);
   }
 
   // ── Reorder: swap with adjacent (no duplicates possible) ─────────────────
@@ -55,8 +56,8 @@ export class CategoriesController {
   @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))
   @Roles('SUPER_ADMIN', 'ADMIN')
   @ApiOperation({ summary: 'Move category up or down (atomic swap)' })
-  reorder(@Param('id') id: string, @Body() dto: ReorderDto) {
-    return this.categoriesService.reorder(id, dto.direction);
+  reorder(@Param('id') id: string, @Body() dto: ReorderDto, @CurrentUser('id') adminId: string) {
+    return this.categoriesService.reorder(id, dto.direction, adminId);
   }
 
   // ── Toggle active/inactive ────────────────────────────────────────────────
@@ -65,8 +66,8 @@ export class CategoriesController {
   @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))
   @Roles('SUPER_ADMIN', 'ADMIN')
   @ApiOperation({ summary: 'Toggle category active/inactive (never deletes)' })
-  toggleActive(@Param('id') id: string) {
-    return this.categoriesService.toggleActive(id);
+  toggleActive(@Param('id') id: string, @CurrentUser('id') adminId: string) {
+    return this.categoriesService.toggleActive(id, adminId);
   }
 
   // ── Update (name, slug, icon) ─────────────────────────────────────────────
@@ -75,8 +76,8 @@ export class CategoriesController {
   @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))
   @Roles('SUPER_ADMIN', 'ADMIN')
   @ApiOperation({ summary: 'Update category fields (admin only)' })
-  update(@Param('id') id: string, @Body() dto: UpdateCategoryDto) {
-    return this.categoriesService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateCategoryDto, @CurrentUser('id') adminId: string) {
+    return this.categoriesService.update(id, dto, adminId);
   }
 
   // ── Soft delete ───────────────────────────────────────────────────────────
@@ -85,7 +86,7 @@ export class CategoriesController {
   @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))
   @Roles('SUPER_ADMIN', 'ADMIN')
   @ApiOperation({ summary: 'Deactivate category — does NOT delete from DB' })
-  deactivate(@Param('id') id: string) {
-    return this.categoriesService.deactivate(id);
+  deactivate(@Param('id') id: string, @CurrentUser('id') adminId: string) {
+    return this.categoriesService.deactivate(id, adminId);
   }
 }

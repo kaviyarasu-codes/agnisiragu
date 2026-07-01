@@ -11,6 +11,8 @@ import { MediaModule } from './media/media.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
 import { HealthModule } from './health/health.module';
+import { LocalAdsModule } from './local-ads/local-ads.module';
+import { TeamsModule } from './teams/teams.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { HealthModule } from './health/health.module';
     NotificationsModule,
     AdminModule,
     HealthModule,
+    LocalAdsModule,
+    TeamsModule,
   ],
 })
 export class AppModule {}

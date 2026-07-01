@@ -65,6 +65,14 @@ export default function AppNavigator() {
         }}
       />
       <Tabs.Screen
+        name="bookmarks"
+        options={{
+          title: language === 'ta' ? 'சேமிப்பு' : 'Saved',
+          headerTitle: 'சேமிக்கப்பட்டவை / Saved',
+          tabBarIcon: ({ focused }) => <TabIcon name="🔖" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: language === 'ta' ? STRINGS.PROFILE_TA : STRINGS.PROFILE_EN,

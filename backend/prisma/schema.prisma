@@ -32,6 +32,9 @@ enum AdminRole {
   REPORTER_APP_MEMBER
   REPORTERS_MANAGER
   REPORTERS_MEMBER
+  ADVERTISEMENT_MANAGER
+  LOCAL_ADS_MANAGER
+  ADMOB_MANAGER
 }
 
 enum ArticleStatus {
@@ -59,6 +62,35 @@ enum NewsPriority {
   BREAKING
   REGULAR
   LOW
+}
+
+enum AdType {
+  IMAGE
+  VIDEO
+  BANNER
+  CAROUSEL
+}
+
+enum CtaType {
+  WHATSAPP
+  PHONE
+  WEBSITE
+  EMAIL
+  MAPS
+  FORM
+}
+
+enum AdStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  EXPIRED
+}
+
+enum AdPlacement {
+  ADMOB
+  LOCAL
+  BOTH
 }
 
 // ─── Phase 1 Models ──────────────────────────────────────────────────────────
@@ -98,6 +130,7 @@ model Admin {
   articles     Article[]
   auditLogs    AuditLog[]
   mediaFiles   MediaFile[]
+  localAds     LocalAd[]
 }
 
 model Category {
@@ -165,6 +198,7 @@ model AuditLog {
   entityId   String?
   metadata   Json?
   ip         String?
+  device     String?
   createdAt  DateTime @default(now())
 }
 
@@ -185,6 +219,41 @@ model AppConfig {
   key       String   @unique
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+model LocalAd {
+  id             String      @id @default(uuid())
+  title          String
+  description    String?
+  adType         AdType
+  mediaUrl       String?
+  carousel       Json?       // array of image URLs for CAROUSEL type
+  startDate      DateTime
+  endDate        DateTime
+  categoryId     String?
+  targetAudience String?
+  priority       Int         @default(0)
+  status         AdStatus    @default(DRAFT)
+  ctaType        CtaType
+  ctaValue       String      // WhatsApp number, phone, URL, email, coordinates, etc.
+  placement      AdPlacement @default(BOTH)
+  clickCount     Int         @default(0)
+  impressions    Int         @default(0)
+  adminId        String
+  admin          Admin       @relation(fields: [adminId], references: [id])
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model Team {
+  id          String   @id @default(uuid())
+  name        String
+  nameTa      String?
+  type        String   @unique  // e.g. 'EDITOR_TEAM', 'EDITORIAL_SPORTS'
+  description String?
+  color       String   @default("#CC1F2D")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
 }
 
 // ─── Legacy / Phase 2 Models (kept, not used in Phase 1 APIs) ────────────────

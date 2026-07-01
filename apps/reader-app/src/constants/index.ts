@@ -65,4 +65,6 @@ export const STRINGS = {
   LOGIN_WITH_PHONE_TA: 'தொலைபேசியில் உள்நுழைய',
   LOGIN_WITH_PHONE_EN: 'Login with Phone',
   ADVERTISEMENT_EN: 'Advertisement',
+  BOOKMARKS_TA: 'சேமிப்பு',
+  BOOKMARKS_EN: 'Saved',
 };

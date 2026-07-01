@@ -1,8 +1,19 @@
 // src/auth/auth.controller.ts
-import { Controller, Post, Body, HttpCode, HttpStatus, Headers } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { SendOtpDto, VerifyOtpDto, RefreshTokenDto, AdminLoginDto } from './auth.dto';
+
+function extractIp(req: Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) return (Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0]).trim();
+  return req.socket?.remoteAddress || req.ip || '';
+}
+
+function extractDevice(req: Request): string {
+  return (req.headers['user-agent'] || '').slice(0, 255);
+}
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -12,8 +23,6 @@ export class AuthController {
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send OTP to phone number via MSG91' })
-  @ApiResponse({ status: 200, description: 'OTP sent successfully' })
-  @ApiResponse({ status: 400, description: 'Rate limit exceeded or invalid phone' })
   sendOtp(@Body() dto: SendOtpDto) {
     return this.authService.sendOtp(dto.phone);
   }
@@ -21,7 +30,6 @@ export class AuthController {
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify OTP and receive JWT tokens' })
-  @ApiResponse({ status: 200, description: 'Returns accessToken, refreshToken, and user' })
   verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.authService.verifyOtp(dto.phone, dto.otp);
   }
@@ -36,8 +44,8 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout and invalidate refresh token' })
-  logout(@Body() dto: RefreshTokenDto) {
-    return this.authService.logout(dto.refreshToken);
+  logout(@Body() dto: RefreshTokenDto, @Req() req: Request) {
+    return this.authService.logout(dto.refreshToken, undefined, extractIp(req), extractDevice(req));
   }
 
   @Post('admin/login')
@@ -45,7 +53,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Admin login with email and password' })
   @ApiResponse({ status: 200, description: 'Returns accessToken and admin profile' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  adminLogin(@Body() dto: AdminLoginDto) {
-    return this.authService.adminLogin(dto.email, dto.password);
+  adminLogin(@Body() dto: AdminLoginDto, @Req() req: Request) {
+    return this.authService.adminLogin(dto.email, dto.password, extractIp(req), extractDevice(req));
   }
 }

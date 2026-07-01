@@ -33,7 +33,7 @@ export class AuthService implements OnModuleInit {
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,
       retryStrategy: (times) => {
-        if (times > 3) return null; // stop retrying
+        if (times > 3) return null;
         return Math.min(times * 500, 2000);
       },
     });
@@ -67,7 +67,7 @@ export class AuthService implements OnModuleInit {
   }
 
   private async redisIncr(key: string): Promise<number> {
-    if (!this.redisReady) return 0; // no rate limiting if Redis down
+    if (!this.redisReady) return 0;
     try { return await this.redis.incr(key); } catch { return 0; }
   }
 
@@ -76,10 +76,25 @@ export class AuthService implements OnModuleInit {
     try { await this.redis.expire(key, ttl); } catch { /* ignore */ }
   }
 
+  // ─── Audit Log helper ─────────────────────────────────────────────────────
+
+  private async writeAuditLog(opts: {
+    adminId?: string;
+    action: string;
+    entityType: string;
+    entityId?: string;
+    metadata?: Record<string, any>;
+    ip?: string;
+    device?: string;
+  }) {
+    try {
+      await this.prisma.auditLog.create({ data: opts });
+    } catch { /* non-critical — don't fail the request */ }
+  }
+
   // ─── OTP ─────────────────────────────────────────────────────────────────
 
   async sendOtp(phone: string): Promise<{ message: string }> {
-    // Rate limit: max 3 OTP requests per 10 minutes per phone
     const rateLimitKey = `otp_rate:${phone}`;
     const attempts = await this.redisIncr(rateLimitKey);
     if (attempts === 1) {
@@ -89,16 +104,10 @@ export class AuthService implements OnModuleInit {
       throw new BadRequestException('Too many OTP requests. Please try again after 10 minutes.');
     }
 
-    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Store hashed OTP in Redis with 5 min TTL
     const otpHash = await bcrypt.hash(otp, 10);
     await this.redisSet(`otp:${phone}`, otpHash, 'EX', 300);
-
-    // Send via MSG91
     await this.sendMsg91Otp(phone, otp);
-
     return { message: 'OTP sent successfully' };
   }
 
@@ -109,7 +118,7 @@ export class AuthService implements OnModuleInit {
 
     if (!authKey || !templateId) {
       this.logger.warn(`MSG91 not configured — OTP for ${phone}: ${otp}`);
-      return; // dev mode: just log the OTP
+      return;
     }
 
     const mobile = phone.startsWith('+') ? phone.slice(1) : phone;
@@ -179,7 +188,7 @@ export class AuthService implements OnModuleInit {
 
   // ─── Logout ───────────────────────────────────────────────────────────────
 
-  async logout(refreshToken: string): Promise<{ message: string }> {
+  async logout(refreshToken: string, adminId?: string, ip?: string, device?: string): Promise<{ message: string }> {
     try {
       const payload = this.jwtService.decode(refreshToken) as any;
       if (payload?.exp) {
@@ -187,6 +196,17 @@ export class AuthService implements OnModuleInit {
         if (ttl > 0) {
           await this.redisSet(`rt_blacklist:${refreshToken}`, '1', 'EX', ttl);
         }
+      }
+      const resolvedAdminId = adminId ?? (payload?.type === 'admin' ? payload?.sub : undefined);
+      if (resolvedAdminId) {
+        await this.writeAuditLog({
+          adminId: resolvedAdminId,
+          action: 'ADMIN_LOGOUT',
+          entityType: 'admin',
+          entityId: resolvedAdminId,
+          ip,
+          device,
+        });
       }
     } catch { /* ignore */ }
     return { message: 'Logged out successfully' };
@@ -212,16 +232,37 @@ export class AuthService implements OnModuleInit {
 
   // ─── Admin Login ─────────────────────────────────────────────────────────
 
-  async adminLogin(email: string, password: string) {
+  async adminLogin(email: string, password: string, ip?: string, device?: string) {
     const admin = await this.prisma.admin.findUnique({ where: { email } });
     if (!admin) throw new UnauthorizedException('Invalid credentials');
+    if (admin.isActive === false) throw new UnauthorizedException('Account is deactivated');
 
     const valid = await bcrypt.compare(password, admin.passwordHash);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
+    if (!valid) {
+      await this.writeAuditLog({
+        action: 'ADMIN_LOGIN_FAILED',
+        entityType: 'admin',
+        entityId: admin.id,
+        metadata: { email },
+        ip,
+        device,
+      });
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     await this.prisma.admin.update({
       where: { id: admin.id },
       data: { lastLoginAt: new Date() },
+    });
+
+    await this.writeAuditLog({
+      adminId: admin.id,
+      action: 'ADMIN_LOGIN',
+      entityType: 'admin',
+      entityId: admin.id,
+      metadata: { role: admin.adminRole, team: admin.teamType },
+      ip,
+      device,
     });
 
     const tokens = await this.issueTokens(admin.id, 'admin', admin.adminRole);

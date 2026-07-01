@@ -10,7 +10,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Reflector } from '@nestjs/core';
-import { IsEmail, IsString, MinLength, IsOptional, IsBoolean } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsBoolean, ValidateIf } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 const reflector = new Reflector();
@@ -21,12 +21,16 @@ class CreateAdminDto {
   @IsString() @MinLength(8) password: string;
   @IsString()               adminRole: string;
   @IsOptional() @IsString() team?: string;
+  @IsOptional() @IsString() phone?: string;
 }
 
 class UpdateAdminDto {
   @IsOptional() @IsString() @MinLength(2) name?: string;
   @IsOptional() @IsString()               adminRole?: string;
-  @IsOptional() @IsString() @MinLength(8) password?: string;
+  @IsOptional() @IsString()               phone?: string;
+  // Only validate password when it's a non-empty string — empty string means "keep current"
+  @ValidateIf((o) => o.password !== undefined && o.password !== '')
+  @IsString() @MinLength(8) password?: string;
   @IsOptional() @IsBoolean()
   @Transform(({ value }) => {
     if (value === 'true'  || value === true)  return true;
@@ -62,6 +66,42 @@ export class AdminController {
   @Get('reports/categories')
   @ApiOperation({ summary: 'Article count by category' })
   getCategoryReport() { return this.adminService.getCategoryReport(); }
+
+  @Get('reports/members')
+  @ApiQuery({ name: 'dateFrom', required: false })
+  @ApiQuery({ name: 'dateTo',   required: false })
+  @ApiOperation({ summary: 'All members performance report' })
+  getMembersReport(@Query('dateFrom') dateFrom?: string, @Query('dateTo') dateTo?: string) {
+    return this.adminService.getMembersReport(dateFrom, dateTo);
+  }
+
+  @Get('reports/teams')
+  @ApiQuery({ name: 'dateFrom', required: false })
+  @ApiQuery({ name: 'dateTo',   required: false })
+  @ApiOperation({ summary: 'Team-level performance report' })
+  getTeamReport(@Query('dateFrom') dateFrom?: string, @Query('dateTo') dateTo?: string) {
+    return this.adminService.getTeamReport(dateFrom, dateTo);
+  }
+
+  @Get('reports/member/:id')
+  @ApiQuery({ name: 'dateFrom', required: false })
+  @ApiQuery({ name: 'dateTo',   required: false })
+  @ApiOperation({ summary: 'Individual member detail report' })
+  getMemberDetail(
+    @Param('id') id: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+  ) {
+    return this.adminService.getMemberDetail(id, dateFrom, dateTo);
+  }
+
+  @Get('reports/ads')
+  @ApiQuery({ name: 'dateFrom', required: false })
+  @ApiQuery({ name: 'dateTo',   required: false })
+  @ApiOperation({ summary: 'Advertisement team report' })
+  getAdReport(@Query('dateFrom') dateFrom?: string, @Query('dateTo') dateTo?: string) {
+    return this.adminService.getAdReport(dateFrom, dateTo);
+  }
 
   @Get('accounts')
   @ApiOperation({ summary: 'List all admin accounts' })
@@ -120,6 +160,7 @@ export class AdminController {
   @ApiQuery({ name: 'limit',    required: false })
   @ApiQuery({ name: 'action',   required: false })
   @ApiQuery({ name: 'adminId',  required: false })
+  @ApiQuery({ name: 'team',     required: false })
   @ApiQuery({ name: 'dateFrom', required: false })
   @ApiQuery({ name: 'dateTo',   required: false })
   getAuditLogs(
@@ -127,13 +168,14 @@ export class AdminController {
     @Query('limit')    limit?: string,
     @Query('action')   action?: string,
     @Query('adminId')  adminId?: string,
+    @Query('team')     team?: string,
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo')   dateTo?: string,
   ) {
     return this.adminService.getAuditLogs({
-      page:    page  ? Number(page)  : 1,
-      limit:   limit ? Number(limit) : 50,
-      action, adminId, dateFrom, dateTo,
+      page:  page  ? Number(page)  : 1,
+      limit: limit ? Number(limit) : 50,
+      action, adminId, team, dateFrom, dateTo,
     });
   }
 

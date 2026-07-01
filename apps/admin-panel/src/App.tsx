@@ -13,6 +13,8 @@ import SettingsPage from './pages/SettingsPage';
 import AccountsPage from './pages/AccountsPage';
 import ReportsPage from './pages/ReportsPage';
 import AppConfigPage from './pages/AppConfigPage';
+import LocalAdsPage from './pages/LocalAdsPage';
+import TeamManagementPage from './pages/TeamManagementPage';
 import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
 
@@ -26,20 +28,22 @@ export default function App() {
           <PrivateRoute>
             <Layout>
               <Routes>
-                <Route path="/"              element={<DashboardPage />} />
-                <Route path="/articles"      element={<ArticleListPage />} />
-                <Route path="/articles/new"  element={<ArticleFormPage mode="create" />} />
-                <Route path="/articles/:id/edit" element={<ArticleFormPage mode="edit" />} />
-                <Route path="/categories"    element={<CategoryManagerPage />} />
-                <Route path="/users"         element={<UserManagementPage />} />
-                <Route path="/media"         element={<MediaLibraryPage />} />
-                <Route path="/notifications" element={<PushNotificationPage />} />
-                <Route path="/reports"       element={<ReportsPage />} />
-                <Route path="/audit-logs"    element={<AuditLogPage />} />
-                <Route path="/accounts"      element={<AccountsPage />} />
-                <Route path="/app-config"    element={<AppConfigPage />} />
-                <Route path="/settings"      element={<SettingsPage />} />
-                <Route path="*"              element={<Navigate to="/" replace />} />
+                <Route path="/"                   element={<DashboardPage />} />
+                <Route path="/articles"           element={<ArticleListPage />} />
+                <Route path="/articles/new"       element={<ArticleFormPage mode="create" />} />
+                <Route path="/articles/:id/edit"  element={<ArticleFormPage mode="edit" />} />
+                <Route path="/categories"         element={<CategoryManagerPage />} />
+                <Route path="/users"              element={<UserManagementPage />} />
+                <Route path="/media"              element={<MediaLibraryPage />} />
+                <Route path="/notifications"      element={<PushNotificationPage />} />
+                <Route path="/reports"            element={<ReportsPage />} />
+                <Route path="/audit-logs"         element={<AuditLogPage />} />
+                <Route path="/accounts"           element={<AccountsPage />} />
+                <Route path="/teams"              element={<TeamManagementPage />} />
+                <Route path="/local-ads"          element={<LocalAdsPage />} />
+                <Route path="/app-config"         element={<AppConfigPage />} />
+                <Route path="/settings"           element={<SettingsPage />} />
+                <Route path="*"                   element={<Navigate to="/" replace />} />
               </Routes>
             </Layout>
           </PrivateRoute>

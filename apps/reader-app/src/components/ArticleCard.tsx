@@ -4,6 +4,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { COLORS } from '@/constants';
+import { useBookmarksStore } from '@/store/bookmarks.store';
 import type { Article, Language } from '@/types';
 
 interface ArticleCardProps {
@@ -39,6 +40,9 @@ export default function ArticleCard({ article, onPress, language }: ArticleCardP
   const categoryName = language === 'ta' ? article.category.nameTa : article.category.nameEn;
   const categoryColor = CATEGORY_COLORS[article.category.slug] ?? COLORS.primary;
 
+  const { isBookmarked, toggleBookmark } = useBookmarksStore();
+  const saved = isBookmarked(article.id);
+
   return (
     <TouchableOpacity style={styles.card} onPress={() => onPress(article)} activeOpacity={0.85}>
       {article.thumbnailUrl ? (
@@ -68,7 +72,18 @@ export default function ArticleCard({ article, onPress, language }: ArticleCardP
           {title}
         </Text>
 
-        <Text style={styles.time}>{timeAgo(article.publishedAt)}</Text>
+        <View style={styles.footer}>
+          <Text style={styles.time}>{timeAgo(article.publishedAt)}</Text>
+          <TouchableOpacity
+            onPress={() => toggleBookmark(article)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.bookmarkBtn}
+          >
+            <Text style={[styles.bookmarkIcon, saved && styles.bookmarkIconSaved]}>
+              {saved ? '🔖' : '🏷️'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -135,9 +150,24 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     flex: 1,
   },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
   time: {
     color: COLORS.textSecondary,
     fontSize: 11,
-    marginTop: 4,
+  },
+  bookmarkBtn: {
+    padding: 2,
+  },
+  bookmarkIcon: {
+    fontSize: 14,
+    opacity: 0.4,
+  },
+  bookmarkIconSaved: {
+    opacity: 1,
   },
 });

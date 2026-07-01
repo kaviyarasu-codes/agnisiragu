@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
+import { useBookmarksStore } from '@/store/bookmarks.store';
 import { getToken, getArticleReadCount } from '@/lib/storage';
 import { get } from '@/lib/api';
 import type { User } from '@/types';
@@ -28,6 +29,7 @@ const queryClient = new QueryClient({
 function AppBootstrap({ children }: { children: React.ReactNode }) {
   const { setUser, setAuthenticated, setArticleReadCount } = useAuthStore();
   const { hydrateFromStorage } = useAppStore();
+  const { hydrate: hydrateBookmarks } = useBookmarksStore();
 
   useEffect(() => {
     async function bootstrap() {
@@ -36,6 +38,7 @@ function AppBootstrap({ children }: { children: React.ReactNode }) {
           getToken(),
           getArticleReadCount(),
           hydrateFromStorage(),
+          hydrateBookmarks(),
         ]);
 
         setArticleReadCount(readCount as number);

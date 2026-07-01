@@ -35,13 +35,16 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { data: statsData, isLoading: statsLoading } = useStats();
   const { data: articlesData, isLoading: articlesLoading } = useArticles({ limit: 5 });
-  const { data: trendData, isLoading: trendLoading } = useQuery({
+  const { data: trendData, isLoading: trendLoading, isError: trendError } = useQuery({
     queryKey: ['weekly-trend'],
     queryFn: () => apiGet<{ data: { day: string; count: number }[] }>('/admin/stats/weekly-trend'),
     staleTime: 5 * 60 * 1000,
+    refetchInterval: 60 * 1000, // refresh every minute
+    retry: 2,
   });
 
   const weeklyData = trendData?.data ?? WEEKLY_FALLBACK;
+  const hasChartData = weeklyData.some(d => d.count > 0);
 
   const stats = statsData?.data;
   const recentArticles = articlesData?.data?.slice(0, 5) ?? [];
@@ -121,12 +124,33 @@ export default function DashboardPage() {
               <div className="h-[200px] flex items-center justify-center">
                 <Loader2 size={22} className="animate-spin text-red" />
               </div>
+            ) : trendError ? (
+              <div className="h-[200px] flex flex-col items-center justify-center text-text-muted gap-2">
+                <TrendingUp size={28} />
+                <p className="text-sm">Unable to load chart data</p>
+                <p className="text-xs">Deploy the backend and run the migration</p>
+              </div>
+            ) : !hasChartData ? (
+              <div className="relative">
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={weeklyData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="2 4" stroke="#E4E6EA" vertical={false} />
+                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                    <Bar dataKey="count" fill="#E4E6EA" radius={[3, 3, 0, 0]} maxBarSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <p className="text-sm font-medium text-text-muted">No articles this week</p>
+                  <p className="text-xs text-text-muted mt-1">Start publishing to see stats</p>
+                </div>
+              </div>
             ) : (
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={weeklyData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="2 4" stroke="#E4E6EA" vertical={false} />
                 <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: '#F2F3F5' }} />
                 <Bar dataKey="count" fill="#CC1F2D" radius={[3, 3, 0, 0]} maxBarSize={32} />
               </BarChart>
