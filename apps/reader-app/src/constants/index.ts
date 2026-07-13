@@ -7,7 +7,7 @@ export const API_BASE_URL = __DEV__
   ? 'http://10.65.105.253:3000/api/v1'   // ← replace with your laptop IP for local dev
   : 'https://agnisiragu-backend-production.up.railway.app/api/v1';
 
-export const FREE_ARTICLE_LIMIT = 10;
+export const FREE_ARTICLE_LIMIT = Infinity; // unlock all — re-enable when ready to gate
 
 export const COLORS = {
   primary: '#1E3A5F',

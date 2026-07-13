@@ -43,7 +43,6 @@ class UpdateAdminDto {
 @ApiTags('Admin')
 @ApiBearerAuth()
 @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))
-@Roles('SUPER_ADMIN', 'ADMIN')
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}

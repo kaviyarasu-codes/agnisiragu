@@ -30,24 +30,15 @@ export default function ProfileScreen() {
   );
   const [loggingOut, setLoggingOut] = useState(false);
 
-  if (!isAuthenticated) {
-    return (
-      <View style={styles.guestContainer}>
-        <Text style={styles.guestTitle}>
-          சுயவிவரம் பார்க்க உள்நுழையவும்{'\n'}Login to view profile
-        </Text>
-        <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/login')}>
-          <Text style={styles.loginButtonText}>
-            {STRINGS.LOGIN_TA} / {STRINGS.LOGIN_EN}
-          </Text>
-        </TouchableOpacity>
-        <View style={styles.readCountBox}>
-          <Text style={styles.readCountLabel}>இலவச செய்திகள் படிக்கப்பட்டன / Free articles read</Text>
-          <Text style={styles.readCountValue}>{articleReadCount} / 10</Text>
-        </View>
-      </View>
-    );
-  }
+  // Guest banner — shown at the top of the profile page for non-authenticated users
+  const GuestBanner = !isAuthenticated ? (
+    <TouchableOpacity style={styles.guestBanner} onPress={() => router.push('/login')}>
+      <Text style={styles.guestBannerText}>
+        உள்நுழைந்து அனைத்து வசதிகளையும் பயன்படுத்துங்கள்
+      </Text>
+      <Text style={styles.guestBannerSub}>Tap to login and unlock all features</Text>
+    </TouchableOpacity>
+  ) : null;
 
   async function handleLanguageToggle(lang: Language) {
     setLanguage(lang);
@@ -86,21 +77,23 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* User Info */}
-      <View style={styles.profileCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {user?.name ? user.name[0].toUpperCase() : user?.phone.slice(-2) ?? 'U'}
-          </Text>
+      {/* Guest banner or user info */}
+      {!isAuthenticated ? GuestBanner : (
+        <View style={styles.profileCard}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {user?.name ? user.name[0].toUpperCase() : user?.phone.slice(-2) ?? 'U'}
+            </Text>
+          </View>
+          <Text style={styles.userName}>{user?.name ?? 'பயனர் / User'}</Text>
+          <Text style={styles.userPhone}>{user?.phone}</Text>
+          <View style={styles.readCountPill}>
+            <Text style={styles.readCountPillText}>
+              {articleReadCount} செய்திகள் படிக்கப்பட்டன / articles read
+            </Text>
+          </View>
         </View>
-        <Text style={styles.userName}>{user?.name ?? 'பயனர் / User'}</Text>
-        <Text style={styles.userPhone}>{user?.phone}</Text>
-        <View style={styles.readCountPill}>
-          <Text style={styles.readCountPillText}>
-            {articleReadCount} செய்திகள் படிக்கப்பட்டன / articles read
-          </Text>
-        </View>
-      </View>
+      )}
 
       {/* Language Preference */}
       <View style={styles.section}>
@@ -147,20 +140,22 @@ export default function ProfileScreen() {
         </View>
       )}
 
-      {/* Logout */}
-      <TouchableOpacity
-        style={styles.logoutButton}
-        onPress={handleLogout}
-        disabled={loggingOut}
-      >
-        {loggingOut ? (
-          <ActivityIndicator color={COLORS.surface} />
-        ) : (
-          <Text style={styles.logoutButtonText}>
-            {STRINGS.LOGOUT_TA} / {STRINGS.LOGOUT_EN}
-          </Text>
-        )}
-      </TouchableOpacity>
+      {/* Logout — only for logged-in users */}
+      {isAuthenticated && (
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          disabled={loggingOut}
+        >
+          {loggingOut ? (
+            <ActivityIndicator color={COLORS.surface} />
+          ) : (
+            <Text style={styles.logoutButtonText}>
+              {STRINGS.LOGOUT_TA} / {STRINGS.LOGOUT_EN}
+            </Text>
+          )}
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 }
@@ -170,49 +165,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  guestContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-    backgroundColor: COLORS.background,
-    gap: 20,
-  },
-  guestTitle: {
-    fontSize: 17,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 28,
-  },
-  loginButton: {
+  guestBanner: {
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 36,
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  loginButtonText: {
-    color: COLORS.surface,
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  readCountBox: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 10,
-    padding: 16,
+    padding: 18,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
     gap: 4,
   },
-  readCountLabel: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
+  guestBannerText: {
+    color: COLORS.surface,
+    fontSize: 14,
+    fontWeight: '600',
     textAlign: 'center',
   },
-  readCountValue: {
-    color: COLORS.primary,
-    fontSize: 22,
-    fontWeight: '700',
+  guestBannerSub: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    textAlign: 'center',
   },
   profileCard: {
     backgroundColor: COLORS.primary,
