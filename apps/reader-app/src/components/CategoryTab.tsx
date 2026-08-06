@@ -1,13 +1,7 @@
 // src/components/CategoryTab.tsx
 
 import React from 'react';
-import {
-  ScrollView,
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ScrollView, TouchableOpacity, Text, View, StyleSheet } from 'react-native';
 import { COLORS } from '@/constants';
 import type { Category, Language } from '@/types';
 
@@ -21,30 +15,20 @@ interface CategoryTabProps {
 export default function CategoryTab({ categories, selectedId, onSelect, language }: CategoryTabProps) {
   return (
     <View style={styles.wrapper}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.container}
-      >
-        <TouchableOpacity
-          style={[styles.tab, !selectedId && styles.activeTab]}
-          onPress={() => onSelect(null)}
-        >
-          <Text style={[styles.tabText, !selectedId && styles.activeTabText]}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.container}>
+        <TouchableOpacity style={styles.tab} onPress={() => onSelect(null)}>
+          <Text style={[styles.label, !selectedId && styles.labelActive]}>
             {language === 'ta' ? 'அனைத்தும்' : 'All'}
           </Text>
+          {!selectedId && <View style={styles.underline} />}
         </TouchableOpacity>
-
         {categories.map((cat) => {
           const isActive = selectedId === cat.id;
           const name = language === 'ta' ? cat.nameTa : cat.nameEn;
           return (
-            <TouchableOpacity
-              key={cat.id}
-              style={[styles.tab, isActive && styles.activeTab]}
-              onPress={() => onSelect(cat.id)}
-            >
-              <Text style={[styles.tabText, isActive && styles.activeTabText]}>{name}</Text>
+            <TouchableOpacity key={cat.id} style={styles.tab} onPress={() => onSelect(cat.id)}>
+              <Text style={[styles.label, isActive && styles.labelActive]}>{name}</Text>
+              {isActive && <View style={styles.underline} />}
             </TouchableOpacity>
           );
         })}
@@ -55,35 +39,37 @@ export default function CategoryTab({ categories, selectedId, onSelect, language
 
 const styles = StyleSheet.create({
   wrapper: {
+    backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.surface,
   },
   container: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
+    paddingHorizontal: 14,
     flexDirection: 'row',
+    gap: 4,
   },
   tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: COLORS.background,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    paddingHorizontal: 10,
+    paddingTop: 12,
+    paddingBottom: 0,
+    alignItems: 'center',
+    minWidth: 48,
   },
-  activeTab: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  tabText: {
+  label: {
     fontSize: 13,
     fontWeight: '500',
-    color: COLORS.textSecondary,
+    color: COLORS.inkLight,
+    paddingBottom: 10,
   },
-  activeTabText: {
-    color: COLORS.surface,
-    fontWeight: '600',
+  labelActive: {
+    color: COLORS.primary,
+    fontWeight: '800',
+  },
+  underline: {
+    height: 2.5,
+    backgroundColor: COLORS.primary,
+    borderRadius: 2,
+    alignSelf: 'stretch',
+    marginTop: -2,
   },
 });

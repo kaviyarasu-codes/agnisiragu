@@ -10,15 +10,43 @@ export const API_BASE_URL = __DEV__
 export const FREE_ARTICLE_LIMIT = Infinity; // unlock all — re-enable when ready to gate
 
 export const COLORS = {
-  primary: '#1E3A5F',
-  accent: '#E63946',
-  background: '#F8F9FA',
-  surface: '#FFFFFF',
-  text: '#111827',
-  textSecondary: '#6B7280',
-  border: '#E5E7EB',
-  success: '#16A34A',
-  warning: '#D97706',
+  // Brand
+  primary:       '#CC1F2D',   // Agnisiragu red
+  primaryDark:   '#A8181F',
+
+  // Backgrounds — warm newsprint feel
+  background:    '#F5F1EB',
+  surface:       '#FFFFFF',
+  surfaceWarm:   '#EDE9E3',
+
+  // Ink / Typography
+  ink:           '#1C1917',   // deep ink (headlines)
+  inkSecondary:  '#57534E',   // body text
+  inkLight:      '#A8A29E',   // timestamps, muted
+
+  // Borders
+  border:        '#DDD8D0',
+  borderStrong:  '#C5BFB8',
+
+  // Status
+  accent:        '#CC1F2D',
+  success:       '#16A34A',
+  warning:       '#D97706',
+
+  // Legacy aliases (keep so existing screens don't break)
+  text:          '#1C1917',
+  textSecondary: '#57534E',
+
+  // Category strip colors (left border on cards)
+  catColors: {
+    politics:      '#2563EB',
+    sports:        '#16A34A',
+    entertainment: '#7C3AED',
+    business:      '#D97706',
+    technology:    '#0891B2',
+    health:        '#DC2626',
+    default:       '#CC1F2D',
+  },
 };
 
 export const FONTS = {

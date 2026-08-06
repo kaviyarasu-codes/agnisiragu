@@ -94,13 +94,14 @@ export default function HomeScreen() {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: ListItem }) => {
+    ({ item, index }: { item: ListItem; index: number }) => {
       if (item.type === 'ad') return <AdBanner />;
       return (
         <ArticleCard
           article={item.article}
           onPress={handleArticlePress}
           language={language}
+          index={index}
         />
       );
     },
