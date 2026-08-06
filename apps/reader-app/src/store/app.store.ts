@@ -6,9 +6,11 @@ import type { Language } from '@/types';
 
 interface AppStore {
   language: Language;
+  colorScheme: 'light' | 'dark' | 'system';
   selectedCategories: string[];
   hydrated: boolean;
   setLanguage: (lang: Language) => void;
+  setColorScheme: (scheme: 'light' | 'dark' | 'system') => void;
   toggleCategory: (categoryId: string) => void;
   setSelectedCategories: (ids: string[]) => void;
   clearCategoryFilter: () => void;
@@ -17,8 +19,14 @@ interface AppStore {
 
 export const useAppStore = create<AppStore>((set, get) => ({
   language: 'ta',
+  colorScheme: 'system',
   selectedCategories: [],
   hydrated: false,
+
+  setColorScheme: (scheme) => {
+    set({ colorScheme: scheme });
+    setUserPrefs({ ...(getUserPrefs as any), colorScheme: scheme }).catch(() => {});
+  },
 
   setLanguage: (lang) => {
     set({ language: lang });

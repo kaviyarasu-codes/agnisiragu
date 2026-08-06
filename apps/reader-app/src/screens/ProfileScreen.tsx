@@ -14,6 +14,7 @@ import {
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
+import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useCategories } from '@/hooks/useCategories';
 import { patch } from '@/lib/api';
@@ -22,7 +23,8 @@ import type { Language } from '@/types';
 
 export default function ProfileScreen() {
   const { user, isAuthenticated, articleReadCount } = useAuthStore();
-  const { language, setLanguage } = useAppStore();
+  const { language, setLanguage, colorScheme, setColorScheme } = useAppStore();
+  const t = useTheme();
   const { logout } = useAuth();
   const { data: categories } = useCategories();
   const [notifCategories, setNotifCategories] = useState<string[]>(
@@ -94,6 +96,24 @@ export default function ProfileScreen() {
           </View>
         </View>
       )}
+
+      {/* Theme Toggle */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>தோற்றம் / Appearance</Text>
+        <View style={styles.langRow}>
+          {(['light', 'dark', 'system'] as const).map((s) => (
+            <TouchableOpacity
+              key={s}
+              style={[styles.langBtn, colorScheme === s && { borderColor: t.red, backgroundColor: t.red }]}
+              onPress={() => setColorScheme(s)}
+            >
+              <Text style={[styles.langBtnText, colorScheme === s && { color: '#fff' }]}>
+                {s === 'light' ? '☀️ Light' : s === 'dark' ? '🌙 Dark' : '📱 System'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
 
       {/* Language Preference */}
       <View style={styles.section}>

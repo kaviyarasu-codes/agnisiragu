@@ -1,88 +1,95 @@
 // src/components/BreakingNewsCarousel.tsx
+// Style: Tamil Samayam / Dailyhunt — red LIVE ticker + full-width card carousel
 
 import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { COLORS } from '@/constants';
+import { useTheme } from '@/hooks/useTheme';
 import type { Article, Language } from '@/types';
 
 const { width: W } = Dimensions.get('window');
-const CARD_W = W - 28;
 
 function timeAgo(dateString: string): string {
   const m = Math.floor((Date.now() - new Date(dateString).getTime()) / 60000);
   if (m < 1) return 'இப்போது';
-  if (m < 60) return `${m} நிமிடம் முன்`;
-  return `${Math.floor(m / 60)} மணி முன்`;
+  if (m < 60) return `${m}m`;
+  return `${Math.floor(m / 60)}h`;
 }
 
 interface Props { articles: Article[]; language: Language; }
 
 export default function BreakingNewsCarousel({ articles, language }: Props) {
+  const t = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
     if (articles.length <= 1) return;
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       const next = (idx + 1) % articles.length;
-      scrollRef.current?.scrollTo({ x: next * CARD_W, animated: true });
+      scrollRef.current?.scrollTo({ x: next * W, animated: true });
       setIdx(next);
-    }, 4500);
-    return () => clearInterval(t);
+    }, 5000);
+    return () => clearInterval(timer);
   }, [idx, articles.length]);
 
   if (!articles.length) return null;
 
   return (
-    <View style={s.container}>
-      <View style={s.header}>
-        <View style={s.liveRow}>
+    <View>
+      {/* RED TICKER STRIP */}
+      <View style={[s.ticker, { backgroundColor: t.red }]}>
+        <View style={s.tickerLeft}>
           <View style={s.liveDot} />
-          <Text style={s.liveText}>BREAKING NEWS</Text>
+          <Text style={s.tickerLabel}>LIVE</Text>
         </View>
-        <Text style={s.headerRight}>முக்கிய செய்திகள்</Text>
+        <Text style={s.tickerText} numberOfLines={1}>
+          {(() => {
+            const a = articles[idx];
+            return language === 'ta' ? a.titleTa : a.titleEn;
+          })()}
+        </Text>
       </View>
 
+      {/* FULL-WIDTH CAROUSEL */}
       <ScrollView
         ref={scrollRef}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={(e) => setIdx(Math.round(e.nativeEvent.contentOffset.x / CARD_W))}
+        onMomentumScrollEnd={(e) => setIdx(Math.round(e.nativeEvent.contentOffset.x / W))}
         decelerationRate="fast"
-        snapToInterval={CARD_W}
       >
         {articles.map((article) => {
           const title = language === 'ta' ? article.titleTa : article.titleEn;
           return (
             <TouchableOpacity
               key={article.id}
-              style={s.card}
-              activeOpacity={0.9}
+              style={[s.card, { width: W }]}
+              activeOpacity={0.92}
               onPress={() => router.push(`/article/${article.id}`)}
             >
-              {article.thumbnailUrl ? (
-                <Image source={{ uri: article.thumbnailUrl }} style={s.img} contentFit="cover" />
-              ) : (
-                <View style={[s.img, { backgroundColor: COLORS.primaryDark }]} />
-              )}
-              <View style={s.imgOverlay} />
-              <View style={s.accentBar} />
-              <View style={s.textBlock}>
-                <Text style={s.title} numberOfLines={3}>{title}</Text>
-                <Text style={s.time}>{timeAgo(article.publishedAt)}</Text>
+              {article.thumbnailUrl
+                ? <Image source={{ uri: article.thumbnailUrl }} style={s.img} contentFit="cover" />
+                : <View style={[s.img, { backgroundColor: t.bgAlt }]} />}
+              {/* Dark gradient overlay */}
+              <View style={s.overlay} />
+              {/* Title on image */}
+              <View style={s.textWrap}>
+                <Text style={s.cardTitle} numberOfLines={2}>{title}</Text>
+                <Text style={s.cardTime}>{timeAgo(article.publishedAt)}</Text>
               </View>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
+      {/* DOT INDICATORS */}
       {articles.length > 1 && (
-        <View style={s.dots}>
+        <View style={[s.dots, { backgroundColor: t.bg }]}>
           {articles.map((_, i) => (
-            <View key={i} style={[s.dot, i === idx && s.dotActive]} />
+            <View key={i} style={[s.dot, { backgroundColor: i === idx ? t.red : t.border }, i === idx && s.dotActive]} />
           ))}
         </View>
       )}
@@ -91,34 +98,33 @@ export default function BreakingNewsCarousel({ articles, language }: Props) {
 }
 
 const s = StyleSheet.create({
-  container: { marginBottom: 6 },
-  header: {
+  ticker: {
     flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14, paddingVertical: 10,
+    paddingHorizontal: 12, paddingVertical: 8, gap: 10,
   },
-  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary },
-  liveText: { color: COLORS.primary, fontSize: 11, fontWeight: '800', letterSpacing: 1.4 },
-  headerRight: { color: COLORS.inkLight, fontSize: 11, fontWeight: '500' },
-  card: {
-    width: CARD_W, height: 130,
-    marginHorizontal: 14, borderRadius: 3,
-    overflow: 'hidden', backgroundColor: '#1A1410',
+  tickerLeft: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4,
   },
-  img: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  imgOverlay: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(15,10,5,0.65)',
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
+  tickerLabel: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  tickerText: { flex: 1, color: '#fff', fontSize: 12, fontWeight: '600' },
+
+  card: { height: 220 },
+  img: { width: '100%', height: '100%' },
+  overlay: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: '65%',
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
-  accentBar: {
-    position: 'absolute', left: 0, top: 0, bottom: 0,
-    width: 3, backgroundColor: COLORS.primary,
+  textWrap: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    padding: 16, gap: 4,
   },
-  textBlock: { flex: 1, padding: 14, paddingLeft: 16, justifyContent: 'center', gap: 8 },
-  title: { color: '#FFF', fontSize: 15, fontWeight: '700', lineHeight: 22, letterSpacing: -0.2 },
-  time: { color: 'rgba(255,255,255,0.5)', fontSize: 11 },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 8, marginBottom: 2 },
-  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: COLORS.border },
-  dotActive: { backgroundColor: COLORS.primary, width: 16 },
+  cardTitle: { color: '#fff', fontSize: 17, fontWeight: '800', lineHeight: 24, letterSpacing: -0.2 },
+  cardTime: { color: 'rgba(255,255,255,0.65)', fontSize: 12 },
+
+  dots: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 8, gap: 5 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  dotActive: { width: 20, height: 4, borderRadius: 2 },
 });

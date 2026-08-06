@@ -1,176 +1,231 @@
 // src/components/ArticleCard.tsx
+// Style: Dailyhunt / Tamil Samayam — full-width image, bold text, action row
 
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Share, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
-import { COLORS } from '@/constants';
 import { useBookmarksStore } from '@/store/bookmarks.store';
+import { useTheme } from '@/hooks/useTheme';
+import { CAT_COLORS } from '@/theme';
 import type { Article, Language } from '@/types';
+
+const { width: SW } = Dimensions.get('window');
 
 interface ArticleCardProps {
   article: Article;
   onPress: (article: Article) => void;
   language: Language;
-  index?: number; // 0=hero, 1-9=feature, 10+=compact
+  index?: number;
 }
 
 function timeAgo(dateString: string): string {
-  const diffMins = Math.floor((Date.now() - new Date(dateString).getTime()) / 60000);
-  if (diffMins < 1) return 'இப்போது';
-  if (diffMins < 60) return `${diffMins}m`;
-  const h = Math.floor(diffMins / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
+  const m = Math.floor((Date.now() - new Date(dateString).getTime()) / 60000);
+  if (m < 1) return 'இப்போது';
+  if (m < 60) return `${m} நிமிடம் முன்`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} மணி முன்`;
+  return `${Math.floor(h / 24)} நாள் முன்`;
 }
 
-function getCatColor(slug: string): string {
-  const map: Record<string, string> = {
-    politics: '#2563EB', sports: '#16A34A', entertainment: '#7C3AED',
-    business: '#D97706', technology: '#0891B2', health: '#DC2626',
-  };
-  return map[slug] ?? COLORS.primary;
+function getCatColor(slug: string) {
+  return CAT_COLORS[slug] ?? CAT_COLORS.default;
 }
 
-// ── HERO (index 0) ────────────────────────────────────────────────────
-function HeroCard({ article, onPress, language }: Omit<ArticleCardProps, 'index'>) {
+// ── ACTION ROW ──────────────────────────────────────────────────────────────
+function ActionRow({ article, language }: { article: Article; language: Language }) {
+  const t = useTheme();
   const { isBookmarked, toggleBookmark } = useBookmarksStore();
   const saved = isBookmarked(article.id);
+  const [likes, setLikes] = useState(Math.floor(Math.random() * 120 + 10));
+  const [liked, setLiked] = useState(false);
+
+  function handleLike() {
+    setLiked((p) => !p);
+    setLikes((p) => (liked ? p - 1 : p + 1));
+  }
+
+  async function handleShare() {
+    const title = language === 'ta' ? article.titleTa : article.titleEn;
+    await Share.share({ title, message: `${title}\nhttps://agnisiragu.com/article/${article.id}` });
+  }
+
+  return (
+    <View style={[ar.row, { borderTopColor: t.border }]}>
+      <TouchableOpacity style={ar.btn} onPress={handleLike}>
+        <Text style={[ar.icon, liked && { color: t.red }]}>👍</Text>
+        <Text style={[ar.label, { color: liked ? t.red : t.inkMuted }]}>{likes}</Text>
+      </TouchableOpacity>
+      <View style={[ar.divider, { backgroundColor: t.border }]} />
+      <TouchableOpacity style={ar.btn} onPress={handleShare}>
+        <Text style={ar.icon}>↗</Text>
+        <Text style={[ar.label, { color: t.inkMuted }]}>
+          {language === 'ta' ? 'பகிர்' : 'Share'}
+        </Text>
+      </TouchableOpacity>
+      <View style={[ar.divider, { backgroundColor: t.border }]} />
+      <TouchableOpacity style={ar.btn} onPress={() => toggleBookmark(article)}>
+        <Text style={[ar.icon, saved && { color: t.red }]}>{saved ? '🔖' : '🏷️'}</Text>
+        <Text style={[ar.label, { color: saved ? t.red : t.inkMuted }]}>
+          {language === 'ta' ? (saved ? 'சேமிக்கப்பட்டது' : 'சேமி') : (saved ? 'Saved' : 'Save')}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ── HERO CARD (index 0) — tall, prominent ────────────────────────────────────
+function HeroCard({ article, onPress, language }: ArticleCardProps) {
+  const t = useTheme();
   const title = language === 'ta' ? article.titleTa : article.titleEn;
   const catName = language === 'ta' ? article.category.nameTa : article.category.nameEn;
   const catColor = getCatColor(article.category.slug);
+
   return (
-    <TouchableOpacity style={H.card} onPress={() => onPress(article)} activeOpacity={0.92}>
-      <View style={H.imageWrap}>
+    <TouchableOpacity style={[hero.card, { backgroundColor: t.card }]} onPress={() => onPress(article)} activeOpacity={0.95}>
+      {/* Full-width image */}
+      <View style={hero.imgWrap}>
         {article.thumbnailUrl
-          ? <Image source={{ uri: article.thumbnailUrl }} style={H.image} contentFit="cover" transition={300} />
-          : <View style={[H.image, { backgroundColor: COLORS.surfaceWarm }]} />}
-        <View style={[H.catPill, { backgroundColor: catColor }]}>
-          <Text style={H.catPillText}>{catName.toUpperCase()}</Text>
-        </View>
+          ? <Image source={{ uri: article.thumbnailUrl }} style={hero.img} contentFit="cover" transition={300} />
+          : <View style={[hero.img, { backgroundColor: t.bgAlt }]} />}
+        {/* Gradient scrim at bottom of image */}
+        <View style={hero.scrim} />
         {article.isBreaking && (
-          <View style={H.livePill}>
-            <View style={H.liveDot} /><Text style={H.liveText}>LIVE</Text>
+          <View style={hero.liveBadge}>
+            <View style={hero.liveDot} />
+            <Text style={hero.liveText}>LIVE</Text>
           </View>
         )}
       </View>
-      <View style={H.content}>
-        <Text style={H.title} numberOfLines={3}>{title}</Text>
-        <View style={H.meta}>
-          <Text style={H.time}>{timeAgo(article.publishedAt)}</Text>
-          <TouchableOpacity onPress={() => toggleBookmark(article)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Text style={[H.bm, saved && H.bmSaved]}>{saved ? '🔖' : '🏷️'}</Text>
-          </TouchableOpacity>
+
+      {/* Content */}
+      <View style={hero.body}>
+        <View style={[hero.catChip, { backgroundColor: catColor + '18' }]}>
+          <Text style={[hero.catText, { color: catColor }]}>{catName.toUpperCase()}</Text>
         </View>
+        <Text style={[hero.title, { color: t.ink }]} numberOfLines={3}>{title}</Text>
+        <Text style={[hero.time, { color: t.inkMuted }]}>
+          அக்னிசிறகு • {timeAgo(article.publishedAt)}
+        </Text>
       </View>
+
+      <ActionRow article={article} language={language} />
     </TouchableOpacity>
   );
 }
 
-// ── FEATURE (index 1–9) ───────────────────────────────────────────────
-function FeatureCard({ article, onPress, language }: ArticleCardProps) {
-  const { isBookmarked, toggleBookmark } = useBookmarksStore();
-  const saved = isBookmarked(article.id);
+// ── STANDARD CARD (index 1+) — Dailyhunt style ───────────────────────────────
+function StandardCard({ article, onPress, language, index = 1 }: ArticleCardProps) {
+  const t = useTheme();
   const title = language === 'ta' ? article.titleTa : article.titleEn;
   const catName = language === 'ta' ? article.category.nameTa : article.category.nameEn;
   const catColor = getCatColor(article.category.slug);
+  const isSmall = index >= 10;
+
   return (
-    <TouchableOpacity style={F.card} onPress={() => onPress(article)} activeOpacity={0.88}>
-      <View style={[F.strip, { backgroundColor: catColor }]} />
-      <View style={F.body}>
-        <View style={F.topRow}>
-          <Text style={[F.cat, { color: catColor }]}>{catName.toUpperCase()}</Text>
-          <Text style={F.time}>{timeAgo(article.publishedAt)}</Text>
+    <TouchableOpacity style={[sc.card, { backgroundColor: t.card }]} onPress={() => onPress(article)} activeOpacity={0.95}>
+      {/* Image on top */}
+      {article.thumbnailUrl ? (
+        <Image
+          source={{ uri: article.thumbnailUrl }}
+          style={[sc.img, isSmall && sc.imgSmall]}
+          contentFit="cover"
+          transition={250}
+        />
+      ) : (
+        <View style={[sc.img, isSmall && sc.imgSmall, { backgroundColor: t.bgAlt }]} />
+      )}
+
+      {/* Content */}
+      <View style={sc.body}>
+        <View style={sc.topRow}>
+          <View style={[sc.catChip, { backgroundColor: catColor + '15' }]}>
+            <Text style={[sc.catText, { color: catColor }]}>{catName.toUpperCase()}</Text>
+          </View>
+          {article.isBreaking && (
+            <View style={[sc.breakingChip, { backgroundColor: t.red }]}>
+              <Text style={sc.breakingText}>BREAKING</Text>
+            </View>
+          )}
         </View>
-        <Text style={F.title} numberOfLines={2}>{title}</Text>
-        <TouchableOpacity onPress={() => toggleBookmark(article)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ alignSelf: 'flex-start', marginTop: 6 }}>
-          <Text style={[F.bm, saved && F.bmSaved]}>{saved ? '🔖' : '🏷️'}</Text>
-        </TouchableOpacity>
+        <Text style={[sc.title, { color: t.ink }, isSmall && sc.titleSmall]} numberOfLines={isSmall ? 2 : 3}>
+          {title}
+        </Text>
+        <Text style={[sc.meta, { color: t.inkMuted }]}>
+          அக்னிசிறகு • {timeAgo(article.publishedAt)}
+        </Text>
       </View>
-      {article.thumbnailUrl
-        ? <Image source={{ uri: article.thumbnailUrl }} style={F.thumb} contentFit="cover" transition={200} />
-        : <View style={[F.thumb, { backgroundColor: COLORS.surfaceWarm }]} />}
+
+      <ActionRow article={article} language={language} />
     </TouchableOpacity>
   );
 }
 
-// ── COMPACT (index 10+) ───────────────────────────────────────────────
-function CompactCard({ article, onPress, language }: Omit<ArticleCardProps, 'index'>) {
-  const title = language === 'ta' ? article.titleTa : article.titleEn;
-  const catColor = getCatColor(article.category.slug);
-  return (
-    <TouchableOpacity style={C.card} onPress={() => onPress(article)} activeOpacity={0.85}>
-      <View style={[C.dot, { backgroundColor: catColor }]} />
-      <Text style={C.title} numberOfLines={2}>{title}</Text>
-      <Text style={C.time}>{timeAgo(article.publishedAt)}</Text>
-    </TouchableOpacity>
-  );
-}
-
-// ── EXPORT ────────────────────────────────────────────────────────────
+// ── EXPORT ───────────────────────────────────────────────────────────────────
 export default function ArticleCard({ article, onPress, language, index = 1 }: ArticleCardProps) {
-  if (index === 0) return <HeroCard article={article} onPress={onPress} language={language} />;
-  if (index >= 10) return <CompactCard article={article} onPress={onPress} language={language} />;
-  return <FeatureCard article={article} onPress={onPress} language={language} index={index} />;
+  if (index === 0) return <HeroCard article={article} onPress={onPress} language={language} index={index} />;
+  return <StandardCard article={article} onPress={onPress} language={language} index={index} />;
 }
 
-// ── STYLE BLOCKS ──────────────────────────────────────────────────────
+// ── STYLES ───────────────────────────────────────────────────────────────────
 
-const H = StyleSheet.create({
+const hero = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.surface, marginHorizontal: 14, marginTop: 14,
-    marginBottom: 2, borderRadius: 3, overflow: 'hidden',
+    marginHorizontal: 12, marginTop: 12, marginBottom: 4,
+    borderRadius: 12, overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.09, shadowRadius: 8, elevation: 3,
+    shadowOpacity: 0.1, shadowRadius: 8, elevation: 4,
   },
-  imageWrap: { height: 220, position: 'relative' },
-  image: { width: '100%', height: '100%' },
-  catPill: {
-    position: 'absolute', top: 12, left: 12,
-    paddingHorizontal: 9, paddingVertical: 4, borderRadius: 2,
+  imgWrap: { width: '100%', height: 240, position: 'relative' },
+  img: { width: '100%', height: '100%' },
+  scrim: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: 60,
+    backgroundColor: 'rgba(0,0,0,0.15)',
   },
-  catPillText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 1.2 },
-  livePill: {
-    position: 'absolute', top: 12, right: 12, flexDirection: 'row',
-    alignItems: 'center', backgroundColor: COLORS.primary,
-    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 2, gap: 4,
+  liveBadge: {
+    position: 'absolute', top: 12, right: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#CC1F2D', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
   },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
-  liveText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 1.2 },
-  content: { padding: 14, paddingTop: 13 },
-  title: {
-    fontSize: 20, fontWeight: '800', color: COLORS.ink,
-    lineHeight: 28, marginBottom: 10, letterSpacing: -0.4,
-  },
-  meta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  time: { fontSize: 12, color: COLORS.inkLight, fontWeight: '500' },
-  bm: { fontSize: 17, opacity: 0.3 },
-  bmSaved: { opacity: 1 },
+  liveText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  body: { padding: 14, paddingBottom: 10 },
+  catChip: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginBottom: 8 },
+  catText: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  title: { fontSize: 20, fontWeight: '800', lineHeight: 28, marginBottom: 8, letterSpacing: -0.3 },
+  time: { fontSize: 12, fontWeight: '500' },
 });
 
-const F = StyleSheet.create({
+const sc = StyleSheet.create({
   card: {
-    flexDirection: 'row', backgroundColor: COLORS.surface,
-    marginHorizontal: 14, marginVertical: 1,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border,
+    marginHorizontal: 12, marginVertical: 5,
+    borderRadius: 12, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07, shadowRadius: 6, elevation: 3,
   },
-  strip: { width: 4, alignSelf: 'stretch' },
-  body: { flex: 1, paddingVertical: 12, paddingLeft: 11, paddingRight: 8, justifyContent: 'space-between' },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 },
-  cat: { fontSize: 9, fontWeight: '800', letterSpacing: 1.1 },
-  time: { fontSize: 11, color: COLORS.inkLight },
-  title: { fontSize: 14, fontWeight: '700', color: COLORS.ink, lineHeight: 20, flex: 1 },
-  bm: { fontSize: 14, opacity: 0.3 },
-  bmSaved: { opacity: 1 },
-  thumb: { width: 90, height: 90, alignSelf: 'center', marginRight: 12, marginVertical: 10, borderRadius: 2 },
+  img: { width: '100%', height: 200 },
+  imgSmall: { height: 160 },
+  body: { padding: 12, paddingBottom: 8 },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  catChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  catText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
+  breakingChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  breakingText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.8 },
+  title: { fontSize: 16, fontWeight: '700', lineHeight: 23, marginBottom: 7, letterSpacing: -0.2 },
+  titleSmall: { fontSize: 14, lineHeight: 20 },
+  meta: { fontSize: 12, fontWeight: '400' },
 });
 
-const C = StyleSheet.create({
-  card: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface,
-    marginHorizontal: 14, paddingVertical: 11, paddingHorizontal: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border, gap: 10,
+const ar = StyleSheet.create({
+  row: {
+    flexDirection: 'row', alignItems: 'center',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: 10,
   },
-  dot: { width: 7, height: 7, borderRadius: 4, flexShrink: 0 },
-  title: { flex: 1, fontSize: 13, fontWeight: '600', color: COLORS.inkSecondary, lineHeight: 18 },
-  time: { fontSize: 11, color: COLORS.inkLight, flexShrink: 0 },
+  btn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', paddingVertical: 10, gap: 6,
+  },
+  divider: { width: StyleSheet.hairlineWidth, height: 20 },
+  icon: { fontSize: 15 },
+  label: { fontSize: 12, fontWeight: '600' },
 });

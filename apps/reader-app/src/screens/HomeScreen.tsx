@@ -14,7 +14,8 @@ import { useArticles, useBreakingNews } from '@/hooks/useArticles';
 import { useCategories } from '@/hooks/useCategories';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
-import { FREE_ARTICLE_LIMIT, COLORS } from '@/constants';
+import { FREE_ARTICLE_LIMIT } from '@/constants';
+import { useTheme } from '@/hooks/useTheme';
 import ArticleCard from '@/components/ArticleCard';
 import BreakingNewsCarousel from '@/components/BreakingNewsCarousel';
 import CategoryTab from '@/components/CategoryTab';
@@ -40,6 +41,7 @@ export default function HomeScreen() {
 
   const { isAuthenticated, articleReadCount } = useAuthStore();
   const { language } = useAppStore();
+  const theme = useTheme();
 
   const {
     data: articlesData,
@@ -127,7 +129,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <FlatList
         data={listData}
         keyExtractor={(item) => item.key}
