@@ -13,6 +13,7 @@
         "backgroundColor": "#000000"
       },
       "package": "com.agnisiragu.reader",
+      "versionCode": 4,
       "googleServicesFile": "./google-services.json"
     },
     "ios": {

@@ -94,6 +94,10 @@ export default function RootLayout() {
                 name="onboarding"
                 options={{ headerShown: false }}
               />
+              <Stack.Screen
+                name="contact"
+                options={{ title: 'எங்களை தொடர்பு கொள்ள / Contact Us' }}
+              />
             </Stack>
           </AppBootstrap>
         </SafeAreaProvider>

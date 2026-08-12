@@ -111,6 +111,10 @@ export default function ArticleDetailScreen() {
 
           <Text style={styles.title}>{title}</Text>
 
+          <Text style={styles.byline}>
+            {article.byline?.trim() ? article.byline : 'By Agnisiragu Desk'}
+          </Text>
+
           {shouldGate ? (
             <View style={styles.gateOverlay}>
               <Text style={styles.gateText}>
@@ -224,6 +228,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
     lineHeight: 32,
+    marginBottom: 6,
+  },
+  byline: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
     marginBottom: 16,
   },
   body: {

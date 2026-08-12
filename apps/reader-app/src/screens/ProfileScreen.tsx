@@ -160,6 +160,18 @@ export default function ProfileScreen() {
         </View>
       )}
 
+      {/* Contact Us */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>உதவி / Support</Text>
+        <TouchableOpacity
+          style={styles.contactRow}
+          onPress={() => router.push('/contact')}
+        >
+          <Text style={styles.contactRowText}>எங்களை தொடர்பு கொள்ள / Contact Us</Text>
+          <Text style={styles.contactRowChevron}>›</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Logout — only for logged-in users */}
       {isAuthenticated && (
         <TouchableOpacity
@@ -291,6 +303,21 @@ const styles = StyleSheet.create({
   notifLabel: {
     fontSize: 14,
     color: COLORS.text,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  contactRowText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  contactRowChevron: {
+    fontSize: 20,
+    color: COLORS.textSecondary,
   },
   logoutButton: {
     margin: 16,

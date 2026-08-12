@@ -71,6 +71,7 @@ async function main() {
       bodyTa: 'தமிழக அரசு இன்று பல்வேறு புதிய திட்டங்களை அறிவித்தது. இந்த திட்டங்கள் மக்களுக்கு பெரும் பயனளிக்கும் என எதிர்பார்க்கப்படுகிறது. முதலமைச்சர் நேரில் இந்த திட்டங்களை அறிவித்தார்.',
       bodyEn: 'The Tamil Nadu government today announced several new schemes. These schemes are expected to benefit the public greatly. The Chief Minister personally announced these schemes.',
       excerpt: 'Tamil Nadu government announces new public welfare schemes.',
+      byline: 'By Agnisiragu Desk',
       categoryId: politicsCategory!.id,
       adminId: admin.id,
       status: 'PUBLISHED' as const,
@@ -83,6 +84,7 @@ async function main() {
       bodyTa: 'சென்னை சூப்பர் கிங்ஸ் அணி அடுத்த போட்டிக்காக தீவிர பயிற்சியில் ஈடுபட்டுள்ளது. வீரர்கள் சிறப்பான உற்சாகத்தில் உள்ளனர். இந்த போட்டி நாளை மாலை நடைபெறும்.',
       bodyEn: 'Chennai Super Kings are in intense practice for the upcoming match. Players are in excellent spirit. The match will be held tomorrow evening.',
       excerpt: 'CSK gears up for the next high-stakes match.',
+      byline: 'By Agnisiragu Sports Desk',
       categoryId: sportsCategory!.id,
       adminId: admin.id,
       status: 'PUBLISHED' as const,
@@ -95,6 +97,7 @@ async function main() {
       bodyTa: 'கோலிவுட்டில் புதிய படம் இன்று அறிவிக்கப்பட்டது. பிரபல நடிகர் இந்த படத்தில் நடிக்கிறார். படம் இந்த ஆண்டே வெளியாகும் என எதிர்பார்க்கப்படுகிறது.',
       bodyEn: 'A new Kollywood film was announced today. A popular actor stars in this film. The movie is expected to release this year itself.',
       excerpt: 'Exciting new Tamil film announced with popular lead.',
+      byline: 'By Agnisiragu Entertainment Desk',
       categoryId: cinemaCategory!.id,
       adminId: admin.id,
       status: 'PUBLISHED' as const,
@@ -111,6 +114,13 @@ async function main() {
       const created = await prisma.article.create({ data: article });
       console.log(`✅ Article: ${created.titleEn}`);
     } else {
+      if (!existing.byline) {
+        await prisma.article.update({
+          where: { id: existing.id },
+          data: { byline: article.byline },
+        });
+        console.log(`🔄 Updated byline: ${article.titleEn}`);
+      }
       console.log(`⏭️  Article already exists: ${article.titleEn}`);
     }
   }

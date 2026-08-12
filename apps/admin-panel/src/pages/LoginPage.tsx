@@ -138,6 +138,11 @@ export default function LoginPage() {
           <p className="text-center text-xs text-text-muted mt-8">
             Agnisiragu News Platform · Admin Portal
           </p>
+          <p className="text-center text-xs text-text-muted mt-2">
+            <a href="/contact.html" className="underline hover:text-text-primary">Contact Us</a>
+            {' · '}
+            <a href="/privacy.html" className="underline hover:text-text-primary">Privacy Policy</a>
+          </p>
         </div>
       </div>
     </div>
