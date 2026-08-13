@@ -2,19 +2,35 @@
 
 import { create } from 'zustand';
 import { getUserPrefs, setUserPrefs } from '@/lib/storage';
+import { get as apiGet } from '@/lib/api';
 import type { Language } from '@/types';
+
+interface RemoteConfig {
+  loginGate: boolean;
+  breakingAlerts: boolean;
+  maintenanceMode: boolean;
+}
+
+const DEFAULT_CONFIG: RemoteConfig = {
+  loginGate: true,
+  breakingAlerts: true,
+  maintenanceMode: false,
+};
 
 interface AppStore {
   language: Language;
   colorScheme: 'light' | 'dark' | 'system';
   selectedCategories: string[];
   hydrated: boolean;
+  remoteConfig: RemoteConfig;
+  configLoaded: boolean;
   setLanguage: (lang: Language) => void;
   setColorScheme: (scheme: 'light' | 'dark' | 'system') => void;
   toggleCategory: (categoryId: string) => void;
   setSelectedCategories: (ids: string[]) => void;
   clearCategoryFilter: () => void;
   hydrateFromStorage: () => Promise<void>;
+  fetchRemoteConfig: () => Promise<void>;
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -22,6 +38,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   colorScheme: 'system',
   selectedCategories: [],
   hydrated: false,
+  remoteConfig: DEFAULT_CONFIG,
+  configLoaded: false,
 
   setColorScheme: (scheme) => {
     set({ colorScheme: scheme });
@@ -63,6 +81,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
       // ignore
     } finally {
       set({ hydrated: true });
+    }
+  },
+
+  fetchRemoteConfig: async () => {
+    try {
+      const res = await apiGet<{ data: RemoteConfig }>('/config');
+      set({ remoteConfig: { ...DEFAULT_CONFIG, ...res.data }, configLoaded: true });
+    } catch {
+      // Backend unreachable — fall back to defaults, don't block the app.
+      set({ configLoaded: true });
     }
   },
 }));

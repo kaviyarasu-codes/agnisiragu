@@ -40,7 +40,8 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const { isAuthenticated, articleReadCount } = useAuthStore();
-  const { language } = useAppStore();
+  const { language, remoteConfig } = useAppStore();
+  const freeArticleLimit = remoteConfig.loginGate ? FREE_ARTICLE_LIMIT : Infinity;
   const theme = useTheme();
 
   const {
@@ -86,13 +87,13 @@ export default function HomeScreen() {
 
   const handleArticlePress = useCallback(
     (article: Article) => {
-      if (!isAuthenticated && articleReadCount >= FREE_ARTICLE_LIMIT) {
+      if (!isAuthenticated && articleReadCount >= freeArticleLimit) {
         setShowLoginGate(true);
         return;
       }
       router.push(`/article/${article.id}`);
     },
-    [isAuthenticated, articleReadCount],
+    [isAuthenticated, articleReadCount, freeArticleLimit],
   );
 
   const renderItem = useCallback(

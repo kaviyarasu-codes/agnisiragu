@@ -34,11 +34,12 @@ export default function ArticleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: article, isLoading, isError } = useArticle(id);
   const { isAuthenticated, articleReadCount, incrementReadCount } = useAuthStore();
-  const { language } = useAppStore();
+  const { language, remoteConfig } = useAppStore();
   const { isBookmarked, toggleBookmark } = useBookmarksStore();
   const [showLoginGate, setShowLoginGate] = useState(false);
 
-  const shouldGate = !isAuthenticated && articleReadCount >= FREE_ARTICLE_LIMIT;
+  const freeArticleLimit = remoteConfig.loginGate ? FREE_ARTICLE_LIMIT : Infinity;
+  const shouldGate = !isAuthenticated && articleReadCount >= freeArticleLimit;
 
   const { data: related } = useRelatedArticles(
     article?.category.id ?? '',

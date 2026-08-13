@@ -14,6 +14,7 @@ import { getToken, getArticleReadCount } from '@/lib/storage';
 import { get } from '@/lib/api';
 import type { User } from '@/types';
 import { COLORS } from '@/constants';
+import MaintenanceScreen from '@/components/MaintenanceScreen';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -28,7 +29,7 @@ const queryClient = new QueryClient({
 
 function AppBootstrap({ children }: { children: React.ReactNode }) {
   const { setUser, setAuthenticated, setArticleReadCount } = useAuthStore();
-  const { hydrateFromStorage } = useAppStore();
+  const { hydrateFromStorage, fetchRemoteConfig, remoteConfig, configLoaded } = useAppStore();
   const { hydrate: hydrateBookmarks } = useBookmarksStore();
 
   useEffect(() => {
@@ -39,6 +40,7 @@ function AppBootstrap({ children }: { children: React.ReactNode }) {
           getArticleReadCount(),
           hydrateFromStorage(),
           hydrateBookmarks(),
+          fetchRemoteConfig(),
         ]);
 
         setArticleReadCount(readCount as number);
@@ -62,6 +64,12 @@ function AppBootstrap({ children }: { children: React.ReactNode }) {
 
     bootstrap();
   }, []);
+
+  // Block the whole app behind a maintenance screen when the admin flips
+  // the "Maintenance Mode" flag in App Config (checked once on launch).
+  if (configLoaded && remoteConfig.maintenanceMode) {
+    return <MaintenanceScreen />;
+  }
 
   return <>{children}</>;
 }

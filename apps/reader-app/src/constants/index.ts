@@ -7,7 +7,10 @@ export const API_BASE_URL = __DEV__
   ? 'http://10.65.105.253:3000/api/v1'   // ← replace with your laptop IP for local dev
   : 'https://agnisiragu-backend-production.up.railway.app/api/v1';
 
-export const FREE_ARTICLE_LIMIT = Infinity; // unlock all — re-enable when ready to gate
+// Fallback used only if the remote config hasn't loaded yet.
+// Actual gating now follows remoteConfig.loginGate (see app.store.ts) —
+// when the admin disables Login Gate, this is bypassed entirely (Infinity).
+export const FREE_ARTICLE_LIMIT = 10;
 
 export const COLORS = {
   // Brand
