@@ -17,7 +17,7 @@ const reflector = new Reflector();
 @ApiTags('Articles (Admin)')
 @ApiBearerAuth()
 @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))
-@Roles('SUPER_ADMIN', 'ADMIN', 'EDITOR')
+@Roles('SUPER_ADMIN', 'ADMIN', 'EDITOR', 'EDITOR_MANAGER', 'EDITOR_MEMBER')
 @Controller('articles')
 export class ArticlesController {
   constructor(private readonly newsService: NewsService) {}
