@@ -73,9 +73,9 @@ const SECTIONS: ConfigSection[] = [
     labelTa: 'முகப்பு அமைப்பு',
     description: 'Home screen widgets, section order, hero style',
     icon: <LayoutGrid size={16} />,
-    status: 'planned',
+    status: 'live',
     app: 'reader',
-    plannedFields: ['Hero Section Style (Slider/Single/Grid)', 'Visible Sections', 'Section Order (drag)', 'Breaking News Bar', 'Trending Ticker', 'Show Video Section', 'Show Local News Section'],
+    plannedFields: ['Hero Section Style (Slider/Single)', 'Breaking News Bar', 'Home Section Order'],
   },
   {
     id: 'reader_widgets',
@@ -83,7 +83,7 @@ const SECTIONS: ConfigSection[] = [
     labelTa: 'விஜெட்கள்',
     description: 'Individual home screen components and visibility',
     icon: <Layers size={16} />,
-    status: 'planned',
+    status: 'live',
     app: 'reader',
     plannedFields: ['Breaking News Banner', 'Category Tabs', 'Trending Stories', 'Video Shorts Row', 'Local News Row', 'Weather Widget', 'Poll Widget', 'Top Reporters Widget'],
   },
@@ -93,9 +93,9 @@ const SECTIONS: ConfigSection[] = [
     labelTa: 'கீழ் வழிசெலுத்தல்',
     description: 'Tab bar items, icons, order, visibility',
     icon: <Navigation size={16} />,
-    status: 'planned',
+    status: 'live',
     app: 'reader',
-    plannedFields: ['Tab 1–5 Labels', 'Tab Icons', 'Tab Routes', 'Active Indicator Style', 'Show Labels', 'Max Tabs'],
+    plannedFields: ['Tab Labels (Tamil + English)', 'Tab Visibility', 'Show Labels'],
   },
   {
     id: 'reader_menu',
@@ -103,9 +103,9 @@ const SECTIONS: ConfigSection[] = [
     labelTa: 'பக்க மெனு',
     description: 'Drawer menu items and links',
     icon: <Sliders size={16} />,
-    status: 'planned',
+    status: 'live',
     app: 'reader',
-    plannedFields: ['Menu Items (label + route + icon)', 'Show User Profile', 'Show Saved Articles', 'Show Dark Mode Toggle', 'Show Language Switcher', 'Footer Links'],
+    plannedFields: ['Enable Side Menu', 'Show User Profile', 'Show Saved Articles', 'Show Dark Mode Toggle', 'Show Language Switcher', 'Show Contact Us'],
   },
   {
     id: 'reader_news_sections',
@@ -113,9 +113,9 @@ const SECTIONS: ConfigSection[] = [
     labelTa: 'செய்தி பிரிவுகள்',
     description: 'Category visibility and ordering on home',
     icon: <BookOpen size={16} />,
-    status: 'planned',
+    status: 'live',
     app: 'reader',
-    plannedFields: ['Pinned Categories', 'Category Display Order', 'Max Articles Per Section', 'Show Section "See All" Button', 'Show Article Count Badge'],
+    plannedFields: ['Pinned Categories', 'Show Section "See All" Button', 'Max Articles Per Section', 'Show Article Count Badge'],
   },
   {
     id: 'reader_ads',
@@ -370,9 +370,9 @@ function LiveFeatureFlags() {
     <div className="divide-y divide-border">
       {FLAGS.map(f => (
         <div key={f.key}
-          className={`flex items-center justify-between px-1 py-3 ${f.danger && getFlag(f.key) ? 'bg-red/5 rounded-lg px-3' : ''}`}>
+          className={`flex items-center justify-between px-1 py-3 ${'danger' in f && f.danger && getFlag(f.key) ? 'bg-red/5 rounded-lg px-3' : ''}`}>
           <div className="flex items-center gap-3">
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${f.danger ? 'bg-red/10 text-red' : 'bg-page text-text-muted'}`}>
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${'danger' in f && f.danger ? 'bg-red/10 text-red' : 'bg-page text-text-muted'}`}>
               {f.icon}
             </div>
             <div>
@@ -391,7 +391,7 @@ function LiveFeatureFlags() {
             disabled={'planned' in f && f.planned}
             onClick={() => !('planned' in f && f.planned) && toggle(f.key)}
             className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-              getFlag(f.key) ? (f.danger ? 'bg-red' : 'bg-green-500') : 'bg-gray-200'
+              getFlag(f.key) ? ('danger' in f && f.danger ? 'bg-red' : 'bg-green-500') : 'bg-gray-200'
             } ${'planned' in f && f.planned ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${getFlag(f.key) ? 'translate-x-5' : ''}`} />
           </button>
@@ -401,10 +401,329 @@ function LiveFeatureFlags() {
   );
 }
 
+// ─── Live: Home Layout ─────────────────────────────────────────────────────────
+
+const HOME_SECTIONS = [
+  { key: 'breaking',   label: 'Breaking News' },
+  { key: 'categories', label: 'Category Tabs' },
+  { key: 'feed',       label: 'Article Feed' },
+] as const;
+
+function LiveHomeLayout() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+    onError: () => toast.error('Save failed'),
+  });
+
+  const cfg = data?.data ?? {};
+  const heroStyle: 'slider' | 'single' = cfg.homeHeroStyle ?? 'slider';
+  const showBreakingBar: boolean = cfg.homeShowBreakingBar ?? true;
+  const order: string[] = cfg.homeSectionOrder ?? HOME_SECTIONS.map(s => s.key);
+
+  const move = (key: string, dir: 'up' | 'down') => {
+    const i = order.indexOf(key);
+    const j = dir === 'up' ? i - 1 : i + 1;
+    if (i < 0 || j < 0 || j >= order.length) return;
+    const next = [...order];
+    [next[i], next[j]] = [next[j], next[i]];
+    saveMut.mutate({ homeSectionOrder: next });
+  };
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <label className="label">Hero Section Style</label>
+        <div className="inline-flex bg-page rounded-lg p-0.5 border border-border">
+          {(['slider', 'single'] as const).map(s => (
+            <button key={s} type="button"
+              onClick={() => saveMut.mutate({ homeHeroStyle: s })}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${heroStyle === s ? 'bg-white text-text-primary shadow-sm' : 'text-text-muted'}`}>
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+        <div>
+          <p className="text-sm font-medium text-text-primary">Breaking News Bar</p>
+          <p className="text-xs text-text-muted">Show the breaking-news carousel on Home</p>
+        </div>
+        <button type="button" onClick={() => saveMut.mutate({ homeShowBreakingBar: !showBreakingBar })}
+          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${showBreakingBar ? 'bg-green-500' : 'bg-gray-200'}`}>
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${showBreakingBar ? 'translate-x-5' : ''}`} />
+        </button>
+      </div>
+
+      <div>
+        <label className="label">Home Section Order</label>
+        <div className="space-y-1.5">
+          {order.map((key, i) => {
+            const meta = HOME_SECTIONS.find(s => s.key === key);
+            if (!meta) return null;
+            return (
+              <div key={key} className="flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-page">
+                <span className="text-sm text-text-primary">{i + 1}. {meta.label}</span>
+                <div className="flex gap-1">
+                  <button type="button" disabled={i === 0} onClick={() => move(key, 'up')} className="btn-ghost px-2 py-1 text-xs disabled:opacity-30">↑</button>
+                  <button type="button" disabled={i === order.length - 1} onClick={() => move(key, 'down')} className="btn-ghost px-2 py-1 text-xs disabled:opacity-30">↓</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Live: Widgets ──────────────────────────────────────────────────────────────
+
+const WIDGET_TOGGLES = [
+  { key: 'widgetBreakingBanner', label: 'Breaking News Banner', live: true },
+  { key: 'widgetCategoryTabs',   label: 'Category Tabs',        live: true },
+  { key: 'widgetTrending',       label: 'Trending Stories',     live: false },
+  { key: 'widgetVideoShorts',    label: 'Video Shorts Row',     live: false },
+  { key: 'widgetLocalNews',      label: 'Local News Row',       live: false },
+  { key: 'widgetWeather',        label: 'Weather Widget',       live: false },
+  { key: 'widgetPoll',           label: 'Poll Widget',          live: false },
+  { key: 'widgetTopReporters',   label: 'Top Reporters Widget', live: false },
+] as const;
+
+function LiveWidgets() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+  });
+  const cfg = data?.data ?? {};
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  return (
+    <div className="divide-y divide-border">
+      {WIDGET_TOGGLES.map(w => {
+        const val = cfg[w.key] ?? true;
+        return (
+          <div key={w.key} className="flex items-center justify-between px-1 py-3">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-text-primary">{w.label}</p>
+              {!w.live && <span className="text-2xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">Planned</span>}
+            </div>
+            <button type="button" disabled={!w.live}
+              onClick={() => w.live && saveMut.mutate({ [w.key]: !val })}
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${val && w.live ? 'bg-green-500' : 'bg-gray-200'} ${!w.live ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${val && w.live ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Live: Bottom Navigation ──────────────────────────────────────────────────
+
+const DEFAULT_NAV_TABS = [
+  { key: 'home',       labelTa: 'முகப்பு',     labelEn: 'Home',       visible: true },
+  { key: 'categories', labelTa: 'பிரிவுகள்',   labelEn: 'Categories', visible: true },
+  { key: 'search',     labelTa: 'தேடல்',       labelEn: 'Search',     visible: true },
+  { key: 'bookmarks',  labelTa: 'சேமிப்பு',    labelEn: 'Saved',      visible: true },
+  { key: 'profile',    labelTa: 'சுயவிவரம்',   labelEn: 'Profile',    visible: true },
+];
+
+function LiveBottomNav() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+  });
+  const cfg = data?.data ?? {};
+  const tabs: typeof DEFAULT_NAV_TABS = cfg.navTabs ?? DEFAULT_NAV_TABS;
+  const showLabels: boolean = cfg.navShowLabels ?? true;
+
+  const toggleVisible = (key: string) => {
+    const visibleCount = tabs.filter(t => t.visible).length;
+    const target = tabs.find(t => t.key === key);
+    if (target?.visible && visibleCount <= 2) {
+      toast.error('At least 2 tabs must stay visible');
+      return;
+    }
+    const next = tabs.map(t => t.key === key ? { ...t, visible: !t.visible } : t);
+    saveMut.mutate({ navTabs: next });
+  };
+
+  const editLabel = (key: string, field: 'labelTa' | 'labelEn', value: string) => {
+    const next = tabs.map(t => t.key === key ? { ...t, [field]: value } : t);
+    saveMut.mutate({ navTabs: next });
+  };
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+        <p className="text-sm font-medium text-text-primary">Show Tab Labels</p>
+        <button type="button" onClick={() => saveMut.mutate({ navShowLabels: !showLabels })}
+          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${showLabels ? 'bg-green-500' : 'bg-gray-200'}`}>
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${showLabels ? 'translate-x-5' : ''}`} />
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {tabs.map(tab => (
+          <div key={tab.key} className="p-3 rounded-lg border border-border space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">{tab.key}</span>
+              <button type="button" onClick={() => toggleVisible(tab.key)}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${tab.visible ? 'bg-green-500' : 'bg-gray-200'}`}>
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${tab.visible ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input defaultValue={tab.labelTa} onBlur={(e) => editLabel(tab.key, 'labelTa', e.target.value)}
+                className="input-field h-8 text-xs" placeholder="Tamil label" />
+              <input defaultValue={tab.labelEn} onBlur={(e) => editLabel(tab.key, 'labelEn', e.target.value)}
+                className="input-field h-8 text-xs" placeholder="English label" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Live: Side Menu ────────────────────────────────────────────────────────────
+
+const SIDE_MENU_TOGGLES = [
+  { key: 'sideMenuEnabled',         label: 'Enable Side Menu',        desc: 'Show the hamburger icon and slide-out panel' },
+  { key: 'sideMenuShowProfile',     label: 'Show User Profile',       desc: 'Link to Profile screen' },
+  { key: 'sideMenuShowBookmarks',   label: 'Show Saved Articles',     desc: 'Link to Bookmarks screen' },
+  { key: 'sideMenuShowDarkMode',    label: 'Show Dark Mode Toggle',   desc: 'Quick theme switch' },
+  { key: 'sideMenuShowLanguage',    label: 'Show Language Switcher',  desc: 'Quick Tamil/English switch' },
+  { key: 'sideMenuShowContact',     label: 'Show Contact Us',         desc: 'Link to Contact screen' },
+] as const;
+
+function LiveSideMenu() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+  });
+  const cfg = data?.data ?? {};
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  return (
+    <div className="divide-y divide-border">
+      {SIDE_MENU_TOGGLES.map(t => {
+        const val = cfg[t.key] ?? true;
+        return (
+          <div key={t.key} className="flex items-center justify-between px-1 py-3">
+            <div>
+              <p className="text-sm font-medium text-text-primary">{t.label}</p>
+              <p className="text-xs text-text-muted">{t.desc}</p>
+            </div>
+            <button type="button" onClick={() => saveMut.mutate({ [t.key]: !val })}
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${val ? 'bg-green-500' : 'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${val ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Live: News Sections ────────────────────────────────────────────────────────
+
+function LiveNewsSections() {
+  const qc = useQueryClient();
+  const { data: cfgData, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const { data: catData } = useQuery({
+    queryKey: ['categories', 'admin'],
+    queryFn: () => apiGet<{ data: { id: string; nameTa: string; nameEn: string; slug: string }[] }>('/categories/admin/all'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+  });
+
+  const cfg = cfgData?.data ?? {};
+  const categories = catData?.data ?? [];
+  const pinned: string[] = cfg.pinnedCategorySlugs ?? [];
+  const showSeeAll: boolean = cfg.newsShowSeeAll ?? true;
+
+  const togglePin = (slug: string) => {
+    const next = pinned.includes(slug) ? pinned.filter(s => s !== slug) : [...pinned, slug];
+    saveMut.mutate({ pinnedCategorySlugs: next });
+  };
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+        <div>
+          <p className="text-sm font-medium text-text-primary">Show "See All" Button</p>
+          <p className="text-xs text-text-muted">On each home section header</p>
+        </div>
+        <button type="button" onClick={() => saveMut.mutate({ newsShowSeeAll: !showSeeAll })}
+          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${showSeeAll ? 'bg-green-500' : 'bg-gray-200'}`}>
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${showSeeAll ? 'translate-x-5' : ''}`} />
+        </button>
+      </div>
+
+      <div>
+        <label className="label">Pinned Categories (shown first, in this order)</label>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {categories.map(c => {
+            const isPinned = pinned.includes(c.slug);
+            return (
+              <button key={c.id} type="button" onClick={() => togglePin(c.slug)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-all ${isPinned ? 'bg-red/10 border-red/30 text-red font-medium' : 'border-border text-text-secondary hover:bg-page'}`}>
+                {c.nameEn} {isPinned && `#${pinned.indexOf(c.slug) + 1}`}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-text-muted mt-2">Categories not pinned keep their normal display order.</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Section Detail Drawer ────────────────────────────────────────────────────
 
 function SectionDetail({ section, onClose }: { section: ConfigSection; onClose: () => void }) {
-  const isLive = section.id === 'reader_identity' || section.id === 'feature_flags';
+  const LIVE_SECTION_IDS = [
+    'reader_identity', 'feature_flags', 'reader_home_layout', 'reader_widgets',
+    'reader_navigation', 'reader_menu', 'reader_news_sections',
+  ];
+  const isLive = LIVE_SECTION_IDS.includes(section.id);
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-end">
       <div className="bg-surface h-full w-full max-w-lg shadow-2xl overflow-y-auto flex flex-col">
@@ -455,6 +774,36 @@ function SectionDetail({ section, onClose }: { section: ConfigSection; onClose: 
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Feature Flags</p>
               <LiveFeatureFlags />
+            </div>
+          )}
+          {section.id === 'reader_home_layout' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LiveHomeLayout />
+            </div>
+          )}
+          {section.id === 'reader_widgets' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Widgets</p>
+              <LiveWidgets />
+            </div>
+          )}
+          {section.id === 'reader_navigation' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LiveBottomNav />
+            </div>
+          )}
+          {section.id === 'reader_menu' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Side Menu</p>
+              <LiveSideMenu />
+            </div>
+          )}
+          {section.id === 'reader_news_sections' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LiveNewsSections />
             </div>
           )}
 

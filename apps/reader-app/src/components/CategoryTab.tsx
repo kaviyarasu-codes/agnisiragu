@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ScrollView, TouchableOpacity, Text, View, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
 import { useTheme } from '@/hooks/useTheme';
 import type { Category, Language } from '@/types';
 
@@ -10,9 +11,10 @@ interface CategoryTabProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   language: Language;
+  showSeeAll?: boolean;
 }
 
-export default function CategoryTab({ categories, selectedId, onSelect, language }: CategoryTabProps) {
+export default function CategoryTab({ categories, selectedId, onSelect, language, showSeeAll = true }: CategoryTabProps) {
   const t = useTheme();
 
   return (
@@ -34,6 +36,17 @@ export default function CategoryTab({ categories, selectedId, onSelect, language
             </TouchableOpacity>
           );
         })}
+        {showSeeAll && (
+          <TouchableOpacity
+            style={s.seeAll}
+            onPress={() => router.push('/(tabs)/categories')}
+            activeOpacity={0.8}
+          >
+            <Text style={[s.seeAllLabel, { color: t.red }]}>
+              {language === 'ta' ? 'அனைத்தும் →' : 'See All →'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -59,6 +72,14 @@ const s = StyleSheet.create({
     borderColor: 'transparent',
   },
   label: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  seeAll: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  seeAllLabel: {
     fontSize: 13,
     fontWeight: '700',
   },

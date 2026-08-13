@@ -2,7 +2,7 @@
 // Style: Dailyhunt / Tamil Samayam — white tab bar, red active, icon + label
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Tabs } from 'expo-router';
 import { STRINGS } from '@/constants';
 import { useAppStore } from '@/store/app.store';
@@ -12,23 +12,50 @@ interface TabIconProps {
   emoji: string;
   label: string;
   focused: boolean;
+  showLabel: boolean;
 }
 
-function TabIcon({ emoji, label, focused }: TabIconProps) {
+function TabIcon({ emoji, label, focused, showLabel }: TabIconProps) {
   const t = useTheme();
   return (
     <View style={ti.wrap}>
       {focused && <View style={[ti.indicator, { backgroundColor: t.red }]} />}
       <Text style={[ti.emoji, { opacity: focused ? 1 : 0.4 }]}>{emoji}</Text>
-      <Text style={[ti.label, { color: focused ? t.red : t.inkMuted }]}>{label}</Text>
+      {showLabel && <Text style={[ti.label, { color: focused ? t.red : t.inkMuted }]}>{label}</Text>}
     </View>
   );
 }
 
+const TAB_ICONS: Record<string, string> = {
+  home: '🏠',
+  categories: '📋',
+  search: '🔍',
+  bookmarks: '🔖',
+  profile: '👤',
+};
+
 export default function AppNavigator() {
-  const { language } = useAppStore();
+  const { language, remoteConfig, setSideMenuOpen } = useAppStore();
   const t = useTheme();
   const ta = language === 'ta';
+  const showLabels = remoteConfig.navShowLabels ?? true;
+  const menuEnabled = remoteConfig.sideMenuEnabled ?? true;
+
+  // navTabs from admin config (key/labelTa/labelEn/visible); falls back to
+  // showing every tab with its built-in default label when unset.
+  const tabMeta = (key: string, fallbackTa: string, fallbackEn: string) => {
+    const cfg = remoteConfig.navTabs?.find((tItem: any) => tItem.key === key);
+    return {
+      visible: cfg?.visible ?? true,
+      label: ta ? (cfg?.labelTa || fallbackTa) : (cfg?.labelEn || fallbackEn),
+    };
+  };
+
+  const home = tabMeta('home', STRINGS.HOME_TA, STRINGS.HOME_EN);
+  const categories = tabMeta('categories', STRINGS.CATEGORIES_TA, STRINGS.CATEGORIES_EN);
+  const search = tabMeta('search', STRINGS.SEARCH_TA, STRINGS.SEARCH_EN);
+  const bookmarks = tabMeta('bookmarks', 'சேமிப்பு', 'Saved');
+  const profile = tabMeta('profile', STRINGS.PROFILE_TA, STRINGS.PROFILE_EN);
 
   return (
     <Tabs
@@ -62,26 +89,40 @@ export default function AppNavigator() {
         name="index"
         options={{
           headerTitle: 'அக்னிசிறகு',
+          href: home.visible ? undefined : null,
+          headerLeft: menuEnabled
+            ? () => (
+                <TouchableOpacity
+                  onPress={() => setSideMenuOpen(true)}
+                  style={hb.button}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text style={hb.icon}>☰</Text>
+                </TouchableOpacity>
+              )
+            : undefined,
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="🏠" label={ta ? STRINGS.HOME_TA : STRINGS.HOME_EN} focused={focused} />
+            <TabIcon emoji={TAB_ICONS.home} label={home.label} focused={focused} showLabel={showLabels} />
           ),
         }}
       />
       <Tabs.Screen
         name="categories"
         options={{
-          headerTitle: ta ? STRINGS.CATEGORIES_TA : STRINGS.CATEGORIES_EN,
+          headerTitle: categories.label,
+          href: categories.visible ? undefined : null,
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="📋" label={ta ? STRINGS.CATEGORIES_TA : STRINGS.CATEGORIES_EN} focused={focused} />
+            <TabIcon emoji={TAB_ICONS.categories} label={categories.label} focused={focused} showLabel={showLabels} />
           ),
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
-          headerTitle: ta ? STRINGS.SEARCH_TA : STRINGS.SEARCH_EN,
+          headerTitle: search.label,
+          href: search.visible ? undefined : null,
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="🔍" label={ta ? STRINGS.SEARCH_TA : STRINGS.SEARCH_EN} focused={focused} />
+            <TabIcon emoji={TAB_ICONS.search} label={search.label} focused={focused} showLabel={showLabels} />
           ),
         }}
       />
@@ -89,23 +130,35 @@ export default function AppNavigator() {
         name="bookmarks"
         options={{
           headerTitle: ta ? 'சேமிக்கப்பட்டவை' : 'Saved',
+          href: bookmarks.visible ? undefined : null,
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="🔖" label={ta ? 'சேமிப்பு' : 'Saved'} focused={focused} />
+            <TabIcon emoji={TAB_ICONS.bookmarks} label={bookmarks.label} focused={focused} showLabel={showLabels} />
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          headerTitle: ta ? STRINGS.PROFILE_TA : STRINGS.PROFILE_EN,
+          headerTitle: profile.label,
+          href: profile.visible ? undefined : null,
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="👤" label={ta ? STRINGS.PROFILE_TA : STRINGS.PROFILE_EN} focused={focused} />
+            <TabIcon emoji={TAB_ICONS.profile} label={profile.label} focused={focused} showLabel={showLabels} />
           ),
         }}
       />
     </Tabs>
   );
 }
+
+const hb = StyleSheet.create({
+  button: {
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+  },
+  icon: {
+    fontSize: 22,
+  },
+});
 
 const ti = StyleSheet.create({
   wrap: {

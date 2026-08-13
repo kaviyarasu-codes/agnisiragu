@@ -5,16 +5,71 @@ import { getUserPrefs, setUserPrefs } from '@/lib/storage';
 import { get as apiGet } from '@/lib/api';
 import type { Language } from '@/types';
 
+export interface NavTabConfig {
+  key: string;
+  labelTa: string;
+  labelEn: string;
+  visible: boolean;
+}
+
 interface RemoteConfig {
+  // Feature flags
   loginGate: boolean;
   breakingAlerts: boolean;
   maintenanceMode: boolean;
+  freeArticleLimit: number;
+
+  // Home layout
+  homeHeroStyle: 'slider' | 'single';
+  homeShowBreakingBar: boolean;
+  homeSectionOrder: string[];
+
+  // Widgets
+  widgetBreakingBanner: boolean;
+  widgetCategoryTabs: boolean;
+
+  // Bottom navigation
+  navTabs: NavTabConfig[] | null;
+  navShowLabels: boolean;
+
+  // Side menu
+  sideMenuEnabled: boolean;
+  sideMenuShowProfile: boolean;
+  sideMenuShowBookmarks: boolean;
+  sideMenuShowDarkMode: boolean;
+  sideMenuShowLanguage: boolean;
+  sideMenuShowContact: boolean;
+
+  // News sections
+  pinnedCategorySlugs: string[];
+  newsShowSeeAll: boolean;
 }
 
 const DEFAULT_CONFIG: RemoteConfig = {
   loginGate: true,
   breakingAlerts: true,
   maintenanceMode: false,
+  freeArticleLimit: 10,
+
+  homeHeroStyle: 'slider',
+  homeShowBreakingBar: true,
+  homeSectionOrder: ['breaking', 'categories', 'feed'],
+
+  widgetBreakingBanner: true,
+  widgetCategoryTabs: true,
+
+  navTabs: null,
+  navShowLabels: true,
+
+  sideMenuEnabled: true,
+  sideMenuShowProfile: true,
+  sideMenuShowBookmarks: true,
+  sideMenuShowDarkMode: true,
+  sideMenuShowLanguage: true,
+  sideMenuShowContact: true,
+
+  pinnedCategorySlugs: [],
+  newsShowSeeAll: true,
 };
 
 interface AppStore {
@@ -24,6 +79,8 @@ interface AppStore {
   hydrated: boolean;
   remoteConfig: RemoteConfig;
   configLoaded: boolean;
+  sideMenuOpen: boolean;
+  setSideMenuOpen: (open: boolean) => void;
   setLanguage: (lang: Language) => void;
   setColorScheme: (scheme: 'light' | 'dark' | 'system') => void;
   toggleCategory: (categoryId: string) => void;
@@ -40,6 +97,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   hydrated: false,
   remoteConfig: DEFAULT_CONFIG,
   configLoaded: false,
+  sideMenuOpen: false,
+  setSideMenuOpen: (open) => set({ sideMenuOpen: open }),
 
   setColorScheme: (scheme) => {
     set({ colorScheme: scheme });

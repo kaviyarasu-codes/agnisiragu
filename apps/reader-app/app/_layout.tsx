@@ -15,6 +15,7 @@ import { get } from '@/lib/api';
 import type { User } from '@/types';
 import { COLORS } from '@/constants';
 import MaintenanceScreen from '@/components/MaintenanceScreen';
+import SideMenu from '@/components/SideMenu';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -107,6 +108,7 @@ export default function RootLayout() {
                 options={{ title: 'எங்களை தொடர்பு கொள்ள / Contact Us' }}
               />
             </Stack>
+            <SideMenu />
           </AppBootstrap>
         </SafeAreaProvider>
       </QueryClientProvider>

@@ -41,7 +41,9 @@ export default function HomeScreen() {
 
   const { isAuthenticated, articleReadCount } = useAuthStore();
   const { language, remoteConfig } = useAppStore();
-  const freeArticleLimit = remoteConfig.loginGate ? FREE_ARTICLE_LIMIT : Infinity;
+  const freeArticleLimit = remoteConfig.loginGate
+    ? (remoteConfig.freeArticleLimit || FREE_ARTICLE_LIMIT)
+    : Infinity;
   const theme = useTheme();
 
   const {
@@ -55,7 +57,24 @@ export default function HomeScreen() {
   } = useArticles(selectedCategoryId ?? undefined);
 
   const { data: breakingNews } = useBreakingNews();
-  const { data: categories } = useCategories();
+  const { data: categoriesRaw } = useCategories();
+
+  // Pinned categories (from App Config) are moved to the front, in the
+  // configured order; everything else keeps its normal displayOrder.
+  const categories = useMemo(() => {
+    if (!categoriesRaw) return categoriesRaw;
+    const pinned = remoteConfig.pinnedCategorySlugs ?? [];
+    if (pinned.length === 0) return categoriesRaw;
+    const bySlug = new Map(categoriesRaw.map((c) => [c.slug, c]));
+    const pinnedCats = pinned.map((slug) => bySlug.get(slug)).filter(Boolean) as typeof categoriesRaw;
+    const rest = categoriesRaw.filter((c) => !pinned.includes(c.slug));
+    return [...pinnedCats, ...rest];
+  }, [categoriesRaw, remoteConfig.pinnedCategorySlugs]);
+
+  const showBreakingCarousel = remoteConfig.homeShowBreakingBar && remoteConfig.widgetBreakingBanner
+    && breakingNews && breakingNews.length > 0;
+  const showCategoryTabs = remoteConfig.widgetCategoryTabs && !!categories;
+  const sectionOrder = remoteConfig.homeSectionOrder?.length ? remoteConfig.homeSectionOrder : ['breaking', 'categories'];
 
   const articles = useMemo(
     () => articlesData?.pages.flatMap((p) => p.data) ?? [],
@@ -147,17 +166,31 @@ export default function HomeScreen() {
         }
         ListHeaderComponent={
           <>
-            {breakingNews && breakingNews.length > 0 && (
-              <BreakingNewsCarousel articles={breakingNews} language={language} />
-            )}
-            {categories && (
-              <CategoryTab
-                categories={categories}
-                selectedId={selectedCategoryId}
-                onSelect={setSelectedCategoryId}
-                language={language}
-              />
-            )}
+            {sectionOrder.map((sectionKey) => {
+              if (sectionKey === 'breaking' && showBreakingCarousel) {
+                return (
+                  <BreakingNewsCarousel
+                    key="breaking"
+                    articles={breakingNews!}
+                    language={language}
+                    mode={remoteConfig.homeHeroStyle}
+                  />
+                );
+              }
+              if (sectionKey === 'categories' && showCategoryTabs) {
+                return (
+                  <CategoryTab
+                    key="categories"
+                    categories={categories!}
+                    selectedId={selectedCategoryId}
+                    onSelect={setSelectedCategoryId}
+                    language={language}
+                    showSeeAll={remoteConfig.newsShowSeeAll}
+                  />
+                );
+              }
+              return null;
+            })}
           </>
         }
         ListFooterComponent={

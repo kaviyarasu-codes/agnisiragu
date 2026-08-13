@@ -17,22 +17,23 @@ function timeAgo(dateString: string): string {
   return `${Math.floor(m / 60)}h`;
 }
 
-interface Props { articles: Article[]; language: Language; }
+interface Props { articles: Article[]; language: Language; mode?: 'slider' | 'single'; }
 
-export default function BreakingNewsCarousel({ articles, language }: Props) {
+export default function BreakingNewsCarousel({ articles, language, mode = 'slider' }: Props) {
   const t = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const [idx, setIdx] = useState(0);
+  const items = mode === 'single' ? articles.slice(0, 1) : articles;
 
   useEffect(() => {
-    if (articles.length <= 1) return;
+    if (mode === 'single' || articles.length <= 1) return;
     const timer = setInterval(() => {
       const next = (idx + 1) % articles.length;
       scrollRef.current?.scrollTo({ x: next * W, animated: true });
       setIdx(next);
     }, 5000);
     return () => clearInterval(timer);
-  }, [idx, articles.length]);
+  }, [idx, articles.length, mode]);
 
   if (!articles.length) return null;
 
@@ -52,16 +53,17 @@ export default function BreakingNewsCarousel({ articles, language }: Props) {
         </Text>
       </View>
 
-      {/* FULL-WIDTH CAROUSEL */}
+      {/* FULL-WIDTH CAROUSEL (or single hero card when mode="single") */}
       <ScrollView
         ref={scrollRef}
         horizontal
         pagingEnabled
+        scrollEnabled={mode !== 'single'}
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={(e) => setIdx(Math.round(e.nativeEvent.contentOffset.x / W))}
         decelerationRate="fast"
       >
-        {articles.map((article) => {
+        {items.map((article) => {
           const title = language === 'ta' ? article.titleTa : article.titleEn;
           return (
             <TouchableOpacity
@@ -86,7 +88,7 @@ export default function BreakingNewsCarousel({ articles, language }: Props) {
       </ScrollView>
 
       {/* DOT INDICATORS */}
-      {articles.length > 1 && (
+      {mode !== 'single' && articles.length > 1 && (
         <View style={[s.dots, { backgroundColor: t.bg }]}>
           {articles.map((_, i) => (
             <View key={i} style={[s.dot, { backgroundColor: i === idx ? t.red : t.border }, i === idx && s.dotActive]} />

@@ -38,7 +38,9 @@ export default function ArticleDetailScreen() {
   const { isBookmarked, toggleBookmark } = useBookmarksStore();
   const [showLoginGate, setShowLoginGate] = useState(false);
 
-  const freeArticleLimit = remoteConfig.loginGate ? FREE_ARTICLE_LIMIT : Infinity;
+  const freeArticleLimit = remoteConfig.loginGate
+    ? (remoteConfig.freeArticleLimit || FREE_ARTICLE_LIMIT)
+    : Infinity;
   const shouldGate = !isAuthenticated && articleReadCount >= freeArticleLimit;
 
   const { data: related } = useRelatedArticles(
