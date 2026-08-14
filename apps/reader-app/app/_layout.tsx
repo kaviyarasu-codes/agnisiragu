@@ -16,6 +16,8 @@ import type { User } from '@/types';
 import { COLORS } from '@/constants';
 import MaintenanceScreen from '@/components/MaintenanceScreen';
 import SideMenu from '@/components/SideMenu';
+import SplashOverlay from '@/components/SplashOverlay';
+import { registerPushToken } from '@/lib/push';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -52,6 +54,7 @@ function AppBootstrap({ children }: { children: React.ReactNode }) {
             const user = res.data;
             setUser(user);
             setAuthenticated(true);
+            registerPushToken();
           } catch {
             // Token expired or invalid; stays logged out
           }
@@ -109,6 +112,7 @@ export default function RootLayout() {
               />
             </Stack>
             <SideMenu />
+            <SplashOverlay />
           </AppBootstrap>
         </SafeAreaProvider>
       </QueryClientProvider>

@@ -43,6 +43,23 @@ interface RemoteConfig {
   // News sections
   pinnedCategorySlugs: string[];
   newsShowSeeAll: boolean;
+
+  // Advertisement placement
+  adInFeedFrequency: number;
+  localAdsEnable: boolean;
+  admobEnable: boolean;
+
+  // Splash screen
+  splashBgColor: string;
+  splashDurationMs: number;
+  splashAnimation: 'fade' | 'none';
+  splashLogoUrl: string | null;
+  splashShowTagline: boolean;
+  splashTaglineTa: string;
+  splashTaglineEn: string;
+
+  // Theme
+  defaultThemeMode: 'light' | 'dark' | 'system';
 }
 
 const DEFAULT_CONFIG: RemoteConfig = {
@@ -70,6 +87,20 @@ const DEFAULT_CONFIG: RemoteConfig = {
 
   pinnedCategorySlugs: [],
   newsShowSeeAll: true,
+
+  adInFeedFrequency: 5,
+  localAdsEnable: true,
+  admobEnable: false,
+
+  splashBgColor: '#000000',
+  splashDurationMs: 1200,
+  splashAnimation: 'fade',
+  splashLogoUrl: null,
+  splashShowTagline: true,
+  splashTaglineTa: 'உண்மையை உரக்கச் சொல்வோம்',
+  splashTaglineEn: 'Truth, Told Loud',
+
+  defaultThemeMode: 'system',
 };
 
 interface AppStore {
@@ -146,7 +177,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
   fetchRemoteConfig: async () => {
     try {
       const res = await apiGet<{ data: RemoteConfig }>('/config');
-      set({ remoteConfig: { ...DEFAULT_CONFIG, ...res.data }, configLoaded: true });
+      const merged = { ...DEFAULT_CONFIG, ...res.data };
+      set({ remoteConfig: merged, configLoaded: true });
+      // Apply the admin's platform default theme — only meaningful at first
+      // boot since colorScheme still starts at 'system' every launch.
+      if (get().colorScheme === 'system' && merged.defaultThemeMode !== 'system') {
+        set({ colorScheme: merged.defaultThemeMode });
+      }
     } catch {
       // Backend unreachable — fall back to defaults, don't block the app.
       set({ configLoaded: true });

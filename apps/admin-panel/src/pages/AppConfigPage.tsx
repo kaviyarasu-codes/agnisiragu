@@ -123,9 +123,9 @@ const SECTIONS: ConfigSection[] = [
     labelTa: 'விளம்பர இடம்',
     description: 'Where ads appear, frequency, type (AdMob vs Local)',
     icon: <Megaphone size={16} />,
-    status: 'planned',
+    status: 'live',
     app: 'reader',
-    plannedFields: ['In-Feed Ad Frequency (every N articles)', 'Banner Ad Position', 'Interstitial Trigger (every N page opens)', 'Rewarded Ad Enable', 'Local Ad Ratio vs AdMob', 'Ad-Free Mode for Premium Users'],
+    plannedFields: ['In-Feed Ad Frequency (every N articles)', 'Local Ads Enable', 'Banner Ad Position', 'Interstitial Trigger (every N page opens)', 'Rewarded Ad Enable', 'AdMob Enable (needs SDK)'],
   },
   {
     id: 'reader_notifications',
@@ -133,9 +133,9 @@ const SECTIONS: ConfigSection[] = [
     labelTa: 'அறிவிப்புகள்',
     description: 'Push notification channels and opt-in behavior',
     icon: <Bell size={16} />,
-    status: 'planned',
+    status: 'live',
     app: 'reader',
-    plannedFields: ['Default Notification Channels', 'Breaking News Alert Enable', 'Category Subscription Default', 'Notification Sound', 'Notification Grouping', 'Quiet Hours'],
+    plannedFields: ['Breaking News Alert Enable', 'Auto-Push on Breaking Article', 'Default Notification Channels', 'Category Subscription Default', 'Notification Sound', 'Quiet Hours'],
   },
   {
     id: 'reader_splash',
@@ -143,9 +143,9 @@ const SECTIONS: ConfigSection[] = [
     labelTa: 'ஸ்பிளாஷ் திரை',
     description: 'Splash image, animation, duration',
     icon: <Image size={16} />,
-    status: 'planned',
+    status: 'live',
     app: 'reader',
-    plannedFields: ['Splash Logo URL', 'Background Color', 'Animation Style', 'Duration (ms)', 'Show App Tagline', 'Tagline Text'],
+    plannedFields: ['Background Color', 'Duration (ms)', 'Animation Style', 'Show App Tagline', 'Tagline Text (Tamil + English)', 'Splash Logo URL'],
   },
 
   // ── Reporter App ────────────────────────────────────────────────────────
@@ -339,8 +339,8 @@ const FLAGS = [
   { key: 'shortsEnable',     label: 'Video Shorts',         desc: 'Short video feed in reader app',         icon: <Radio size={14} />, planned: true },
   { key: 'rewardsEnable',    label: 'Reporter Rewards',     desc: 'Points and payout system',               icon: <Package size={14} />, planned: true },
   { key: 'pressIdEnable',    label: 'Press ID Cards',       desc: '30-day streak Press ID issuance',        icon: <Tag size={14} />, planned: true },
-  { key: 'admobEnable',      label: 'AdMob Ads',            desc: 'Google AdMob advertisement',             icon: <Megaphone size={14} />, planned: true },
-  { key: 'localAdsEnable',   label: 'Local Ads',            desc: 'Custom local business advertisements',   icon: <Megaphone size={14} />, planned: true },
+  { key: 'admobEnable',      label: 'AdMob Ads',            desc: 'Google AdMob advertisement (needs native SDK build)', icon: <Megaphone size={14} />, planned: true },
+  { key: 'localAdsEnable',   label: 'Local Ads',            desc: 'Custom local business advertisements — also in Advertisement Placement', icon: <Megaphone size={14} /> },
 ] as const;
 
 function LiveFeatureFlags() {
@@ -716,12 +716,274 @@ function LiveNewsSections() {
   );
 }
 
+// ─── Live: Advertisement Placement ───────────────────────────────────────────
+
+const AD_PLANNED_TOGGLES = [
+  { key: 'admobEnable', label: 'AdMob Enable', desc: 'Requires react-native-google-mobile-ads in a native build — not wired yet' },
+] as const;
+
+function LiveAdvertisement() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+  });
+  const cfg = data?.data ?? {};
+  const frequency: number = cfg.adInFeedFrequency ?? 5;
+  const localAdsEnable: boolean = cfg.localAdsEnable ?? true;
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <label className="label">In-Feed Ad Frequency</label>
+        <div className="relative mt-1 max-w-[180px]">
+          <input type="number" min={2} max={20} defaultValue={frequency}
+            onBlur={(e) => {
+              const n = Math.max(2, Math.min(20, Number(e.target.value) || 5));
+              saveMut.mutate({ adInFeedFrequency: n });
+            }}
+            className="input-field pr-24" />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-muted">articles</span>
+        </div>
+        <p className="text-xs text-text-muted mt-1.5">An ad card is inserted after every N articles in the Home feed.</p>
+      </div>
+
+      <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+        <div>
+          <p className="text-sm font-medium text-text-primary">Local Ads Enable</p>
+          <p className="text-xs text-text-muted">Show ads created in Local Ads in the feed's ad slots</p>
+        </div>
+        <button type="button" onClick={() => saveMut.mutate({ localAdsEnable: !localAdsEnable })}
+          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${localAdsEnable ? 'bg-green-500' : 'bg-gray-200'}`}>
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${localAdsEnable ? 'translate-x-5' : ''}`} />
+        </button>
+      </div>
+
+      <div className="divide-y divide-border border border-border rounded-lg">
+        {AD_PLANNED_TOGGLES.map(t => (
+          <div key={t.key} className="flex items-center justify-between px-3 py-3">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-text-primary">{t.label}</p>
+              <span className="text-2xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">Planned</span>
+            </div>
+            <button type="button" disabled className="relative w-11 h-6 rounded-full bg-gray-200 opacity-40 cursor-not-allowed flex-shrink-0">
+              <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-text-muted">
+        When Local Ads is off (or no active ad matches), the feed falls back to a placeholder AdMob slot — AdMob itself isn't wired to a real ad network yet.
+      </p>
+    </div>
+  );
+}
+
+// ─── Live: Notifications ──────────────────────────────────────────────────────
+
+function LiveNotifications() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+  });
+  const cfg = data?.data ?? {};
+  const breakingAlerts: boolean = cfg.breakingAlerts ?? true;
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+        <div>
+          <p className="text-sm font-medium text-text-primary">Breaking News Alert Enable</p>
+          <p className="text-xs text-text-muted">
+            When on, marking an article as breaking (or publishing one already marked breaking) sends a push to every registered device — via Firebase Cloud Messaging.
+          </p>
+        </div>
+        <button type="button" onClick={() => saveMut.mutate({ breakingAlerts: !breakingAlerts })}
+          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${breakingAlerts ? 'bg-green-500' : 'bg-gray-200'}`}>
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${breakingAlerts ? 'translate-x-5' : ''}`} />
+        </button>
+      </div>
+
+      <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+        <p className="text-xs text-blue-800">
+          Only reaches readers who are logged in and have granted notification permission (their device token is registered automatically). Guests and users who declined permission won't receive pushes.
+        </p>
+      </div>
+
+      <div className="divide-y divide-border border border-border rounded-lg">
+        {['Default Notification Channels', 'Category Subscription Default', 'Notification Sound', 'Quiet Hours'].map(f => (
+          <div key={f} className="flex items-center justify-between px-3 py-3">
+            <p className="text-sm font-medium text-text-primary">{f}</p>
+            <span className="text-2xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">Planned</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Live: Splash Screen ──────────────────────────────────────────────────────
+
+function LiveSplash() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+  });
+  const cfg = data?.data ?? {};
+  const bgColor: string = cfg.splashBgColor ?? '#000000';
+  const duration: number = cfg.splashDurationMs ?? 1200;
+  const animation: 'fade' | 'none' = cfg.splashAnimation ?? 'fade';
+  const showTagline: boolean = cfg.splashShowTagline ?? true;
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  return (
+    <div className="space-y-5">
+      <p className="text-xs text-text-muted">
+        Controls the in-app splash shown right after the native launch screen, while the app finishes loading. It does not replace the OS-level launch image (that's baked into the build).
+      </p>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="label">Background Color</label>
+          <div className="flex items-center gap-2 mt-1">
+            <input type="color" defaultValue={bgColor}
+              onChange={(e) => saveMut.mutate({ splashBgColor: e.target.value })}
+              className="w-9 h-9 rounded border border-border cursor-pointer" />
+            <input defaultValue={bgColor} onBlur={(e) => saveMut.mutate({ splashBgColor: e.target.value })}
+              className="input-field h-9 text-xs font-mono" />
+          </div>
+        </div>
+        <div>
+          <label className="label">Duration (ms)</label>
+          <input type="number" min={400} max={4000} step={100} defaultValue={duration}
+            onBlur={(e) => saveMut.mutate({ splashDurationMs: Math.max(400, Math.min(4000, Number(e.target.value) || 1200)) })}
+            className="input-field mt-1" />
+        </div>
+      </div>
+
+      <div>
+        <label className="label">Animation Style</label>
+        <div className="inline-flex bg-page rounded-lg p-0.5 border border-border mt-1">
+          {(['fade', 'none'] as const).map(s => (
+            <button key={s} type="button" onClick={() => saveMut.mutate({ splashAnimation: s })}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${animation === s ? 'bg-white text-text-primary shadow-sm' : 'text-text-muted'}`}>
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+        <p className="text-sm font-medium text-text-primary">Show App Tagline</p>
+        <button type="button" onClick={() => saveMut.mutate({ splashShowTagline: !showTagline })}
+          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${showTagline ? 'bg-green-500' : 'bg-gray-200'}`}>
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${showTagline ? 'translate-x-5' : ''}`} />
+        </button>
+      </div>
+
+      {showTagline && (
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label">Tagline (Tamil)</label>
+            <input defaultValue={cfg.splashTaglineTa ?? 'உண்மையை உரக்கச் சொல்வோம்'}
+              onBlur={(e) => saveMut.mutate({ splashTaglineTa: e.target.value })}
+              className="input-field mt-1" />
+          </div>
+          <div>
+            <label className="label">Tagline (English)</label>
+            <input defaultValue={cfg.splashTaglineEn ?? 'Truth, Told Loud'}
+              onBlur={(e) => saveMut.mutate({ splashTaglineEn: e.target.value })}
+              className="input-field mt-1" />
+          </div>
+        </div>
+      )}
+
+      <div>
+        <label className="label">Splash Logo URL (optional — falls back to the app icon)</label>
+        <input defaultValue={cfg.splashLogoUrl ?? ''} placeholder="https://..."
+          onBlur={(e) => saveMut.mutate({ splashLogoUrl: e.target.value || null })}
+          className="input-field mt-1" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Live: Theme default mode (rest of Theme & Colors remains Planned) ───────
+
+function LiveThemeDefault() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+  });
+  const cfg = data?.data ?? {};
+  const mode: 'light' | 'dark' | 'system' = cfg.defaultThemeMode ?? 'system';
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <label className="label">Default Theme</label>
+        <div className="inline-flex bg-page rounded-lg p-0.5 border border-border mt-1">
+          {([
+            { v: 'light', icon: <Sun size={13} /> },
+            { v: 'dark', icon: <Moon size={13} /> },
+            { v: 'system', icon: <MonitorSmartphone size={13} /> },
+          ] as const).map(o => (
+            <button key={o.v} type="button" onClick={() => saveMut.mutate({ defaultThemeMode: o.v })}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${mode === o.v ? 'bg-white text-text-primary shadow-sm' : 'text-text-muted'}`}>
+              {o.icon} {o.v}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-text-muted mt-1.5">The theme new app sessions start in. Readers can still switch it themselves from the Side Menu.</p>
+      </div>
+      <div className="divide-y divide-border border border-border rounded-lg">
+        {['Primary Color', 'Secondary Color', 'Accent Color', 'Allow User Theme Toggle', 'Status Bar Style'].map(f => (
+          <div key={f} className="flex items-center justify-between px-3 py-3">
+            <p className="text-sm font-medium text-text-primary">{f}</p>
+            <span className="text-2xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">Planned</span>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-text-muted">
+        Colors are compiled into the app's static theme today; making them remotely configurable needs a broader theming refactor across every screen — not done yet.
+      </p>
+    </div>
+  );
+}
+
 // ─── Section Detail Drawer ────────────────────────────────────────────────────
 
 function SectionDetail({ section, onClose }: { section: ConfigSection; onClose: () => void }) {
   const LIVE_SECTION_IDS = [
     'reader_identity', 'feature_flags', 'reader_home_layout', 'reader_widgets',
     'reader_navigation', 'reader_menu', 'reader_news_sections',
+    'reader_ads', 'reader_notifications', 'reader_splash',
   ];
   const isLive = LIVE_SECTION_IDS.includes(section.id);
   return (
@@ -804,6 +1066,30 @@ function SectionDetail({ section, onClose }: { section: ConfigSection; onClose: 
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
               <LiveNewsSections />
+            </div>
+          )}
+          {section.id === 'reader_ads' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LiveAdvertisement />
+            </div>
+          )}
+          {section.id === 'reader_notifications' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LiveNotifications />
+            </div>
+          )}
+          {section.id === 'reader_splash' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LiveSplash />
+            </div>
+          )}
+          {section.id === 'reader_theme' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LiveThemeDefault />
             </div>
           )}
 

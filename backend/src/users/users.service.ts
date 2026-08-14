@@ -1,7 +1,7 @@
 // src/users/users.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UpdateUserDto } from './users.dto';
+import { UpdateUserDto, RegisterPushTokenDto } from './users.dto';
 
 @Injectable()
 export class UsersService {
@@ -39,5 +39,17 @@ export class UsersService {
       where: { id: userId },
       data: { articleReadCount: { increment: 1 } },
     });
+  }
+
+  // Registers/refreshes an Expo/FCM push token for breaking-news alerts.
+  // Upserted by fcmToken (unique) so re-registering the same device just
+  // re-points it at the current user (handles logout/login on one device).
+  async registerPushToken(userId: string, dto: RegisterPushTokenDto) {
+    const token = await this.prisma.pushToken.upsert({
+      where: { fcmToken: dto.fcmToken },
+      create: { userId, fcmToken: dto.fcmToken, platform: dto.platform },
+      update: { userId, platform: dto.platform },
+    });
+    return { data: { id: token.id } };
   }
 }

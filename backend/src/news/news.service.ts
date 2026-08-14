@@ -1,7 +1,8 @@
 // src/news/news.service.ts
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   CreateArticleDto,
   UpdateArticleDto,
@@ -11,10 +12,33 @@ import {
 
 @Injectable()
 export class NewsService {
+  private readonly logger = new Logger(NewsService.name);
+
   constructor(
     private prisma: PrismaService,
     private usersService: UsersService,
+    private notifications: NotificationsService,
   ) {}
+
+  // Sends a push alert to all registered devices when a PUBLISHED article is
+  // (or becomes) breaking news — gated by the admin's "Breaking News Alerts"
+  // toggle in App Config (Feature Flags). Never throws — a push failure
+  // (e.g. Firebase not configured) must not block publishing an article.
+  private async maybeSendBreakingPush(article: { id: string; titleTa: string; excerpt: string | null; bodyTa: string }) {
+    try {
+      const flag = await this.prisma.appConfig.findUnique({ where: { key: 'breakingAlerts' } });
+      if (flag && flag.value === false) return;
+
+      const body = article.excerpt?.trim() || article.bodyTa.slice(0, 120);
+      await this.notifications.send({
+        title: article.titleTa,
+        body,
+        data: { articleId: article.id, type: 'breaking' },
+      });
+    } catch (err) {
+      this.logger.warn(`Breaking push skipped: ${err.message}`);
+    }
+  }
 
   // ─── Audit log helper ─────────────────────────────────────────────────────
 
@@ -156,6 +180,10 @@ export class NewsService {
       device,
     });
 
+    if (status === 'PUBLISHED' && article.isBreaking) {
+      this.maybeSendBreakingPush(article);
+    }
+
     return { data: article };
   }
 
@@ -229,6 +257,10 @@ export class NewsService {
       entityType: 'article',
       entityId: id,
     });
+
+    if (article.isBreaking && article.status === 'PUBLISHED') {
+      this.maybeSendBreakingPush(article);
+    }
 
     return { data: article };
   }

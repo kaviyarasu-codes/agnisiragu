@@ -1,12 +1,30 @@
 // src/components/AdBanner.tsx
-// AdMob placeholder — works in Expo Go.
-// For production, integrate react-native-google-mobile-ads in a dev build.
+// Ad slot rendered in the feed and after article bodies. Shows a Local Ad
+// (admin-created, from Admin Panel → Local Ads) when one is active; falls
+// back to an AdMob placeholder otherwise (no AdMob SDK wired into the app
+// yet — see App Config → Advertisement Placement).
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '@/constants';
+import { useAppStore } from '@/store/app.store';
+import { useLocalAds } from '@/hooks/useLocalAds';
+import LocalAdCard from './LocalAdCard';
 
-export default function AdBanner({ style }: { style?: object }) {
+interface Props {
+  style?: object;
+  index?: number; // used to rotate between multiple active local ads
+}
+
+export default function AdBanner({ style, index = 0 }: Props) {
+  const { language, remoteConfig } = useAppStore();
+  const { data: ads } = useLocalAds();
+
+  if (remoteConfig.localAdsEnable && ads && ads.length > 0) {
+    const ad = ads[index % ads.length];
+    return <LocalAdCard ad={ad} language={language} style={style} />;
+  }
+
   return (
     <View style={[styles.container, style]}>
       <Text style={styles.label}>ADVERTISEMENT</Text>

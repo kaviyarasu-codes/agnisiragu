@@ -47,6 +47,23 @@ export class ConfigController {
         // News sections
         pinnedCategorySlugs: data.pinnedCategorySlugs ?? [],
         newsShowSeeAll: data.newsShowSeeAll ?? true,
+
+        // Advertisement placement
+        adInFeedFrequency: data.adInFeedFrequency ?? 5,
+        localAdsEnable: data.localAdsEnable ?? true,
+        admobEnable: data.admobEnable ?? false,
+
+        // Splash screen
+        splashBgColor: data.splashBgColor ?? '#000000',
+        splashDurationMs: data.splashDurationMs ?? 1200,
+        splashAnimation: data.splashAnimation ?? 'fade',
+        splashLogoUrl: data.splashLogoUrl ?? null,
+        splashShowTagline: data.splashShowTagline ?? true,
+        splashTaglineTa: data.splashTaglineTa ?? 'உண்மையை உரக்கச் சொல்வோம்',
+        splashTaglineEn: data.splashTaglineEn ?? 'Truth, Told Loud',
+
+        // Theme
+        defaultThemeMode: data.defaultThemeMode ?? 'system',
       },
     };
   }

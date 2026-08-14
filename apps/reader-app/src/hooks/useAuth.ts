@@ -3,6 +3,7 @@
 import { post } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { setToken, setRefreshToken, getRefreshToken } from '@/lib/storage';
+import { registerPushToken } from '@/lib/push';
 import type { OtpVerifyResponse } from '@/types';
 
 export function useAuth() {
@@ -19,6 +20,7 @@ export function useAuth() {
     await setRefreshToken(refreshToken);
     setUser(user);
     setAuthenticated(true);
+    registerPushToken();
   }
 
   async function logout(): Promise<void> {

@@ -4,7 +4,7 @@ import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UsersService } from './users.service';
-import { UpdateUserDto } from './users.dto';
+import { UpdateUserDto, RegisterPushTokenDto } from './users.dto';
 import { Reflector } from '@nestjs/core';
 
 @ApiTags('Users')
@@ -30,5 +30,11 @@ export class UsersController {
   @ApiOperation({ summary: 'Get article read count for current user' })
   getReadCount(@CurrentUser('id') userId: string) {
     return this.usersService.getReadCount(userId);
+  }
+
+  @Patch('push-token')
+  @ApiOperation({ summary: 'Register/refresh this device\'s push token for breaking-news alerts' })
+  registerPushToken(@CurrentUser('id') userId: string, @Body() dto: RegisterPushTokenDto) {
+    return this.usersService.registerPushToken(userId, dto);
   }
 }

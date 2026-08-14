@@ -48,7 +48,7 @@ export class NotificationsService implements OnModuleInit {
     }
   }
 
-  async send(dto: SendNotificationDto, adminId: string) {
+  async send(dto: SendNotificationDto, adminId?: string) {
     let tokens: string[] = [];
 
     if (dto.tokens && dto.tokens.length > 0) {
@@ -87,15 +87,15 @@ export class NotificationsService implements OnModuleInit {
     };
     this.notificationLogs.unshift(log);
 
-    // Audit log
+    // Audit log (adminId omitted for system-triggered sends, e.g. auto breaking-news push)
     await this.prisma.auditLog.create({
       data: {
-        adminId,
+        ...(adminId ? { adminId } : {}),
         action: 'SEND_NOTIFICATION',
         entityType: 'notification',
         metadata: { title: dto.title, tokens: tokens.length } as any,
       },
-    });
+    }).catch(() => {});
 
     return {
       data: {

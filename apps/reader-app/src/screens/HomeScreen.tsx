@@ -23,11 +23,9 @@ import LoginGateModal from '@/components/LoginGateModal';
 import AdBanner from '@/components/AdBanner';
 import type { Article } from '@/types';
 
-const AD_EVERY = 5;
-
 type ListItem =
   | { type: 'article'; article: Article; key: string }
-  | { type: 'ad'; key: string };
+  | { type: 'ad'; key: string; adIndex: number };
 
 export default function HomeScreen() {
   const params = useLocalSearchParams<{ categoryId?: string }>();
@@ -81,16 +79,19 @@ export default function HomeScreen() {
     [articlesData],
   );
 
+  const adFrequency = Math.max(2, remoteConfig.adInFeedFrequency || 5);
+
   const listData: ListItem[] = useMemo(() => {
     const items: ListItem[] = [];
+    let adCount = 0;
     articles.forEach((article, i) => {
       items.push({ type: 'article', article, key: article.id });
-      if ((i + 1) % AD_EVERY === 0) {
-        items.push({ type: 'ad', key: `ad-${i}` });
+      if ((i + 1) % adFrequency === 0) {
+        items.push({ type: 'ad', key: `ad-${i}`, adIndex: adCount++ });
       }
     });
     return items;
-  }, [articles]);
+  }, [articles, adFrequency]);
 
   const onEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -117,7 +118,7 @@ export default function HomeScreen() {
 
   const renderItem = useCallback(
     ({ item, index }: { item: ListItem; index: number }) => {
-      if (item.type === 'ad') return <AdBanner />;
+      if (item.type === 'ad') return <AdBanner index={item.adIndex} />;
       return (
         <ArticleCard
           article={item.article}
