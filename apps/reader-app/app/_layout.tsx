@@ -17,7 +17,7 @@ import { COLORS } from '@/constants';
 import MaintenanceScreen from '@/components/MaintenanceScreen';
 import SideMenu from '@/components/SideMenu';
 import SplashOverlay from '@/components/SplashOverlay';
-import { registerPushToken } from '@/lib/push';
+import { registerPushToken, registerGuestPushToken } from '@/lib/push';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -47,6 +47,11 @@ function AppBootstrap({ children }: { children: React.ReactNode }) {
         ]);
 
         setArticleReadCount(readCount as number);
+
+        // Registers this device for breaking-news push regardless of login
+        // state — most installs never log in (login is only required after
+        // the free-article limit), so alerts can't be gated on an account.
+        registerGuestPushToken();
 
         if (token) {
           try {

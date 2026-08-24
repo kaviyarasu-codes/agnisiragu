@@ -38,6 +38,11 @@ function startOfWeek(d: Date): Date {
 export class AdminService {
   constructor(private prisma: PrismaService) {}
 
+  // Excludes auto-created guest users (push-notification-only, no real
+  // account) from admin-facing user counts and lists — see
+  // users.service.ts#registerGuestPushToken.
+  private readonly realUserWhere = { NOT: { phone: { startsWith: 'guest:' } } };
+
   // ─── Stats ────────────────────────────────────────────────────────────────
 
   async getStats() {
@@ -46,10 +51,10 @@ export class AdminService {
       await Promise.all([
         this.prisma.article.count({ where: { status: { not: 'DELETED' } } }),
         this.prisma.article.count({ where: { status: 'PUBLISHED' } }),
-        this.prisma.user.count(),
+        this.prisma.user.count({ where: this.realUserWhere }),
         this.prisma.article.count({ where: { status: 'PUBLISHED', isBreaking: true } }),
         this.prisma.article.count({ where: { createdAt: { gte: todayStart } } }),
-        this.prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
+        this.prisma.user.count({ where: { ...this.realUserWhere, createdAt: { gte: todayStart } } }),
       ]);
     return { data: { totalArticles, publishedArticles, totalUsers, breakingCount, todayArticles, todayUsers } };
   }
@@ -107,7 +112,7 @@ export class AdminService {
           GROUP BY 1 ORDER BY 1`,
         this.prisma.$queryRaw<Row[]>`
           SELECT DATE("createdAt") AS period, COUNT(*)::bigint AS count
-          FROM "User" WHERE "createdAt" >= ${from}
+          FROM "User" WHERE "createdAt" >= ${from} AND "phone" NOT LIKE 'guest:%'
           GROUP BY 1 ORDER BY 1`,
       ]);
 
@@ -124,7 +129,7 @@ export class AdminService {
           GROUP BY 1 ORDER BY 1`,
         this.prisma.$queryRaw<Row[]>`
           SELECT DATE_TRUNC('week', "createdAt") AS period, COUNT(*)::bigint AS count
-          FROM "User" WHERE "createdAt" >= ${from}
+          FROM "User" WHERE "createdAt" >= ${from} AND "phone" NOT LIKE 'guest:%'
           GROUP BY 1 ORDER BY 1`,
       ]);
 
@@ -144,7 +149,7 @@ export class AdminService {
           GROUP BY 1 ORDER BY 1`,
         this.prisma.$queryRaw<Row[]>`
           SELECT DATE_TRUNC('month', "createdAt") AS period, COUNT(*)::bigint AS count
-          FROM "User" WHERE "createdAt" >= ${from}
+          FROM "User" WHERE "createdAt" >= ${from} AND "phone" NOT LIKE 'guest:%'
           GROUP BY 1 ORDER BY 1`,
       ]);
 
@@ -161,7 +166,7 @@ export class AdminService {
           GROUP BY 1 ORDER BY 1`,
         this.prisma.$queryRaw<Row[]>`
           SELECT DATE_TRUNC('year', "createdAt") AS period, COUNT(*)::bigint AS count
-          FROM "User" WHERE "createdAt" >= ${from}
+          FROM "User" WHERE "createdAt" >= ${from} AND "phone" NOT LIKE 'guest:%'
           GROUP BY 1 ORDER BY 1`,
       ]);
     }
@@ -176,7 +181,7 @@ export class AdminService {
 
     const [totalArticles, totalUsers, totalReads] = await Promise.all([
       this.prisma.article.count({ where: { status: 'PUBLISHED' } }),
-      this.prisma.user.count(),
+      this.prisma.user.count({ where: this.realUserWhere }),
       this.prisma.articleRead.count(),
     ]);
     const daysInPeriod = period === 'daily' ? 7 : period === 'weekly' ? 56 : period === 'monthly' ? 365 : 1825;
@@ -202,7 +207,7 @@ export class AdminService {
 
   async getUsers(page = 1, limit = 20, search?: string) {
     const skip = (page - 1) * limit;
-    const where: any = {};
+    const where: any = { ...this.realUserWhere };
     if (search) {
       where.OR = [
         { name:  { contains: search, mode: 'insensitive' } },
@@ -532,10 +537,10 @@ export class AdminService {
     const to   = dateTo   ? new Date(dateTo)   : new Date();
 
     const [total, verified, active, newInRange] = await Promise.all([
-      this.prisma.user.count(),
-      this.prisma.user.count({ where: { isVerified: true } }).catch(() => 0),
-      this.prisma.user.count({ where: { isBanned: false } }),
-      this.prisma.user.count({ where: { createdAt: { gte: from, lte: to } } }),
+      this.prisma.user.count({ where: this.realUserWhere }),
+      this.prisma.user.count({ where: { ...this.realUserWhere, isVerified: true } }).catch(() => 0),
+      this.prisma.user.count({ where: { ...this.realUserWhere, isBanned: false } }),
+      this.prisma.user.count({ where: { ...this.realUserWhere, createdAt: { gte: from, lte: to } } }),
     ]);
 
     // Top reporters by article submissions (reporter_app submissions via Article model)
@@ -544,6 +549,7 @@ export class AdminService {
       FROM "User" u
       LEFT JOIN "Article" a ON a."byline" ILIKE '%' || u.name || '%'
         AND a."createdAt" BETWEEN ${from} AND ${to}
+      WHERE u.phone NOT LIKE 'guest:%'
       GROUP BY u.id, u.name
       ORDER BY count DESC
       LIMIT 10

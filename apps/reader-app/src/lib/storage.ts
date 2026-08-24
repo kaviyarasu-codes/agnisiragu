@@ -58,3 +58,22 @@ export async function getUserPrefs(): Promise<UserPrefs | null> {
 export async function setUserPrefs(prefs: UserPrefs): Promise<void> {
   await SecureStore.setItemAsync(STORAGE_KEYS.USER_PREFS, JSON.stringify(prefs));
 }
+
+// Stable per-install identifier — used to register push notifications for
+// guest readers who haven't logged in (login is only required after the
+// free-article limit, so most installs never log in at all).
+function generateDeviceId(): string {
+  return `dev_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+}
+
+export async function getOrCreateDeviceId(): Promise<string> {
+  try {
+    const existing = await SecureStore.getItemAsync(STORAGE_KEYS.DEVICE_ID);
+    if (existing) return existing;
+    const id = generateDeviceId();
+    await SecureStore.setItemAsync(STORAGE_KEYS.DEVICE_ID, id);
+    return id;
+  } catch {
+    return generateDeviceId();
+  }
+}

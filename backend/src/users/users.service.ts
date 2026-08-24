@@ -1,7 +1,7 @@
 // src/users/users.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UpdateUserDto, RegisterPushTokenDto } from './users.dto';
+import { UpdateUserDto, RegisterPushTokenDto, RegisterGuestPushTokenDto } from './users.dto';
 
 @Injectable()
 export class UsersService {
@@ -49,6 +49,28 @@ export class UsersService {
       where: { fcmToken: dto.fcmToken },
       create: { userId, fcmToken: dto.fcmToken, platform: dto.platform },
       update: { userId, platform: dto.platform },
+    });
+    return { data: { id: token.id } };
+  }
+
+  // Public, no-login path — most installs never log in (login is only
+  // required after the free-article limit), so breaking-news push can't be
+  // gated on having an account. Ties the token to an auto-created "guest"
+  // user keyed by a client-generated device ID. Never overwrites a token
+  // that's already registered — this stops a stale guest call (e.g. a race
+  // on app boot) from downgrading a token that a real login already claimed.
+  async registerGuestPushToken(dto: RegisterGuestPushTokenDto) {
+    const existing = await this.prisma.pushToken.findUnique({ where: { fcmToken: dto.fcmToken } });
+    if (existing) return { data: { id: existing.id } };
+
+    const guestPhone = `guest:${dto.deviceId}`;
+    let user = await this.prisma.user.findUnique({ where: { phone: guestPhone } });
+    if (!user) {
+      user = await this.prisma.user.create({ data: { phone: guestPhone, role: 'READER' } });
+    }
+
+    const token = await this.prisma.pushToken.create({
+      data: { userId: user.id, fcmToken: dto.fcmToken, platform: dto.platform },
     });
     return { data: { id: token.id } };
   }

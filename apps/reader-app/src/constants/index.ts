@@ -63,6 +63,7 @@ export const STORAGE_KEYS = {
   ARTICLE_READ_COUNT: 'article_read_count',
   USER_PREFS: 'user_prefs',
   RECENT_SEARCHES: 'recent_searches',
+  DEVICE_ID: 'device_id',
 };
 
 export const AD_UNIT_IDS = {
