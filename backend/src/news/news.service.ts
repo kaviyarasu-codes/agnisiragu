@@ -24,15 +24,26 @@ export class NewsService {
   // (or becomes) breaking news — gated by the admin's "Breaking News Alerts"
   // toggle in App Config (Feature Flags). Never throws — a push failure
   // (e.g. Firebase not configured) must not block publishing an article.
-  private async maybeSendBreakingPush(article: { id: string; titleTa: string; excerpt: string | null; bodyTa: string }) {
+  private async maybeSendBreakingPush(article: {
+    id: string;
+    titleTa: string;
+    titleEn: string;
+    excerpt: string | null;
+    bodyTa: string;
+    bodyEn: string;
+  }) {
     try {
       const flag = await this.prisma.appConfig.findUnique({ where: { key: 'breakingAlerts' } });
       if (flag && flag.value === false) return;
 
-      const body = article.excerpt?.trim() || article.bodyTa.slice(0, 120);
+      const bodyTa = article.excerpt?.trim() || article.bodyTa.slice(0, 120);
+      const bodyEn = article.excerpt?.trim() || article.bodyEn.slice(0, 120);
       await this.notifications.send({
-        title: article.titleTa,
-        body,
+        titleTa: article.titleTa,
+        bodyTa,
+        titleEn: article.titleEn,
+        bodyEn,
+        target: 'ALL',
         data: { articleId: article.id, type: 'breaking' },
       });
     } catch (err) {

@@ -7,18 +7,23 @@ import * as admin from 'firebase-admin';
 
 export interface NotificationLog {
   id: string;
-  title: string;
-  body: string;
-  sentAt: Date;
+  titleTa: string;
+  bodyTa: string;
+  titleEn: string;
+  bodyEn: string;
+  target: string;
+  categoryId?: string;
+  status: 'SENT' | 'FAILED';
   successCount: number;
   failureCount: number;
+  sentAt: Date;
+  createdAt: Date;
 }
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
   private readonly logger = new Logger(NotificationsService.name);
   private firebaseApp: admin.app.App;
-  private notificationLogs: NotificationLog[] = [];
 
   constructor(
     private config: ConfigService,
@@ -48,52 +53,97 @@ export class NotificationsService implements OnModuleInit {
     }
   }
 
-  async send(dto: SendNotificationDto, adminId?: string) {
-    let tokens: string[] = [];
-
+  private async resolveTokens(dto: SendNotificationDto): Promise<string[]> {
     if (dto.tokens && dto.tokens.length > 0) {
-      tokens = dto.tokens;
-    } else {
-      // Fetch all push tokens (optionally filtered — category filter requires article tracking, so we do all for now)
-      const pushTokens = await this.prisma.pushToken.findMany({
-        select: { fcmToken: true },
-      });
-      tokens = pushTokens.map((t) => t.fcmToken);
+      return dto.tokens;
     }
 
+    if (dto.target === 'CATEGORY' && dto.categoryId) {
+      // Proxy for "interested in this category": has read at least one
+      // article in it before. There's no explicit subscription model yet.
+      const reads = await this.prisma.articleRead.findMany({
+        where: { article: { categoryId: dto.categoryId } },
+        select: { userId: true },
+        distinct: ['userId'],
+      });
+      const userIds = reads.map((r) => r.userId);
+      if (!userIds.length) return [];
+      const pushTokens = await this.prisma.pushToken.findMany({
+        where: { userId: { in: userIds } },
+        select: { fcmToken: true },
+      });
+      return pushTokens.map((t) => t.fcmToken);
+    }
+
+    const pushTokens = await this.prisma.pushToken.findMany({ select: { fcmToken: true } });
+    return pushTokens.map((t) => t.fcmToken);
+  }
+
+  async send(dto: SendNotificationDto, adminId?: string) {
+    const tokens = await this.resolveTokens(dto);
+
+    const baseMetadata = {
+      titleTa: dto.titleTa,
+      bodyTa: dto.bodyTa,
+      titleEn: dto.titleEn,
+      bodyEn: dto.bodyEn,
+      target: dto.target ?? 'ALL',
+      categoryId: dto.categoryId,
+    };
+
     if (!tokens.length) {
+      await this.prisma.auditLog.create({
+        data: {
+          ...(adminId ? { adminId } : {}),
+          action: 'SEND_NOTIFICATION',
+          entityType: 'notification',
+          metadata: { ...baseMetadata, status: 'FAILED', successCount: 0, failureCount: 0, tokenCount: 0 } as any,
+        },
+      }).catch(() => {});
       return { data: { successCount: 0, failureCount: 0, message: 'No tokens to send to' } };
     }
 
     if (!this.firebaseApp) {
+      await this.prisma.auditLog.create({
+        data: {
+          ...(adminId ? { adminId } : {}),
+          action: 'SEND_NOTIFICATION',
+          entityType: 'notification',
+          metadata: { ...baseMetadata, status: 'FAILED', successCount: 0, failureCount: tokens.length, tokenCount: tokens.length } as any,
+        },
+      }).catch(() => {});
       throw new InternalServerErrorException('Firebase not configured');
     }
 
+    // Notification chrome uses Tamil (the app's default language); the
+    // English variant travels in the data payload for a future per-user
+    // language-aware handler on the client.
     const message: admin.messaging.MulticastMessage = {
       tokens,
-      notification: { title: dto.title, body: dto.body },
-      data: dto.data ?? {},
+      notification: { title: dto.titleTa, body: dto.bodyTa },
+      data: {
+        titleEn: dto.titleEn,
+        bodyEn: dto.bodyEn,
+        ...(dto.data ?? {}),
+      },
     };
 
     const response = await admin.messaging(this.firebaseApp).sendEachForMulticast(message);
 
-    const log: NotificationLog = {
-      id: `${Date.now()}`,
-      title: dto.title,
-      body: dto.body,
-      sentAt: new Date(),
-      successCount: response.successCount,
-      failureCount: response.failureCount,
-    };
-    this.notificationLogs.unshift(log);
-
-    // Audit log (adminId omitted for system-triggered sends, e.g. auto breaking-news push)
+    // Audit log doubles as notification history — adminId omitted for
+    // system-triggered sends (e.g. auto breaking-news push).
     await this.prisma.auditLog.create({
       data: {
         ...(adminId ? { adminId } : {}),
         action: 'SEND_NOTIFICATION',
         entityType: 'notification',
-        metadata: { title: dto.title, tokens: tokens.length } as any,
+        metadata: {
+          ...baseMetadata,
+          status: response.successCount > 0 ? 'SENT' : 'FAILED',
+          successCount: response.successCount,
+          failureCount: response.failureCount,
+          tokenCount: tokens.length,
+        } as any,
       },
     }).catch(() => {});
 
@@ -106,13 +156,37 @@ export class NotificationsService implements OnModuleInit {
   }
 
   async getNotificationLogs(limit = 50, offset = 0) {
-    const sliced = this.notificationLogs.slice(offset, offset + limit);
+    const [logs, total] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where: { action: 'SEND_NOTIFICATION' },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      this.prisma.auditLog.count({ where: { action: 'SEND_NOTIFICATION' } }),
+    ]);
+
+    const data: NotificationLog[] = logs.map((l) => {
+      const m = (l.metadata as any) ?? {};
+      return {
+        id: l.id,
+        titleTa: m.titleTa ?? '',
+        bodyTa: m.bodyTa ?? '',
+        titleEn: m.titleEn ?? '',
+        bodyEn: m.bodyEn ?? '',
+        target: m.target ?? 'ALL',
+        categoryId: m.categoryId,
+        status: m.status ?? 'SENT',
+        successCount: m.successCount ?? 0,
+        failureCount: m.failureCount ?? 0,
+        sentAt: l.createdAt,
+        createdAt: l.createdAt,
+      };
+    });
+
     return {
-      data: sliced,
-      meta: {
-        total: this.notificationLogs.length,
-        hasMore: offset + limit < this.notificationLogs.length,
-      },
+      data,
+      meta: { total, hasMore: offset + limit < total },
     };
   }
 }
