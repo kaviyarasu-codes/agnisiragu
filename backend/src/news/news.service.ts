@@ -224,6 +224,17 @@ export class NewsService {
       device,
     });
 
+    // Fires when this edit is what NEWLY makes the article both published
+    // and breaking (covers the normal admin flow: open an existing article,
+    // check "Breaking News", save — not just the dedicated toggle/create
+    // paths). Guarded so re-saving an already-breaking article doesn't spam
+    // a push on every unrelated edit.
+    const wasPublishedAndBreaking = existing.status === 'PUBLISHED' && existing.isBreaking;
+    const isNowPublishedAndBreaking = article.status === 'PUBLISHED' && article.isBreaking;
+    if (isNowPublishedAndBreaking && !wasPublishedAndBreaking) {
+      this.maybeSendBreakingPush(article);
+    }
+
     return { data: article };
   }
 
@@ -247,6 +258,11 @@ export class NewsService {
       ip,
       device,
     });
+
+    // Covers publishing a draft that was already marked Breaking News.
+    if (article.isBreaking && existing.status !== 'PUBLISHED') {
+      this.maybeSendBreakingPush(article);
+    }
 
     return { data: article };
   }
