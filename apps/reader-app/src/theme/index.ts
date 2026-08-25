@@ -1,56 +1,79 @@
 // src/theme/index.ts
+// Design source: Agnisiragu Reader.dc.html (Aug 2026 redesign) — warm
+// newsprint palette (cream background, deep ink, Agnisiragu red), replacing
+// the earlier white/black theme. Field names are kept stable so existing
+// screens reading `t.bg`, `t.ink`, etc. keep working; new fields are additive.
 
 export interface AppTheme {
-  bg:       string;
-  bgAlt:    string;
-  surface:  string;
-  card:     string;
-  ink:      string;
-  inkSub:   string;
-  inkMuted: string;
-  border:   string;
-  red:      string;
-  redSoft:  string;
-  tabBg:    string;
-  isDark:   boolean;
+  bg:           string; // page background — cream in light, near-black in dark
+  bgAlt:        string; // secondary background (thumbnail placeholders, chips)
+  surface:      string; // card / header / sheet background
+  surface2:     string; // slightly-raised surface (rows on top of surface)
+  card:         string; // article card background
+  ink:          string; // headline text
+  inkSub:       string; // body text
+  inkMuted:     string; // timestamps, placeholders, disabled
+  border:       string; // hairline dividers
+  borderStrong: string; // stronger dividers / input focus
+  red:          string; // brand red — primary actions, active states
+  redDark:      string; // pressed / dark-on-red text
+  redSoft:      string; // tinted red background (unread rows, badges)
+  ink900:       string; // near-black surfaces (rail, dark buttons, splash)
+  gold:         string; // rate-ticker gold figure
+  tabBg:        string; // bottom rail / dark bar background
+  isDark:       boolean;
 }
 
 export const lightTheme: AppTheme = {
-  bg:       '#FFFFFF',
-  bgAlt:    '#F4F4F4',
-  surface:  '#FFFFFF',
-  card:     '#FFFFFF',
-  ink:      '#0A0A0A',
-  inkSub:   '#404040',
-  inkMuted: '#999999',
-  border:   '#ECECEC',
-  red:      '#CC1F2D',
-  redSoft:  '#FFE8E9',
-  tabBg:    '#111111',
-  isDark:   false,
+  bg:           '#F5F1EB',
+  bgAlt:        '#EFEBE5',
+  surface:      '#FFFFFF',
+  surface2:     '#F5F1EB',
+  card:         '#FFFFFF',
+  ink:          '#1C1917',
+  inkSub:       '#57534E',
+  inkMuted:     '#A8A29E',
+  border:       '#DDD8D0',
+  borderStrong: '#C5BFB8',
+  red:          '#CC1F2D',
+  redDark:      '#A8181F',
+  redSoft:      '#FDF4F4',
+  ink900:       '#1C1917',
+  gold:         '#E9B84A',
+  tabBg:        '#1C1917',
+  isDark:       false,
 };
 
 export const darkTheme: AppTheme = {
-  bg:       '#0A0A0A',
-  bgAlt:    '#141414',
-  surface:  '#1A1A1A',
-  card:     '#1E1E1E',
-  ink:      '#F0F0F0',
-  inkSub:   '#BBBBBB',
-  inkMuted: '#606060',
-  border:   '#2A2A2A',
-  red:      '#E8313F',
-  redSoft:  '#3D0F13',
-  tabBg:    '#1A1A1A',
-  isDark:   true,
+  bg:           '#17130F',
+  bgAlt:        '#221D18',
+  surface:      '#1F1A15',
+  surface2:     '#2A241D',
+  card:         '#221D18',
+  ink:          '#F5F1EB',
+  inkSub:       '#C9C2B8',
+  inkMuted:     '#8A8072',
+  border:       '#332C24',
+  borderStrong: '#463D32',
+  red:          '#E8313F',
+  redDark:      '#FF6B76',
+  redSoft:      '#3A1518',
+  ink900:       '#0D0B08',
+  gold:         '#E9B84A',
+  tabBg:        '#0D0B08',
+  isDark:       true,
 };
 
 export const CAT_COLORS: Record<string, string> = {
-  politics:      '#2563EB',
-  sports:        '#16A34A',
-  entertainment: '#9333EA',
-  business:      '#D97706',
+  politics:      '#1565C0',
+  sports:        '#E65100',
+  entertainment: '#6C3483',
+  cinema:        '#6C3483',
+  business:      '#2E7D32',
   technology:    '#0891B2',
   health:        '#DC2626',
+  crime:         '#7C2D12',
+  local:         '#0F766E',
+  international: '#4338CA',
   default:       '#CC1F2D',
 };

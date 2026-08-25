@@ -1,317 +1,96 @@
 // src/screens/OnboardingScreen.tsx
+// Screen 2a — 3-slide onboarding carousel (skip / illustration / progress
+// dashes / next). Finishes into /language-district rather than straight to
+// Home, since district selection is now its own step (see 1a's setup screen).
 
-import React, { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Dimensions,
-  Switch,
-  Alert,
-  Image,
-} from 'react-native';
-import * as Notifications from 'expo-notifications';
+import React, { useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { router } from 'expo-router';
-import { useCategories } from '@/hooks/useCategories';
-import { useAppStore } from '@/store/app.store';
-import { COLORS, STRINGS } from '@/constants';
-import type { Category } from '@/types';
+import { useTheme } from '@/hooks/useTheme';
+import { FONT_FAMILIES } from '@/constants';
+import { SkeletonBlock } from '@/components/ui/Skeleton';
+import Button from '@/components/ui/Button';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const TOTAL_SLIDES = 3;
+
+const SLIDES = [
+  { title: 'உங்கள் ஊரின் செய்தி, உடனே', desc: 'உங்கள் மாவட்டத்தில் நடப்பதை முதலில் தெரிந்து கொள்ளுங்கள். சரிபார்க்கப்பட்ட செய்திகள் மட்டும்.' },
+  { title: 'உள்ளூர் மக்களே நிருபர்கள்', desc: 'உங்கள் பகுதியில் நடப்பதை நீங்களே பதிவு செய்யலாம் — ஆசிரியர் குழு சரிபார்த்த பிறகு உடனே வெளியிடப்படும்.' },
+  { title: 'எழுதி சம்பாதியுங்கள்', desc: 'தொடர்ந்து செய்தி அளிக்கும் நிருபர்களுக்கு புள்ளிகள் மற்றும் அதிகாரப்பூர்வ பத்திரிகையாளர் அடையாள அட்டை.' },
+];
 
 export default function OnboardingScreen() {
   const scrollRef = useRef<ScrollView>(null);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-
-  const { data: categories } = useCategories();
-  const { language } = useAppStore();
+  const [slide, setSlide] = useState(0);
+  const t = useTheme();
+  const isLast = slide === SLIDES.length - 1;
 
   function goNext() {
-    if (currentSlide < TOTAL_SLIDES - 1) {
-      scrollRef.current?.scrollTo({ x: (currentSlide + 1) * SCREEN_WIDTH, animated: true });
-      setCurrentSlide((prev) => prev + 1);
+    if (!isLast) {
+      scrollRef.current?.scrollTo({ x: (slide + 1) * SCREEN_WIDTH, animated: true });
+      setSlide((s) => s + 1);
     } else {
-      handleFinish();
+      router.replace('/language-district');
     }
   }
 
-  function toggleCategory(id: string) {
-    setSelectedCategories((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
-    );
-  }
-
-  async function requestNotificationPermission() {
-    const { status } = await Notifications.requestPermissionsAsync();
-    setNotificationsEnabled(status === 'granted');
-    if (status !== 'granted') {
-      Alert.alert(
-        'அறிவிப்புகள் / Notifications',
-        'அமைப்புகளில் அறிவிப்புகளை இயக்கலாம் / You can enable notifications in Settings',
-      );
-    }
-  }
-
-  function handleFinish() {
-    router.replace('/');
+  function skip() {
+    router.replace('/language-district');
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: t.surface }]}>
+      <View style={styles.skipRow}>
+        {!isLast ? (
+          <Text style={[styles.skip, { color: t.inkMuted }]} onPress={skip}>skip</Text>
+        ) : <View style={{ height: 20 }} />}
+      </View>
+
       <ScrollView
         ref={scrollRef}
         horizontal
         pagingEnabled
         scrollEnabled={false}
         showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={(e) => {
-          const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-          setCurrentSlide(index);
-        }}
       >
-        {/* Slide 1: Welcome */}
-        <View style={[styles.slide, styles.slide1]}>
-          <Image
-            source={require('../../assets/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.slideDesc}>
-            உங்கள் கை நுனியில் தமிழ் செய்திகள்{'\n'}Tamil news at your fingertips
-          </Text>
-        </View>
-
-        {/* Slide 2: Category Selection */}
-        <View style={[styles.slide, styles.slide2]}>
-          <Text style={styles.slideTitle}>உங்கள் விருப்பங்கள்</Text>
-          <Text style={styles.slideTitleEn}>Choose Your Interests</Text>
-          <Text style={styles.slideDesc}>
-            விரும்பும் பிரிவுகளை தேர்ந்தெடுங்கள்{'\n'}Select categories you care about
-          </Text>
-          <ScrollView
-            style={styles.catScrollView}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.catGrid}
-          >
-            {(categories ?? []).map((cat: Category) => {
-              const isSelected = selectedCategories.includes(cat.id);
-              const name = language === 'ta' ? cat.nameTa : cat.nameEn;
-              return (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[styles.catChip, isSelected && styles.catChipActive]}
-                  onPress={() => toggleCategory(cat.id)}
-                >
-                  <Text style={[styles.catChipText, isSelected && styles.catChipTextActive]}>
-                    {name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Slide 3: Notifications */}
-        <View style={[styles.slide, styles.slide3]}>
-          <Text style={styles.bigEmoji}>🔔</Text>
-          <Text style={styles.slideTitle}>அறிவிப்புகள்</Text>
-          <Text style={styles.slideTitleEn}>Notifications</Text>
-          <Text style={styles.slideDesc}>
-            முக்கிய செய்திகளுக்கு அறிவிப்புகள் பெறுங்கள்{'\n'}
-            Get notified about breaking news
-          </Text>
-          <View style={styles.notifRow}>
-            <Text style={styles.notifLabel}>
-              அறிவிப்புகளை இயக்கு / Enable Notifications
-            </Text>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={(v) => {
-                if (v) requestNotificationPermission();
-                else setNotificationsEnabled(false);
-              }}
-              trackColor={{ false: COLORS.border, true: COLORS.primary }}
-              thumbColor={COLORS.surface}
-            />
+        {SLIDES.map((s, i) => (
+          <View key={i} style={[styles.slide, { width: SCREEN_WIDTH }]}>
+            <SkeletonBlock style={styles.illustration} />
+            <Text style={[styles.title, { color: t.ink }]}>{s.title}</Text>
+            <Text style={[styles.desc, { color: t.inkSub }]}>{s.desc}</Text>
           </View>
-        </View>
+        ))}
       </ScrollView>
 
-      {/* Dots */}
-      <View style={styles.dotsRow}>
-        {Array.from({ length: TOTAL_SLIDES }).map((_, i) => (
-          <View key={i} style={[styles.dot, i === currentSlide && styles.activeDot]} />
-        ))}
-      </View>
-
-      {/* Buttons */}
-      <View style={styles.buttonRow}>
-        {currentSlide < TOTAL_SLIDES - 1 && (
-          <TouchableOpacity style={styles.skipButton} onPress={handleFinish}>
-            <Text style={styles.skipText}>தவிர் / Skip</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity style={styles.nextButton} onPress={goNext}>
-          <Text style={styles.nextText}>
-            {currentSlide === TOTAL_SLIDES - 1
-              ? 'தொடங்கு / Start'
-              : 'அடுத்து / Next'}
-          </Text>
-        </TouchableOpacity>
+      <View style={styles.footer}>
+        <View style={styles.dots}>
+          {SLIDES.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.dot,
+                { backgroundColor: t.border },
+                i === slide && [styles.dotActive, { backgroundColor: t.red }],
+              ]}
+            />
+          ))}
+        </View>
+        <Button label="அடுத்து" onPress={goNext} variant="dark" style={{ width: '100%' }} />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  slide: {
-    width: SCREEN_WIDTH,
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-  },
-  slide1: {},
-  slide2: {
-    justifyContent: 'flex-start',
-    paddingTop: 60,
-  },
-  slide3: {},
-  logo: {
-    width: 260,
-    height: 120,
-    marginBottom: 24,
-  },
-  bigEmoji: {
-    fontSize: 72,
-    marginBottom: 20,
-  },
-  slideTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: COLORS.primary,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  slideTitleEn: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  slideDesc: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 20,
-  },
-  catScrollView: {
-    width: '100%',
-    maxHeight: 320,
-  },
-  catGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'center',
-  },
-  catChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-  },
-  catChipActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  catChipText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-  },
-  catChipTextActive: {
-    color: COLORS.surface,
-    fontWeight: '600',
-  },
-  notifRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    padding: 16,
-    borderRadius: 12,
-    width: '100%',
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  notifLabel: {
-    flex: 1,
-    fontSize: 14,
-    color: COLORS.text,
-    lineHeight: 20,
-    marginRight: 12,
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-    paddingBottom: 20,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.border,
-  },
-  activeDot: {
-    backgroundColor: COLORS.primary,
-    width: 24,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-    gap: 12,
-    justifyContent: 'flex-end',
-  },
-  skipButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-  },
-  skipText: {
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  nextButton: {
-    flex: 2,
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  nextText: {
-    color: COLORS.surface,
-    fontWeight: '700',
-    fontSize: 15,
-  },
+  container: { flex: 1 },
+  skipRow: { alignItems: 'flex-end', paddingHorizontal: 20, paddingTop: 16 },
+  skip: { fontFamily: FONT_FAMILIES.condensedBold, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
+  slide: { flex: 1, padding: 20 },
+  illustration: { flex: 1, borderRadius: 14, marginVertical: 14 },
+  title: { fontFamily: FONT_FAMILIES.displayExtraBold, fontSize: 26, lineHeight: 33, letterSpacing: -0.4 },
+  desc: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 14.5, lineHeight: 26, marginTop: 10 },
+  footer: { padding: 24, paddingTop: 4 },
+  dots: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 22 },
+  dot: { width: 5, height: 5, borderRadius: 2.5 },
+  dotActive: { width: 20, height: 5, borderRadius: 3 },
 });

@@ -34,7 +34,20 @@
         }
       ],
       "expo-image",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "செய்தி பதிவேற்ற புகைப்படங்களை தேர்ந்தெடுக்க அனுமதி தேவை / Allow access to your photos to attach images to a news report.",
+          "cameraPermission": "செய்தி பதிவேற்ற புகைப்படம்/வீடியோ எடுக்க கேமரா அனுமதி தேவை / Allow camera access to capture photos or video for a news report."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "உங்கள் அருகிலுள்ள செய்திகளை காட்டவும், பதிவிடும் செய்திக்கு இருப்பிடத்தை இணைக்கவும் இருப்பிட அனுமதி தேவை / Allow location access to show news near you and tag the location on a submitted report."
+        }
+      ]
     ],
     "extra": {
       "eas": {

@@ -1,241 +1,79 @@
 // src/screens/HomeScreen.tsx
+// The swipe-feed home shell (design 1a/1d/1e): header with menu / logo /
+// search / district chip, over the SwipeFeed card deck.
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import {
-  FlatList,
-  View,
-  Text,
-  ActivityIndicator,
-  RefreshControl,
-  StyleSheet,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Image, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useArticles, useBreakingNews } from '@/hooks/useArticles';
-import { useCategories } from '@/hooks/useCategories';
-import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
-import { FREE_ARTICLE_LIMIT, COLORS } from '@/constants';
 import { useTheme } from '@/hooks/useTheme';
-import ArticleCard from '@/components/ArticleCard';
-import BreakingNewsCarousel from '@/components/BreakingNewsCarousel';
-import CategoryTab from '@/components/CategoryTab';
-import LoginGateModal from '@/components/LoginGateModal';
-import AdBanner from '@/components/AdBanner';
-import type { Article } from '@/types';
-
-type ListItem =
-  | { type: 'article'; article: Article; key: string }
-  | { type: 'ad'; key: string; adIndex: number };
+import { DISTRICTS, FONT_FAMILIES } from '@/constants';
+import Icon from '@/components/icons/Icon';
+import SwipeFeed from '@/components/feed/SwipeFeed';
 
 export default function HomeScreen() {
   const params = useLocalSearchParams<{ categoryId?: string }>();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const { setSideMenuOpen, district, language } = useAppStore();
+  const t = useTheme();
 
   useEffect(() => {
     if (params.categoryId) setSelectedCategoryId(params.categoryId);
   }, [params.categoryId]);
-  const [showLoginGate, setShowLoginGate] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
 
-  const { isAuthenticated, articleReadCount } = useAuthStore();
-  const { language, remoteConfig } = useAppStore();
-  const freeArticleLimit = remoteConfig.loginGate
-    ? (remoteConfig.freeArticleLimit || FREE_ARTICLE_LIMIT)
-    : Infinity;
-  const theme = useTheme();
-
-  const {
-    data: articlesData,
-    isLoading: articlesLoading,
-    isError: articlesError,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    refetch,
-  } = useArticles(selectedCategoryId ?? undefined);
-
-  const { data: breakingNews } = useBreakingNews();
-  const { data: categoriesRaw } = useCategories();
-
-  // Pinned categories (from App Config) are moved to the front, in the
-  // configured order; everything else keeps its normal displayOrder.
-  const categories = useMemo(() => {
-    if (!categoriesRaw) return categoriesRaw;
-    const pinned = remoteConfig.pinnedCategorySlugs ?? [];
-    if (pinned.length === 0) return categoriesRaw;
-    const bySlug = new Map(categoriesRaw.map((c) => [c.slug, c]));
-    const pinnedCats = pinned.map((slug) => bySlug.get(slug)).filter(Boolean) as typeof categoriesRaw;
-    const rest = categoriesRaw.filter((c) => !pinned.includes(c.slug));
-    return [...pinnedCats, ...rest];
-  }, [categoriesRaw, remoteConfig.pinnedCategorySlugs]);
-
-  const showBreakingCarousel = remoteConfig.homeShowBreakingBar && remoteConfig.widgetBreakingBanner
-    && breakingNews && breakingNews.length > 0;
-  const showCategoryTabs = remoteConfig.widgetCategoryTabs && !!categories;
-  const sectionOrder = remoteConfig.homeSectionOrder?.length ? remoteConfig.homeSectionOrder : ['breaking', 'categories'];
-
-  const articles = useMemo(
-    () => articlesData?.pages.flatMap((p) => p.data) ?? [],
-    [articlesData],
-  );
-
-  const adFrequency = Math.max(2, remoteConfig.adInFeedFrequency || 5);
-
-  const listData: ListItem[] = useMemo(() => {
-    const items: ListItem[] = [];
-    let adCount = 0;
-    articles.forEach((article, i) => {
-      items.push({ type: 'article', article, key: article.id });
-      if ((i + 1) % adFrequency === 0) {
-        items.push({ type: 'ad', key: `ad-${i}`, adIndex: adCount++ });
-      }
-    });
-    return items;
-  }, [articles, adFrequency]);
-
-  const onEndReached = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
-    }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
-  }, [refetch]);
-
-  const handleArticlePress = useCallback(
-    (article: Article) => {
-      if (!isAuthenticated && articleReadCount >= freeArticleLimit) {
-        setShowLoginGate(true);
-        return;
-      }
-      router.push(`/article/${article.id}`);
-    },
-    [isAuthenticated, articleReadCount, freeArticleLimit],
-  );
-
-  const renderItem = useCallback(
-    ({ item, index }: { item: ListItem; index: number }) => {
-      if (item.type === 'ad') return <AdBanner index={item.adIndex} />;
-      return (
-        <ArticleCard
-          article={item.article}
-          onPress={handleArticlePress}
-          language={language}
-          index={index}
-        />
-      );
-    },
-    [handleArticlePress, language],
-  );
-
-  if (articlesLoading && !refreshing) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-  }
-
-  if (articlesError) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>
-          செய்திகளை ஏற்ற முடியவில்லை{'\n'}Unable to load articles
-        </Text>
-      </View>
-    );
-  }
+  const districtMeta = DISTRICTS.find((d) => d.id === district);
+  const districtLabel = districtMeta
+    ? (language === 'ta' ? districtMeta.nameTa : districtMeta.nameEn).toUpperCase()
+    : null;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      <FlatList
-        data={listData}
-        keyExtractor={(item) => item.key}
-        renderItem={renderItem}
-        onEndReached={onEndReached}
-        onEndReachedThreshold={0.4}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
-          />
-        }
-        ListHeaderComponent={
-          <>
-            {sectionOrder.map((sectionKey) => {
-              if (sectionKey === 'breaking' && showBreakingCarousel) {
-                return (
-                  <BreakingNewsCarousel
-                    key="breaking"
-                    articles={breakingNews!}
-                    language={language}
-                    mode={remoteConfig.homeHeroStyle}
-                  />
-                );
-              }
-              if (sectionKey === 'categories' && showCategoryTabs) {
-                return (
-                  <CategoryTab
-                    key="categories"
-                    categories={categories!}
-                    selectedId={selectedCategoryId}
-                    onSelect={setSelectedCategoryId}
-                    language={language}
-                    showSeeAll={remoteConfig.newsShowSeeAll}
-                  />
-                );
-              }
-              return null;
-            })}
-          </>
-        }
-        ListFooterComponent={
-          isFetchingNextPage ? (
-            <ActivityIndicator
-              style={styles.footer}
-              size="small"
-              color={COLORS.primary}
-            />
-          ) : null
-        }
-        contentContainerStyle={styles.list}
-      />
+    <View style={[styles.container, { backgroundColor: t.bg }]}>
+      <View style={[styles.header, { backgroundColor: t.surface, borderBottomColor: t.border }]}>
+        <TouchableOpacity onPress={() => setSideMenuOpen(true)} hitSlop={10} style={styles.iconBtn}>
+          <Icon name="menu" size={17} color={t.ink} />
+        </TouchableOpacity>
+        <Image
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          source={require('../../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity onPress={() => router.push('/search')} hitSlop={10} style={styles.iconBtn}>
+          <Icon name="search" size={16} color={t.inkSub} />
+        </TouchableOpacity>
+        {districtLabel ? (
+          <TouchableOpacity
+            style={[styles.districtChip, { backgroundColor: t.bg }]}
+            onPress={() => router.push('/language-district')}
+          >
+            <View style={[styles.districtDot, { backgroundColor: t.red }]} />
+            <Text style={[styles.districtText, { color: t.inkSub }]} numberOfLines={1}>{districtLabel}</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
 
-      <LoginGateModal
-        visible={showLoginGate}
-        onDismiss={() => setShowLoginGate(false)}
-      />
+      <SwipeFeed categoryId={selectedCategoryId ?? undefined} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  list: {
-    paddingBottom: 20,
-  },
-  center: {
-    flex: 1,
+  container: { flex: 1 },
+  header: {
+    height: 52,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.background,
-    padding: 24,
+    gap: 11,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
   },
-  errorText: {
-    color: COLORS.textSecondary,
-    fontSize: 15,
-    textAlign: 'center',
-    lineHeight: 24,
+  iconBtn: { padding: 2 },
+  logo: { height: 19, width: 92 },
+  districtChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderRadius: 20, paddingHorizontal: 9, paddingVertical: 5, maxWidth: 130,
   },
-  footer: {
-    paddingVertical: 20,
-  },
+  districtDot: { width: 7, height: 7, borderRadius: 3.5 },
+  districtText: { fontFamily: FONT_FAMILIES.uiSemiBold, fontSize: 9.5, letterSpacing: 0.7 },
 });

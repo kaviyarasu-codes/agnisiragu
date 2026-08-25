@@ -1,11 +1,13 @@
 // src/components/LocalAdCard.tsx
 // Renders one Local Ad (admin-created, e.g. a local business promo) inside
 // the feed's ad slot. Tracks impression on mount and click on CTA press.
+// Restyled onto theme tokens + FONT_FAMILIES; logic unchanged.
 
 import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { Image } from 'expo-image';
-import { COLORS } from '@/constants';
+import { useTheme } from '@/hooks/useTheme';
+import { FONT_FAMILIES } from '@/constants';
 import { trackLocalAdImpression, trackLocalAdClick, type LocalAd } from '@/hooks/useLocalAds';
 
 const CTA_LABEL: Record<LocalAd['ctaType'], { ta: string; en: string }> = {
@@ -47,6 +49,8 @@ interface Props {
 }
 
 export default function LocalAdCard({ ad, language, style }: Props) {
+  const t = useTheme();
+
   useEffect(() => {
     trackLocalAdImpression(ad.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -61,7 +65,7 @@ export default function LocalAdCard({ ad, language, style }: Props) {
   const cta = CTA_LABEL[ad.ctaType] ?? CTA_LABEL.WEBSITE;
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, { borderColor: t.border, backgroundColor: t.surface }, style]}>
       <View style={styles.badge}>
         <Text style={styles.badgeText}>{language === 'ta' ? 'விளம்பரம்' : 'AD'}</Text>
       </View>
@@ -69,17 +73,15 @@ export default function LocalAdCard({ ad, language, style }: Props) {
         {ad.mediaUrl ? (
           <Image source={{ uri: ad.mediaUrl }} style={styles.image} contentFit="cover" />
         ) : (
-          <View style={[styles.image, styles.imagePlaceholder]} />
+          <View style={[styles.image, { backgroundColor: t.bgAlt }]} />
         )}
         <View style={styles.textWrap}>
-          <Text style={styles.title} numberOfLines={2}>{ad.title}</Text>
+          <Text style={[styles.title, { color: t.ink }]} numberOfLines={2}>{ad.title}</Text>
           {!!ad.description && (
-            <Text style={styles.desc} numberOfLines={2}>{ad.description}</Text>
+            <Text style={[styles.desc, { color: t.inkSub }]} numberOfLines={2}>{ad.description}</Text>
           )}
-          <View style={styles.ctaButton}>
-            <Text style={styles.ctaText}>
-              {language === 'ta' ? cta.ta : cta.en}
-            </Text>
+          <View style={[styles.ctaButton, { backgroundColor: t.red }]}>
+            <Text style={styles.ctaText}>{language === 'ta' ? cta.ta : cta.en}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -93,8 +95,6 @@ const styles = StyleSheet.create({
     marginVertical: 6,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
     overflow: 'hidden',
   },
   badge: {
@@ -107,48 +107,12 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
   },
-  badgeText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  body: {
-    flexDirection: 'row',
-  },
-  image: {
-    width: 90,
-    height: 90,
-  },
-  imagePlaceholder: {
-    backgroundColor: COLORS.border,
-  },
-  textWrap: {
-    flex: 1,
-    padding: 10,
-    justifyContent: 'center',
-    gap: 3,
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  desc: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  ctaButton: {
-    marginTop: 4,
-    alignSelf: 'flex-start',
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  ctaText: {
-    color: COLORS.surface,
-    fontSize: 11,
-    fontWeight: '700',
-  },
+  badgeText: { color: '#fff', fontFamily: FONT_FAMILIES.uiBold, fontSize: 9, letterSpacing: 0.5 },
+  body: { flexDirection: 'row' },
+  image: { width: 90, height: 90 },
+  textWrap: { flex: 1, padding: 10, justifyContent: 'center', gap: 3 },
+  title: { fontFamily: FONT_FAMILIES.displaySemiBold, fontSize: 14 },
+  desc: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 12 },
+  ctaButton: { marginTop: 4, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
+  ctaText: { color: '#fff', fontFamily: FONT_FAMILIES.uiBold, fontSize: 11 },
 });

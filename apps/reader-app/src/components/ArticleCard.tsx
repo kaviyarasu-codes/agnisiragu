@@ -1,15 +1,19 @@
 // src/components/ArticleCard.tsx
-// Style: Dailyhunt / Tamil Samayam — full-width image, bold text, action row
+// Restyled onto theme tokens + FONT_FAMILIES; hero/standard card split,
+// like/share/bookmark action row, and bookmarks-store wiring are unchanged
+// from the original. Still used by the general list screens (Archive,
+// Search, Bookmarks, Profile) — the swipe-card Home feed uses its own
+// FeedCard component instead.
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Share, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Share } from 'react-native';
 import { Image } from 'expo-image';
 import { useBookmarksStore } from '@/store/bookmarks.store';
 import { useTheme } from '@/hooks/useTheme';
 import { CAT_COLORS } from '@/theme';
+import { FONT_FAMILIES } from '@/constants';
+import Icon from '@/components/icons/Icon';
 import type { Article, Language } from '@/types';
-
-const { width: SW } = Dimensions.get('window');
 
 interface ArticleCardProps {
   article: Article;
@@ -52,19 +56,17 @@ function ActionRow({ article, language }: { article: Article; language: Language
   return (
     <View style={[ar.row, { borderTopColor: t.border }]}>
       <TouchableOpacity style={ar.btn} onPress={handleLike}>
-        <Text style={[ar.icon, liked && { color: t.red }]}>👍</Text>
+        <Icon name="like" size={14} color={liked ? t.red : t.inkMuted} />
         <Text style={[ar.label, { color: liked ? t.red : t.inkMuted }]}>{likes}</Text>
       </TouchableOpacity>
       <View style={[ar.divider, { backgroundColor: t.border }]} />
       <TouchableOpacity style={ar.btn} onPress={handleShare}>
-        <Text style={ar.icon}>↗</Text>
-        <Text style={[ar.label, { color: t.inkMuted }]}>
-          {language === 'ta' ? 'பகிர்' : 'Share'}
-        </Text>
+        <Icon name="share" size={14} color={t.inkMuted} />
+        <Text style={[ar.label, { color: t.inkMuted }]}>{language === 'ta' ? 'பகிர்' : 'Share'}</Text>
       </TouchableOpacity>
       <View style={[ar.divider, { backgroundColor: t.border }]} />
       <TouchableOpacity style={ar.btn} onPress={() => toggleBookmark(article)}>
-        <Text style={[ar.icon, saved && { color: t.red }]}>{saved ? '🔖' : '🏷️'}</Text>
+        <Icon name="bookmarkNav" size={14} color={saved ? t.red : t.inkMuted} />
         <Text style={[ar.label, { color: saved ? t.red : t.inkMuted }]}>
           {language === 'ta' ? (saved ? 'சேமிக்கப்பட்டது' : 'சேமி') : (saved ? 'Saved' : 'Save')}
         </Text>
@@ -82,22 +84,19 @@ function HeroCard({ article, onPress, language }: ArticleCardProps) {
 
   return (
     <TouchableOpacity style={[hero.card, { backgroundColor: t.card }]} onPress={() => onPress(article)} activeOpacity={0.95}>
-      {/* Full-width image */}
       <View style={hero.imgWrap}>
         {article.thumbnailUrl
           ? <Image source={{ uri: article.thumbnailUrl }} style={hero.img} contentFit="cover" transition={300} />
           : <View style={[hero.img, { backgroundColor: t.bgAlt }]} />}
-        {/* Gradient scrim at bottom of image */}
         <View style={hero.scrim} />
         {article.isBreaking && (
-          <View style={hero.liveBadge}>
+          <View style={[hero.liveBadge, { backgroundColor: t.red }]}>
             <View style={hero.liveDot} />
             <Text style={hero.liveText}>LIVE</Text>
           </View>
         )}
       </View>
 
-      {/* Content */}
       <View style={hero.body}>
         <View style={[hero.catChip, { backgroundColor: catColor + '18' }]}>
           <Text style={[hero.catText, { color: catColor }]}>{catName.toUpperCase()}</Text>
@@ -113,7 +112,7 @@ function HeroCard({ article, onPress, language }: ArticleCardProps) {
   );
 }
 
-// ── STANDARD CARD (index 1+) — Dailyhunt style ───────────────────────────────
+// ── STANDARD CARD (index 1+) ─────────────────────────────────────────────────
 function StandardCard({ article, onPress, language, index = 1 }: ArticleCardProps) {
   const t = useTheme();
   const title = language === 'ta' ? article.titleTa : article.titleEn;
@@ -123,7 +122,6 @@ function StandardCard({ article, onPress, language, index = 1 }: ArticleCardProp
 
   return (
     <TouchableOpacity style={[sc.card, { backgroundColor: t.card }]} onPress={() => onPress(article)} activeOpacity={0.95}>
-      {/* Image on top */}
       {article.thumbnailUrl ? (
         <Image
           source={{ uri: article.thumbnailUrl }}
@@ -135,7 +133,6 @@ function StandardCard({ article, onPress, language, index = 1 }: ArticleCardProp
         <View style={[sc.img, isSmall && sc.imgSmall, { backgroundColor: t.bgAlt }]} />
       )}
 
-      {/* Content */}
       <View style={sc.body}>
         <View style={sc.topRow}>
           <View style={[sc.catChip, { backgroundColor: catColor + '15' }]}>
@@ -177,22 +174,19 @@ const hero = StyleSheet.create({
   },
   imgWrap: { width: '100%', height: 240, position: 'relative' },
   img: { width: '100%', height: '100%' },
-  scrim: {
-    position: 'absolute', bottom: 0, left: 0, right: 0, height: 60,
-    backgroundColor: 'rgba(0,0,0,0.15)',
-  },
+  scrim: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 60, backgroundColor: 'rgba(0,0,0,0.15)' },
   liveBadge: {
     position: 'absolute', top: 12, right: 12,
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: '#CC1F2D', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
   },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
-  liveText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  liveText: { color: '#fff', fontSize: 10, fontFamily: FONT_FAMILIES.uiBold, letterSpacing: 1 },
   body: { padding: 14, paddingBottom: 10 },
   catChip: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginBottom: 8 },
-  catText: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  title: { fontSize: 20, fontWeight: '800', lineHeight: 28, marginBottom: 8, letterSpacing: -0.3 },
-  time: { fontSize: 12, fontWeight: '500' },
+  catText: { fontSize: 10, fontFamily: FONT_FAMILIES.uiBold, letterSpacing: 1 },
+  title: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 20, lineHeight: 28, marginBottom: 8, letterSpacing: -0.3 },
+  time: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 12 },
 });
 
 const sc = StyleSheet.create({
@@ -207,25 +201,17 @@ const sc = StyleSheet.create({
   body: { padding: 12, paddingBottom: 8 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   catChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  catText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
+  catText: { fontSize: 10, fontFamily: FONT_FAMILIES.uiBold, letterSpacing: 0.8 },
   breakingChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  breakingText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.8 },
-  title: { fontSize: 16, fontWeight: '700', lineHeight: 23, marginBottom: 7, letterSpacing: -0.2 },
+  breakingText: { color: '#fff', fontSize: 9, fontFamily: FONT_FAMILIES.uiBold, letterSpacing: 0.8 },
+  title: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 16, lineHeight: 23, marginBottom: 7, letterSpacing: -0.2 },
   titleSmall: { fontSize: 14, lineHeight: 20 },
-  meta: { fontSize: 12, fontWeight: '400' },
+  meta: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 12 },
 });
 
 const ar = StyleSheet.create({
-  row: {
-    flexDirection: 'row', alignItems: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    marginTop: 10,
-  },
-  btn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', paddingVertical: 10, gap: 6,
-  },
+  row: { flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, marginTop: 10 },
+  btn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, gap: 6 },
   divider: { width: StyleSheet.hairlineWidth, height: 20 },
-  icon: { fontSize: 15 },
-  label: { fontSize: 12, fontWeight: '600' },
+  label: { fontFamily: FONT_FAMILIES.uiSemiBold, fontSize: 12 },
 });

@@ -1,5 +1,6 @@
-// src/app/(tabs)/categories.tsx
+// app/(tabs)/categories.tsx — dead route, see app/(tabs)/index.tsx.
+import { Redirect } from 'expo-router';
 
-import CategoriesScreen from '@/screens/CategoriesScreen';
-
-export default CategoriesScreen;
+export default function TabsCategoriesRedirect() {
+  return <Redirect href="/categories" />;
+}

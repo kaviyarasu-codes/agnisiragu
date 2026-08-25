@@ -3,6 +3,8 @@
 import { create } from 'zustand';
 import { getUserPrefs, setUserPrefs } from '@/lib/storage';
 import { get as apiGet } from '@/lib/api';
+import * as SecureStore from 'expo-secure-store';
+import { STORAGE_KEYS, DISTRICTS } from '@/constants';
 import type { Language } from '@/types';
 
 export interface NavTabConfig {
@@ -18,6 +20,8 @@ interface RemoteConfig {
   breakingAlerts: boolean;
   maintenanceMode: boolean;
   freeArticleLimit: number;
+  minSupportedVersion: string | null;
+  latestVersion: string | null;
 
   // Home layout
   homeHeroStyle: 'slider' | 'single';
@@ -52,7 +56,7 @@ interface RemoteConfig {
   // Splash screen
   splashBgColor: string;
   splashDurationMs: number;
-  splashAnimation: 'fade' | 'none';
+  splashAnimation: 'fade' | 'none' | 'wings';
   splashLogoUrl: string | null;
   splashShowTagline: boolean;
   splashTaglineTa: string;
@@ -67,6 +71,8 @@ const DEFAULT_CONFIG: RemoteConfig = {
   breakingAlerts: true,
   maintenanceMode: false,
   freeArticleLimit: 10,
+  minSupportedVersion: null,
+  latestVersion: null,
 
   homeHeroStyle: 'slider',
   homeShowBreakingBar: true,
@@ -92,13 +98,13 @@ const DEFAULT_CONFIG: RemoteConfig = {
   localAdsEnable: true,
   admobEnable: false,
 
-  splashBgColor: '#000000',
-  splashDurationMs: 1200,
-  splashAnimation: 'fade',
+  splashBgColor: '#F5F1EB',
+  splashDurationMs: 3400,
+  splashAnimation: 'wings',
   splashLogoUrl: null,
   splashShowTagline: true,
-  splashTaglineTa: 'உண்மையை உரக்கச் சொல்வோம்',
-  splashTaglineEn: 'Truth, Told Loud',
+  splashTaglineTa: 'உங்கள் ஊர் செய்திகள்',
+  splashTaglineEn: 'Your town, your news',
 
   defaultThemeMode: 'system',
 };
@@ -106,6 +112,8 @@ const DEFAULT_CONFIG: RemoteConfig = {
 interface AppStore {
   language: Language;
   colorScheme: 'light' | 'dark' | 'system';
+  district: string | null;
+  onboardingDone: boolean;
   selectedCategories: string[];
   hydrated: boolean;
   remoteConfig: RemoteConfig;
@@ -114,6 +122,8 @@ interface AppStore {
   setSideMenuOpen: (open: boolean) => void;
   setLanguage: (lang: Language) => void;
   setColorScheme: (scheme: 'light' | 'dark' | 'system') => void;
+  setDistrict: (districtId: string) => void;
+  completeOnboarding: () => void;
   toggleCategory: (categoryId: string) => void;
   setSelectedCategories: (ids: string[]) => void;
   clearCategoryFilter: () => void;
@@ -124,6 +134,8 @@ interface AppStore {
 export const useAppStore = create<AppStore>((set, get) => ({
   language: 'ta',
   colorScheme: 'system',
+  district: null,
+  onboardingDone: false,
   selectedCategories: [],
   hydrated: false,
   remoteConfig: DEFAULT_CONFIG,
@@ -147,6 +159,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }).catch(() => {});
   },
 
+  setDistrict: (districtId) => {
+    set({ district: districtId });
+    SecureStore.setItemAsync(STORAGE_KEYS.DISTRICT, districtId).catch(() => {});
+  },
+
+  completeOnboarding: () => {
+    set({ onboardingDone: true });
+    SecureStore.setItemAsync(STORAGE_KEYS.ONBOARDING_DONE, '1').catch(() => {});
+  },
+
   toggleCategory: (categoryId) => {
     const current = get().selectedCategories;
     const exists = current.includes(categoryId);
@@ -163,10 +185,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   hydrateFromStorage: async () => {
     try {
-      const prefs = await getUserPrefs();
-      if (prefs?.language) {
-        set({ language: prefs.language });
-      }
+      const [prefs, district, onboardingDone] = await Promise.all([
+        getUserPrefs(),
+        SecureStore.getItemAsync(STORAGE_KEYS.DISTRICT).catch(() => null),
+        SecureStore.getItemAsync(STORAGE_KEYS.ONBOARDING_DONE).catch(() => null),
+      ]);
+      if (prefs?.language) set({ language: prefs.language });
+      if (district && DISTRICTS.some((d) => d.id === district)) set({ district });
+      if (onboardingDone === '1') set({ onboardingDone: true });
     } catch {
       // ignore
     } finally {

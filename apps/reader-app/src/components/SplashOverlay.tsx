@@ -4,10 +4,15 @@
 // Config → Splash Screen. This does NOT replace the OS-level launch image
 // baked into the native build (app.json's expo-splash-screen plugin) —
 // that one can't be changed remotely without a new build.
+//
+// remoteConfig.splashAnimation === 'wings' renders the design's looping
+// feather animation (WingSplash); 'fade' and 'none' keep the original
+// logo + tagline treatment, only differing in how the overlay itself exits.
 
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Image, StyleSheet, Animated } from 'react-native';
 import { useAppStore } from '@/store/app.store';
+import WingSplash from '@/components/ui/WingSplash';
 
 export default function SplashOverlay() {
   const { remoteConfig, configLoaded, language } = useAppStore();
@@ -17,12 +22,12 @@ export default function SplashOverlay() {
   useEffect(() => {
     if (!configLoaded) return;
     const timer = setTimeout(() => {
-      if (remoteConfig.splashAnimation === 'fade') {
+      if (remoteConfig.splashAnimation === 'none') {
+        setVisible(false);
+      } else {
         Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() =>
           setVisible(false),
         );
-      } else {
-        setVisible(false);
       }
     }, remoteConfig.splashDurationMs);
     return () => clearTimeout(timer);
@@ -30,6 +35,19 @@ export default function SplashOverlay() {
   }, [configLoaded, remoteConfig.splashDurationMs, remoteConfig.splashAnimation]);
 
   if (!visible) return null;
+
+  if (remoteConfig.splashAnimation === 'wings') {
+    return (
+      <Animated.View style={[styles.container, { opacity }]}>
+        <WingSplash
+          bgColor={remoteConfig.splashBgColor}
+          tagline={remoteConfig.splashShowTagline
+            ? (language === 'ta' ? remoteConfig.splashTaglineTa : remoteConfig.splashTaglineEn)
+            : undefined}
+        />
+      </Animated.View>
+    );
+  }
 
   return (
     <Animated.View

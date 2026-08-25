@@ -1,5 +1,6 @@
-// src/app/(tabs)/profile.tsx
+// app/(tabs)/profile.tsx — dead route, see app/(tabs)/index.tsx.
+import { Redirect } from 'expo-router';
 
-import ProfileScreen from '@/screens/ProfileScreen';
-
-export default ProfileScreen;
+export default function TabsProfileRedirect() {
+  return <Redirect href="/profile" />;
+}

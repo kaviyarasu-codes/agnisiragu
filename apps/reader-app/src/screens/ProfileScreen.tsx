@@ -1,336 +1,168 @@
 // src/screens/ProfileScreen.tsx
+// Screen 2j — profile with Saved/History segmented tabs. Saved reuses
+// bookmarks.store; History reads history.store (see that file — it's a
+// local-only read log since there's no server read-history endpoint).
 
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Switch,
-  ScrollView,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
+import { useBookmarksStore } from '@/store/bookmarks.store';
+import { useHistoryStore } from '@/store/history.store';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { useCategories } from '@/hooks/useCategories';
-import { patch } from '@/lib/api';
-import { COLORS, STRINGS } from '@/constants';
-import type { Language } from '@/types';
+import { FONT_FAMILIES, STRINGS } from '@/constants';
+import Avatar from '@/components/ui/Avatar';
+import Button from '@/components/ui/Button';
+import Chip from '@/components/ui/Chip';
+import Icon from '@/components/icons/Icon';
+import EmptyState from '@/components/ui/EmptyState';
+import ArticleCard from '@/components/ArticleCard';
+import LogoutConfirmSheet from '@/components/sheets/LogoutConfirmSheet';
+import type { Article } from '@/types';
+
+type Tab = 'saved' | 'history';
 
 export default function ProfileScreen() {
-  const { user, isAuthenticated, articleReadCount } = useAuthStore();
-  const { language, setLanguage, colorScheme, setColorScheme } = useAppStore();
   const t = useTheme();
+  const { user, isAuthenticated, articleReadCount } = useAuthStore();
+  const { language } = useAppStore();
   const { logout } = useAuth();
-  const { data: categories } = useCategories();
-  const [notifCategories, setNotifCategories] = useState<string[]>(
-    user?.preferredLang ? [] : [],
-  );
+  const { bookmarks } = useBookmarksStore();
+  const { history, hydrate: hydrateHistory } = useHistoryStore();
+  const [tab, setTab] = useState<Tab>('saved');
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showLogoutSheet, setShowLogoutSheet] = useState(false);
 
-  // Guest banner — shown at the top of the profile page for non-authenticated users
-  const GuestBanner = !isAuthenticated ? (
-    <TouchableOpacity style={styles.guestBanner} onPress={() => router.push('/login')}>
-      <Text style={styles.guestBannerText}>
-        உள்நுழைந்து அனைத்து வசதிகளையும் பயன்படுத்துங்கள்
-      </Text>
-      <Text style={styles.guestBannerSub}>Tap to login and unlock all features</Text>
-    </TouchableOpacity>
-  ) : null;
+  useEffect(() => { hydrateHistory(); }, [hydrateHistory]);
 
-  async function handleLanguageToggle(lang: Language) {
-    setLanguage(lang);
-    try {
-      await patch('/users/preferences', { preferredLang: lang });
-    } catch {
-      // best effort
-    }
+  function handlePress(article: Article) {
+    router.push(`/article/${article.id}`);
   }
 
-  function toggleNotifCategory(id: string) {
-    setNotifCategories((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
-    );
+  async function confirmLogout() {
+    setLoggingOut(true);
+    await logout();
+    setLoggingOut(false);
+    setShowLogoutSheet(false);
+    router.replace('/');
   }
 
-  async function handleLogout() {
-    Alert.alert(
-      `${STRINGS.LOGOUT_TA} / ${STRINGS.LOGOUT_EN}`,
-      'வெளியேற விரும்புகிறீர்களா? / Are you sure you want to logout?',
-      [
-        { text: 'ரத்து / Cancel', style: 'cancel' },
-        {
-          text: `${STRINGS.LOGOUT_TA} / ${STRINGS.LOGOUT_EN}`,
-          style: 'destructive',
-          onPress: async () => {
-            setLoggingOut(true);
-            await logout();
-            setLoggingOut(false);
-            router.replace('/');
-          },
-        },
-      ],
-    );
-  }
+  const listData = tab === 'saved' ? bookmarks : history;
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Guest banner or user info */}
-      {!isAuthenticated ? GuestBanner : (
-        <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user?.name ? user.name[0].toUpperCase() : user?.phone.slice(-2) ?? 'U'}
-            </Text>
+    <>
+    <FlatList
+      style={{ backgroundColor: t.bg }}
+      data={listData}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => <ArticleCard article={item} onPress={handlePress} language={language} />}
+      ListHeaderComponent={
+        <>
+          <View style={[styles.card, { backgroundColor: t.surface, borderColor: t.border }]}>
+            {isAuthenticated ? (
+              <>
+                <Avatar name={user?.name || user?.phone} size={68} />
+                <Text style={[styles.name, { color: t.ink }]}>{user?.name ?? (language === 'ta' ? 'பயனர்' : 'User')}</Text>
+                <Text style={[styles.phone, { color: t.inkMuted }]}>{user?.phone}</Text>
+                <View style={styles.rowButtons}>
+                  <Button
+                    label={language === 'ta' ? 'சுயவிவரம் திருத்த' : 'Edit Profile'}
+                    variant="outline"
+                    onPress={() => router.push('/edit-profile')}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+                <Text style={[styles.readCount, { color: t.inkMuted }]}>
+                  {articleReadCount} {language === 'ta' ? 'செய்திகள் படிக்கப்பட்டன' : 'articles read'}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Avatar size={68} />
+                <Text style={[styles.name, { color: t.ink }]}>{language === 'ta' ? 'விருந்தினர்' : 'Guest'}</Text>
+                <Button
+                  label={STRINGS.LOGIN_WITH_PHONE_TA}
+                  onPress={() => router.push('/login')}
+                  style={{ width: '100%', marginTop: 14 }}
+                />
+              </>
+            )}
           </View>
-          <Text style={styles.userName}>{user?.name ?? 'பயனர் / User'}</Text>
-          <Text style={styles.userPhone}>{user?.phone}</Text>
-          <View style={styles.readCountPill}>
-            <Text style={styles.readCountPillText}>
-              {articleReadCount} செய்திகள் படிக்கப்பட்டன / articles read
-            </Text>
+
+          <TouchableOpacity
+            style={[styles.settingsRow, { borderColor: t.border, backgroundColor: t.surface }]}
+            onPress={() => router.push('/settings')}
+          >
+            <Text style={[styles.settingsLabel, { color: t.ink }]}>{STRINGS.SETTINGS_TA} / {STRINGS.SETTINGS_EN}</Text>
+            <Icon name="chevronRight" size={11} color={t.inkMuted} />
+          </TouchableOpacity>
+
+          <View style={styles.tabRow}>
+            <Chip
+              label={STRINGS.BOOKMARKS_TA}
+              active={tab === 'saved'}
+              onPress={() => setTab('saved')}
+              activeStyle="outline"
+              style={styles.tabChip}
+            />
+            <Chip
+              label={language === 'ta' ? 'வரலாறு' : 'History'}
+              active={tab === 'history'}
+              onPress={() => setTab('history')}
+              activeStyle="outline"
+              style={styles.tabChip}
+            />
           </View>
-        </View>
-      )}
-
-      {/* Theme Toggle */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>தோற்றம் / Appearance</Text>
-        <View style={styles.langRow}>
-          {(['light', 'dark', 'system'] as const).map((s) => (
-            <TouchableOpacity
-              key={s}
-              style={[styles.langBtn, colorScheme === s && { borderColor: t.red, backgroundColor: t.red }]}
-              onPress={() => setColorScheme(s)}
-            >
-              <Text style={[styles.langBtnText, colorScheme === s && { color: '#fff' }]}>
-                {s === 'light' ? '☀️ Light' : s === 'dark' ? '🌙 Dark' : '📱 System'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Language Preference */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>மொழி / Language</Text>
-        <View style={styles.langRow}>
-          <TouchableOpacity
-            style={[styles.langBtn, language === 'ta' && styles.activeLangBtn]}
-            onPress={() => handleLanguageToggle('ta')}
-          >
-            <Text style={[styles.langBtnText, language === 'ta' && styles.activeLangBtnText]}>
-              தமிழ்
-            </Text>
+        </>
+      }
+      ListEmptyComponent={
+        <EmptyState
+          icon="bookmarkLarge"
+          title={tab === 'saved'
+            ? (language === 'ta' ? 'சேமிக்கப்பட்ட செய்திகள் இல்லை' : 'No saved articles')
+            : (language === 'ta' ? 'வரலாறு இல்லை' : 'No reading history')}
+          description={tab === 'saved'
+            ? (language === 'ta' ? 'செய்தி அட்டையிலுள்ள சேமி பொத்தானை தொட்டு சேமிக்கலாம்' : 'Tap Save on any article to keep it here')
+            : (language === 'ta' ? 'படித்த செய்திகள் இங்கு தோன்றும்' : 'Articles you read will show up here')}
+          ctaLabel={language === 'ta' ? 'செய்திகளை படிக்க' : 'Browse Articles'}
+          onCta={() => router.replace('/')}
+        />
+      }
+      ListFooterComponent={
+        isAuthenticated ? (
+          <TouchableOpacity style={[styles.logoutBtn, { borderColor: t.border }]} onPress={() => setShowLogoutSheet(true)}>
+            <Text style={[styles.logoutText, { color: t.red }]}>{STRINGS.LOGOUT_TA} / {STRINGS.LOGOUT_EN}</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.langBtn, language === 'en' && styles.activeLangBtn]}
-            onPress={() => handleLanguageToggle('en')}
-          >
-            <Text style={[styles.langBtnText, language === 'en' && styles.activeLangBtnText]}>
-              English
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Notification Preferences */}
-      {categories && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            அறிவிப்பு விருப்பங்கள் / Notification Preferences
-          </Text>
-          {categories.map((cat) => (
-            <View key={cat.id} style={styles.notifRow}>
-              <Text style={styles.notifLabel}>
-                {language === 'ta' ? cat.nameTa : cat.nameEn}
-              </Text>
-              <Switch
-                value={notifCategories.includes(cat.id)}
-                onValueChange={() => toggleNotifCategory(cat.id)}
-                trackColor={{ false: COLORS.border, true: COLORS.primary }}
-                thumbColor={COLORS.surface}
-              />
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Contact Us */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>உதவி / Support</Text>
-        <TouchableOpacity
-          style={styles.contactRow}
-          onPress={() => router.push('/contact')}
-        >
-          <Text style={styles.contactRowText}>எங்களை தொடர்பு கொள்ள / Contact Us</Text>
-          <Text style={styles.contactRowChevron}>›</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Logout — only for logged-in users */}
-      {isAuthenticated && (
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-          disabled={loggingOut}
-        >
-          {loggingOut ? (
-            <ActivityIndicator color={COLORS.surface} />
-          ) : (
-            <Text style={styles.logoutButtonText}>
-              {STRINGS.LOGOUT_TA} / {STRINGS.LOGOUT_EN}
-            </Text>
-          )}
-        </TouchableOpacity>
-      )}
-    </ScrollView>
+        ) : null
+      }
+      contentContainerStyle={{ paddingBottom: 40 }}
+    />
+    <LogoutConfirmSheet
+      visible={showLogoutSheet}
+      onDismiss={() => setShowLogoutSheet(false)}
+      onConfirm={confirmLogout}
+      loading={loggingOut}
+      language={language}
+    />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
+  card: { margin: 16, borderRadius: 14, borderWidth: 1, padding: 22, alignItems: 'center' },
+  name: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 18, marginTop: 12 },
+  phone: { fontFamily: FONT_FAMILIES.uiRegular, fontSize: 13, marginTop: 2 },
+  rowButtons: { flexDirection: 'row', gap: 10, marginTop: 16, width: '100%' },
+  readCount: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 11.5, marginTop: 10 },
+  settingsRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginHorizontal: 16, borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 18,
   },
-  guestBanner: {
-    backgroundColor: COLORS.primary,
-    padding: 18,
-    alignItems: 'center',
-    gap: 4,
-  },
-  guestBannerText: {
-    color: COLORS.surface,
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  guestBannerSub: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  profileCard: {
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    padding: 28,
-    gap: 6,
-  },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  avatarText: {
-    color: COLORS.surface,
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  userName: {
-    color: COLORS.surface,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  userPhone: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 14,
-  },
-  readCountPill: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    marginTop: 6,
-  },
-  readCountPillText: {
-    color: COLORS.surface,
-    fontSize: 12,
-  },
-  section: {
-    backgroundColor: COLORS.surface,
-    marginTop: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
-  langRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  langBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-  },
-  activeLangBtn: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary,
-  },
-  langBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  activeLangBtnText: {
-    color: COLORS.surface,
-  },
-  notifRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  notifLabel: {
-    fontSize: 14,
-    color: COLORS.text,
-  },
-  contactRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  contactRowText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  contactRowChevron: {
-    fontSize: 20,
-    color: COLORS.textSecondary,
-  },
-  logoutButton: {
-    margin: 16,
-    marginTop: 20,
-    backgroundColor: COLORS.accent,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoutButtonText: {
-    color: COLORS.surface,
-    fontWeight: '700',
-    fontSize: 15,
-  },
+  settingsLabel: { fontFamily: FONT_FAMILIES.displaySemiBold, fontSize: 14.5 },
+  tabRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginBottom: 6 },
+  tabChip: { flex: 1, alignItems: 'center' },
+  logoutBtn: { margin: 16, marginTop: 24, borderWidth: 1.5, borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
+  logoutText: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 14.5 },
 });

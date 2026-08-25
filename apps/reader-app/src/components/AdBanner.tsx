@@ -2,11 +2,13 @@
 // Ad slot rendered in the feed and after article bodies. Shows a Local Ad
 // (admin-created, from Admin Panel → Local Ads) when one is active; falls
 // back to an AdMob placeholder otherwise (no AdMob SDK wired into the app
-// yet — see App Config → Advertisement Placement).
+// yet — see App Config → Advertisement Placement). Restyled onto theme
+// tokens + FONT_FAMILIES.
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS } from '@/constants';
+import { useTheme } from '@/hooks/useTheme';
+import { FONT_FAMILIES } from '@/constants';
 import { useAppStore } from '@/store/app.store';
 import { useLocalAds } from '@/hooks/useLocalAds';
 import LocalAdCard from './LocalAdCard';
@@ -17,6 +19,7 @@ interface Props {
 }
 
 export default function AdBanner({ style, index = 0 }: Props) {
+  const t = useTheme();
   const { language, remoteConfig } = useAppStore();
   const { data: ads } = useLocalAds();
 
@@ -26,8 +29,8 @@ export default function AdBanner({ style, index = 0 }: Props) {
   }
 
   return (
-    <View style={[styles.container, style]}>
-      <Text style={styles.label}>ADVERTISEMENT</Text>
+    <View style={[styles.container, { borderColor: t.borderStrong, backgroundColor: t.bgAlt }, style]}>
+      <Text style={[styles.label, { color: t.inkMuted }]}>ADVERTISEMENT</Text>
     </View>
   );
 }
@@ -37,18 +40,15 @@ const styles = StyleSheet.create({
     height: 50,
     marginHorizontal: 16,
     marginVertical: 6,
-    backgroundColor: COLORS.border,
     borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.textSecondary,
     borderStyle: 'dashed',
   },
   label: {
-    color: COLORS.textSecondary,
+    fontFamily: FONT_FAMILIES.condensedBold,
     fontSize: 10,
     letterSpacing: 1.5,
-    fontWeight: '600',
   },
 });

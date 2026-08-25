@@ -1,26 +1,26 @@
 // src/screens/LoginScreen.tsx
+// Screen 2e — OTP entry with resend timer. The phone-number step isn't in
+// the design's screen inventory (it only shows the state right after an
+// OTP was sent) but is kept here since the reader has to type a number
+// somewhere; it reuses the same field/button language as the rest of 2e.
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Alert,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import { COLORS, STRINGS } from '@/constants';
+import { useTheme } from '@/hooks/useTheme';
+import { FONT_FAMILIES } from '@/constants';
+import Button from '@/components/ui/Button';
+import Icon from '@/components/icons/Icon';
 
 type Step = 'phone' | 'otp';
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 60;
 
 export default function LoginScreen() {
+  const t = useTheme();
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
@@ -31,20 +31,13 @@ export default function LoginScreen() {
 
   const { sendOtp, verifyOtp } = useAuth();
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
+  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
   function startResendTimer() {
     setResendTimer(RESEND_SECONDS);
     timerRef.current = setInterval(() => {
       setResendTimer((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current!);
-          return 0;
-        }
+        if (prev <= 1) { clearInterval(timerRef.current!); return 0; }
         return prev - 1;
       });
     }, 1000);
@@ -53,7 +46,7 @@ export default function LoginScreen() {
   async function handleSendOtp() {
     const cleaned = phone.replace(/\D/g, '');
     if (cleaned.length !== 10) {
-      Alert.alert('பிழை / Error', 'சரியான 10 இலக்க எண் உள்ளிடவும் / Enter a valid 10-digit number');
+      Alert.alert('பிழை', 'சரியான 10 இலக்க எண் உள்ளிடவும்');
       return;
     }
     setLoading(true);
@@ -63,7 +56,7 @@ export default function LoginScreen() {
       startResendTimer();
       setTimeout(() => otpRefs.current[0]?.focus(), 300);
     } catch {
-      Alert.alert('பிழை / Error', 'OTP அனுப்ப முடியவில்லை / Failed to send OTP');
+      Alert.alert('பிழை', 'OTP அனுப்ப முடியவில்லை');
     } finally {
       setLoading(false);
     }
@@ -72,7 +65,7 @@ export default function LoginScreen() {
   async function handleVerifyOtp() {
     const otpString = otp.join('');
     if (otpString.length !== OTP_LENGTH) {
-      Alert.alert('பிழை / Error', 'OTP முழுமையாக உள்ளிடவும் / Enter complete OTP');
+      Alert.alert('பிழை', 'OTP முழுமையாக உள்ளிடவும்');
       return;
     }
     setLoading(true);
@@ -80,7 +73,7 @@ export default function LoginScreen() {
       await verifyOtp(`+91${phone.replace(/\D/g, '')}`, otpString);
       router.replace('/');
     } catch {
-      Alert.alert('பிழை / Error', 'தவறான OTP / Invalid OTP. Please try again.');
+      Alert.alert('பிழை', 'தவறான OTP');
     } finally {
       setLoading(false);
     }
@@ -88,18 +81,14 @@ export default function LoginScreen() {
 
   function handleOtpChange(value: string, index: number) {
     const digit = value.slice(-1);
-    const newOtp = [...otp];
-    newOtp[index] = digit;
-    setOtp(newOtp);
-    if (digit && index < OTP_LENGTH - 1) {
-      otpRefs.current[index + 1]?.focus();
-    }
+    const next = [...otp];
+    next[index] = digit;
+    setOtp(next);
+    if (digit && index < OTP_LENGTH - 1) otpRefs.current[index + 1]?.focus();
   }
 
   function handleOtpKeyPress(key: string, index: number) {
-    if (key === 'Backspace' && !otp[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-    }
+    if (key === 'Backspace' && !otp[index] && index > 0) otpRefs.current[index - 1]?.focus();
   }
 
   async function handleResend() {
@@ -109,61 +98,49 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.inner}>
-        <Text style={styles.appName}>{STRINGS.APP_NAME_TA}</Text>
-        <Text style={styles.appNameEn}>{STRINGS.APP_NAME_EN}</Text>
+    <KeyboardAvoidingView style={[styles.container, { backgroundColor: t.surface }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <View style={[styles.header, { borderBottomColor: t.border }]}>
+        <TouchableOpacity onPress={() => (step === 'otp' ? setStep('phone') : router.back())} hitSlop={10}>
+          <Icon name="back" size={17} color={t.ink} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: t.ink }]}>உள்நுழைய</Text>
+      </View>
 
+      <View style={styles.body}>
         {step === 'phone' ? (
           <>
-            <Text style={styles.heading}>உள்நுழைய / Login</Text>
-            <Text style={styles.subheading}>
-              உங்கள் தொலைபேசி எண்ணை உள்ளிடவும்{'\n'}Enter your phone number
-            </Text>
+            <Text style={[styles.h1, { color: t.ink }]}>தொலைபேசி எண்</Text>
+            <Text style={[styles.sub, { color: t.inkSub }]}>உங்கள் தொலைபேசி எண்ணை உள்ளிடவும்</Text>
 
-            <View style={styles.phoneRow}>
-              <View style={styles.prefix}>
-                <Text style={styles.prefixText}>+91</Text>
-              </View>
+            <View style={[styles.phoneRow, { borderColor: t.border, backgroundColor: t.surface }]}>
+              <Text style={[styles.prefix, { color: t.ink, borderRightColor: t.border }]}>+91</Text>
               <TextInput
-                style={styles.phoneInput}
+                style={[styles.phoneInput, { color: t.ink }]}
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="number-pad"
                 maxLength={10}
-                placeholder="10 இலக்க எண் / 10-digit number"
-                placeholderTextColor={COLORS.textSecondary}
+                placeholder="10 இலக்க எண்"
+                placeholderTextColor={t.inkMuted}
               />
             </View>
 
-            <TouchableOpacity
-              style={[styles.primaryButton, loading && styles.buttonDisabled]}
-              onPress={handleSendOtp}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={COLORS.surface} />
-              ) : (
-                <Text style={styles.primaryButtonText}>OTP அனுப்பு / Send OTP</Text>
-              )}
-            </TouchableOpacity>
+            <Button label="OTP அனுப்பு" onPress={handleSendOtp} loading={loading} style={{ marginTop: 26 }} />
           </>
         ) : (
           <>
-            <Text style={styles.heading}>OTP உள்ளிடவும் / Enter OTP</Text>
-            <Text style={styles.subheading}>
-              +91 {phone} எண்ணுக்கு OTP அனுப்பப்பட்டது{'\n'}OTP sent to +91 {phone}
-            </Text>
+            <Text style={[styles.h1, { color: t.ink }]}>குறியீட்டை உள்ளிடுங்கள்</Text>
+            <Text style={[styles.sub, { color: t.inkSub }]}>+91 {phone} க்கு அனுப்பப்பட்ட 6 இலக்க குறியீடு</Text>
 
             <View style={styles.otpRow}>
               {otp.map((digit, i) => (
                 <TextInput
                   key={i}
                   ref={(ref) => { otpRefs.current[i] = ref; }}
-                  style={[styles.otpBox, digit ? styles.otpBoxFilled : null]}
+                  style={[
+                    styles.otpBox,
+                    { borderColor: digit ? t.ink : t.border, color: t.ink },
+                  ]}
                   value={digit}
                   onChangeText={(v) => handleOtpChange(v, i)}
                   onKeyPress={({ nativeEvent }) => handleOtpKeyPress(nativeEvent.key, i)}
@@ -175,35 +152,18 @@ export default function LoginScreen() {
               ))}
             </View>
 
-            <TouchableOpacity
-              style={[styles.primaryButton, loading && styles.buttonDisabled]}
-              onPress={handleVerifyOtp}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={COLORS.surface} />
-              ) : (
-                <Text style={styles.primaryButtonText}>சரிபார் / Verify</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.resendButton, resendTimer > 0 && styles.resendDisabled]}
-              onPress={handleResend}
-              disabled={resendTimer > 0}
-            >
-              <Text style={styles.resendText}>
-                {resendTimer > 0
-                  ? `மீண்டும் அனுப்பு ${resendTimer}s / Resend in ${resendTimer}s`
-                  : 'மீண்டும் அனுப்பு / Resend OTP'}
+            <View style={styles.resendRow}>
+              <Text style={[styles.resendHint, { color: t.inkMuted }]}>குறியீடு வரவில்லையா?</Text>
+              <Text
+                style={[styles.resendAction, { color: resendTimer > 0 ? t.inkMuted : t.red }]}
+                onPress={handleResend}
+              >
+                {resendTimer > 0 ? `RESEND IN 0:${String(resendTimer).padStart(2, '0')}` : 'RESEND'}
               </Text>
-            </TouchableOpacity>
+            </View>
 
-            <TouchableOpacity onPress={() => setStep('phone')} style={styles.changePhone}>
-              <Text style={styles.changePhoneText}>
-                எண்ணை மாற்று / Change number
-              </Text>
-            </TouchableOpacity>
+            <Button label="சரிபார்" onPress={handleVerifyOtp} loading={loading} style={{ marginTop: 26 }} />
+            <Text style={[styles.changeNumber, { color: t.red }]} onPress={() => setStep('phone')}>எண்ணை மாற்ற</Text>
           </>
         )}
       </View>
@@ -212,126 +172,19 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  inner: {
-    flex: 1,
-    padding: 28,
-    justifyContent: 'center',
-  },
-  appName: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: COLORS.primary,
-    textAlign: 'center',
-    marginBottom: 2,
-  },
-  appNameEn: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: 40,
-    letterSpacing: 1,
-  },
-  heading: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subheading: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 28,
-  },
-  phoneRow: {
-    flexDirection: 'row',
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 20,
-    backgroundColor: COLORS.surface,
-  },
-  prefix: {
-    backgroundColor: COLORS.background,
-    paddingHorizontal: 14,
-    justifyContent: 'center',
-    borderRightWidth: 1,
-    borderRightColor: COLORS.border,
-  },
-  prefixText: {
-    fontSize: 15,
-    color: COLORS.text,
-    fontWeight: '600',
-  },
-  phoneInput: {
-    flex: 1,
-    height: 50,
-    paddingHorizontal: 14,
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  primaryButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  primaryButtonText: {
-    color: COLORS.surface,
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  otpRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 10,
-    marginBottom: 28,
-  },
-  otpBox: {
-    width: 46,
-    height: 54,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.text,
-    backgroundColor: COLORS.surface,
-  },
-  otpBoxFilled: {
-    borderColor: COLORS.primary,
-    backgroundColor: '#EEF3FA',
-  },
-  resendButton: {
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  resendDisabled: {
-    opacity: 0.5,
-  },
-  resendText: {
-    color: COLORS.primary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  changePhone: {
-    alignItems: 'center',
-    paddingVertical: 8,
-    marginTop: 4,
-  },
-  changePhoneText: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-  },
+  container: { flex: 1 },
+  header: { height: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
+  headerTitle: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 16 },
+  body: { padding: 26 },
+  h1: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 22, letterSpacing: -0.2 },
+  sub: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 13.5, lineHeight: 22, marginTop: 8 },
+  phoneRow: { flexDirection: 'row', borderWidth: 1.5, borderRadius: 12, overflow: 'hidden', marginTop: 24 },
+  prefix: { paddingHorizontal: 14, justifyContent: 'center', textAlignVertical: 'center', fontFamily: FONT_FAMILIES.uiSemiBold, fontSize: 15, borderRightWidth: 1 },
+  phoneInput: { flex: 1, height: 50, paddingHorizontal: 14, fontSize: 16 },
+  otpRow: { flexDirection: 'row', gap: 8, marginTop: 24 },
+  otpBox: { flex: 1, height: 54, borderWidth: 1.5, borderRadius: 9, fontFamily: FONT_FAMILIES.uiBold, fontSize: 20 },
+  resendRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 18 },
+  resendHint: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 12.5, flex: 1 },
+  resendAction: { fontFamily: FONT_FAMILIES.uiBold, fontSize: 12 },
+  changeNumber: { fontFamily: FONT_FAMILIES.displaySemiBold, fontSize: 12.5, textAlign: 'center', marginTop: 16 },
 });

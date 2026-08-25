@@ -1,3 +1,6 @@
-// app/(tabs)/bookmarks.tsx
-import BookmarksScreen from '@/screens/BookmarksScreen';
-export default BookmarksScreen;
+// app/(tabs)/bookmarks.tsx — dead route, see app/(tabs)/index.tsx.
+import { Redirect } from 'expo-router';
+
+export default function TabsBookmarksRedirect() {
+  return <Redirect href="/bookmarks" />;
+}

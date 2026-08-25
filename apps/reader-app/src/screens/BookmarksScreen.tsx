@@ -1,22 +1,20 @@
 // src/screens/BookmarksScreen.tsx
+// Screen 2p — restyled with the shared EmptyState shell; list/clear-all
+// logic unchanged from the original screen.
 
 import React, { useCallback } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useBookmarksStore } from '@/store/bookmarks.store';
 import { useAppStore } from '@/store/app.store';
-import { COLORS } from '@/constants';
+import { useTheme } from '@/hooks/useTheme';
+import { FONT_FAMILIES, STRINGS } from '@/constants';
 import ArticleCard from '@/components/ArticleCard';
+import EmptyState from '@/components/ui/EmptyState';
 import type { Article } from '@/types';
 
 export default function BookmarksScreen() {
+  const t = useTheme();
   const { bookmarks, clearAll } = useBookmarksStore();
   const { language } = useAppStore();
 
@@ -26,64 +24,46 @@ export default function BookmarksScreen() {
 
   function handleClearAll() {
     Alert.alert(
-      'சேமிப்புகளை அழி / Clear Bookmarks',
-      'அனைத்து சேமிக்கப்பட்ட செய்திகளையும் அகற்றவா?\nRemove all saved articles?',
+      language === 'ta' ? 'சேமிப்புகளை அழி' : 'Clear Bookmarks',
+      language === 'ta' ? 'அனைத்து சேமிக்கப்பட்ட செய்திகளையும் அகற்றவா?' : 'Remove all saved articles?',
       [
-        { text: 'ரத்து / Cancel', style: 'cancel' },
-        {
-          text: 'அழி / Clear',
-          style: 'destructive',
-          onPress: clearAll,
-        },
+        { text: language === 'ta' ? 'ரத்து' : 'Cancel', style: 'cancel' },
+        { text: language === 'ta' ? 'அழி' : 'Clear', style: 'destructive', onPress: clearAll },
       ],
     );
   }
 
   if (bookmarks.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>🔖</Text>
-        <Text style={styles.emptyTitle}>
-          சேமிக்கப்பட்ட செய்திகள் இல்லை
-        </Text>
-        <Text style={styles.emptySubtitle}>
-          No saved articles yet
-        </Text>
-        <Text style={styles.emptyHint}>
-          செய்தி அட்டையிலுள்ள 🏷️ ஐ தொட்டு சேமிக்கலாம்{'\n'}
-          Tap 🏷️ on any article card to save it here
-        </Text>
-        <TouchableOpacity
-          style={styles.browseButton}
-          onPress={() => router.replace('/')}
-        >
-          <Text style={styles.browseButtonText}>
-            செய்திகளை படிக்க / Browse Articles
-          </Text>
-        </TouchableOpacity>
+      <View style={{ flex: 1, backgroundColor: t.bg }}>
+        <EmptyState
+          icon="bookmarkLarge"
+          title={language === 'ta' ? 'சேமிக்கப்பட்ட செய்திகள் இல்லை' : 'No saved articles yet'}
+          description={
+            language === 'ta'
+              ? 'செய்தி அட்டையிலுள்ள சேமி பொத்தானை தொட்டு இங்கு சேர்க்கலாம்'
+              : 'Tap Save on any article card to keep it here'
+          }
+          ctaLabel={STRINGS.HOME_TA + ' / ' + STRINGS.HOME_EN}
+          onCta={() => router.replace('/')}
+        />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: t.bg }]}>
       <FlatList
         data={bookmarks}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <ArticleCard
-            article={item}
-            onPress={handlePress}
-            language={language}
-          />
-        )}
+        renderItem={({ item }) => <ArticleCard article={item} onPress={handlePress} language={language} />}
         ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.headerCount}>
-              {bookmarks.length} செய்தி{bookmarks.length !== 1 ? 'கள்' : ''} சேமிக்கப்பட்டது
+          <View style={[styles.header, { backgroundColor: t.surface, borderBottomColor: t.border }]}>
+            <Text style={[styles.headerCount, { color: t.ink }]}>
+              {bookmarks.length} {language === 'ta' ? `செய்தி${bookmarks.length !== 1 ? 'கள்' : ''} சேமிக்கப்பட்டது` : 'saved'}
             </Text>
             <TouchableOpacity onPress={handleClearAll}>
-              <Text style={styles.clearText}>அனைத்தையும் அழி / Clear all</Text>
+              <Text style={[styles.clearText, { color: t.red }]}>{language === 'ta' ? 'அனைத்தையும் அழி' : 'Clear all'}</Text>
             </TouchableOpacity>
           </View>
         }
@@ -95,75 +75,12 @@ export default function BookmarksScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  list: {
-    paddingBottom: 32,
-  },
+  container: { flex: 1 },
+  list: { paddingBottom: 32 },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    marginBottom: 4,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, marginBottom: 4,
   },
-  headerCount: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  clearText: {
-    fontSize: 12,
-    color: COLORS.accent,
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 36,
-    backgroundColor: COLORS.background,
-    gap: 10,
-  },
-  emptyIcon: {
-    fontSize: 56,
-    marginBottom: 8,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  emptyHint: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  browseButton: {
-    marginTop: 12,
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 28,
-    paddingVertical: 13,
-    borderRadius: 12,
-  },
-  browseButtonText: {
-    color: COLORS.surface,
-    fontWeight: '700',
-    fontSize: 14,
-  },
+  headerCount: { fontFamily: FONT_FAMILIES.displaySemiBold, fontSize: 13 },
+  clearText: { fontFamily: FONT_FAMILIES.displaySemiBold, fontSize: 12 },
 });

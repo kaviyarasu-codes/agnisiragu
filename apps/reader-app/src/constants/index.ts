@@ -12,6 +12,10 @@ export const API_BASE_URL = __DEV__
 // when the admin disables Login Gate, this is bypassed entirely (Infinity).
 export const FREE_ARTICLE_LIMIT = 10;
 
+// ── Colors — kept in sync with theme/index.ts's lightTheme; use useTheme()
+// for anything that must react to dark mode. COLORS is for the few call
+// sites (StyleSheet.create defaults, non-component modules) that need a
+// static value outside a component. ────────────────────────────────────────
 export const COLORS = {
   // Brand
   primary:       '#CC1F2D',   // Agnisiragu red
@@ -35,6 +39,7 @@ export const COLORS = {
   accent:        '#CC1F2D',
   success:       '#16A34A',
   warning:       '#D97706',
+  gold:          '#E9B84A',
 
   // Legacy aliases (keep so existing screens don't break)
   text:          '#1C1917',
@@ -42,19 +47,43 @@ export const COLORS = {
 
   // Category strip colors (left border on cards)
   catColors: {
-    politics:      '#2563EB',
-    sports:        '#16A34A',
-    entertainment: '#7C3AED',
-    business:      '#D97706',
+    politics:      '#1565C0',
+    sports:        '#E65100',
+    entertainment: '#6C3483',
+    cinema:        '#6C3483',
+    business:      '#2E7D32',
     technology:    '#0891B2',
     health:        '#DC2626',
     default:       '#CC1F2D',
   },
 };
 
+// ── Fonts — see theme/fonts.ts for the loader. Tamil headlines/UI use Anek
+// Tamil (bold, display-weight — the design's `.ta` class); Tamil body copy
+// uses Noto Sans Tamil (the `.tb` class, more readable at small sizes);
+// English chrome/numerals use Barlow, with Barlow Condensed for uppercase
+// tickers and tiny labels (the design's `.chip` class). Falls back to the
+// system font until useAppFonts() resolves. ─────────────────────────────────
+export const FONT_FAMILIES = {
+  displayRegular:   'AnekTamil-Regular',
+  displaySemiBold:  'AnekTamil-SemiBold',
+  displayBold:      'AnekTamil-Bold',
+  displayExtraBold: 'AnekTamil-ExtraBold',
+  bodyRegular:      'NotoSansTamil-Regular',
+  bodyMedium:       'NotoSansTamil-Medium',
+  bodySemiBold:     'NotoSansTamil-SemiBold',
+  uiRegular:        'Barlow-Regular',
+  uiMedium:         'Barlow-Medium',
+  uiSemiBold:       'Barlow-SemiBold',
+  uiBold:           'Barlow-Bold',
+  condensedSemiBold: 'BarlowCondensed-SemiBold',
+  condensedBold:     'BarlowCondensed-Bold',
+};
+
+// Backward-compatible alias used by a couple of older screens.
 export const FONTS = {
-  regular: 'System',
-  bold: 'System',
+  regular: FONT_FAMILIES.bodyRegular,
+  bold: FONT_FAMILIES.displayBold,
 };
 
 export const STORAGE_KEYS = {
@@ -64,12 +93,33 @@ export const STORAGE_KEYS = {
   USER_PREFS: 'user_prefs',
   RECENT_SEARCHES: 'recent_searches',
   DEVICE_ID: 'device_id',
+  DISTRICT: 'district_id',
+  ONBOARDING_DONE: 'onboarding_done',
+  NOTIF_PERMISSION_ASKED: 'notif_permission_asked',
 };
 
 export const AD_UNIT_IDS = {
   ANDROID_BANNER: 'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx',
   IOS_BANNER: 'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx',
 };
+
+// Districts the reader can follow — drives the onboarding location picker,
+// the header chip, search's location filter, and Settings → district.
+// (Backend can replace this with GET /districts later; static for Phase 1.)
+export const DISTRICTS = [
+  { id: 'coimbatore',    nameTa: 'கோயம்புத்தூர்',      nameEn: 'Coimbatore' },
+  { id: 'tiruppur',      nameTa: 'திருப்பூர்',           nameEn: 'Tiruppur' },
+  { id: 'erode',         nameTa: 'ஈரோடு',               nameEn: 'Erode' },
+  { id: 'chennai',       nameTa: 'சென்னை',              nameEn: 'Chennai' },
+  { id: 'madurai',       nameTa: 'மதுரை',               nameEn: 'Madurai' },
+  { id: 'salem',         nameTa: 'சேலம்',                nameEn: 'Salem' },
+  { id: 'trichy',        nameTa: 'திருச்சிராப்பள்ளி',    nameEn: 'Tiruchirappalli' },
+  { id: 'vellore',       nameTa: 'வேலூர்',               nameEn: 'Vellore' },
+  { id: 'thanjavur',     nameTa: 'தஞ்சாவூர்',            nameEn: 'Thanjavur' },
+  { id: 'tirunelveli',   nameTa: 'திருநெல்வேலி',         nameEn: 'Tirunelveli' },
+  { id: 'kanyakumari',   nameTa: 'கன்னியாகுமரி',         nameEn: 'Kanyakumari' },
+  { id: 'pudukkottai',   nameTa: 'புதுக்கோட்டை',         nameEn: 'Pudukkottai' },
+];
 
 export const STRINGS = {
   APP_NAME_TA: 'அக்னிசிறகு',
@@ -99,4 +149,14 @@ export const STRINGS = {
   ADVERTISEMENT_EN: 'Advertisement',
   BOOKMARKS_TA: 'சேமிப்பு',
   BOOKMARKS_EN: 'Saved',
+  ARCHIVE_TA: 'காப்பகம்',
+  ARCHIVE_EN: 'Archive',
+  JOBS_TA: 'வேலை வாய்ப்பு',
+  JOBS_EN: 'Jobs',
+  POST_TA: 'செய்தி அனுப்பு',
+  POST_EN: 'Post News',
+  SETTINGS_TA: 'அமைப்புகள்',
+  SETTINGS_EN: 'Settings',
+  NOTIFICATIONS_TA: 'அறிவிப்புகள்',
+  NOTIFICATIONS_EN: 'Notifications',
 };

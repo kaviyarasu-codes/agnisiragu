@@ -1,11 +1,14 @@
 // src/components/BreakingNewsCarousel.tsx
-// Style: Tamil Samayam / Dailyhunt — red LIVE ticker + full-width card carousel
+// Red LIVE ticker + full-width card carousel — restyled to the redesign's
+// palette/type (FONT_FAMILIES, theme tokens) with the same scroll/rotation
+// logic as before.
 
 import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useTheme } from '@/hooks/useTheme';
+import { FONT_FAMILIES } from '@/constants';
 import type { Article, Language } from '@/types';
 
 const { width: W } = Dimensions.get('window');
@@ -39,7 +42,6 @@ export default function BreakingNewsCarousel({ articles, language, mode = 'slide
 
   return (
     <View>
-      {/* RED TICKER STRIP */}
       <View style={[s.ticker, { backgroundColor: t.red }]}>
         <View style={s.tickerLeft}>
           <View style={s.liveDot} />
@@ -53,7 +55,6 @@ export default function BreakingNewsCarousel({ articles, language, mode = 'slide
         </Text>
       </View>
 
-      {/* FULL-WIDTH CAROUSEL (or single hero card when mode="single") */}
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -75,9 +76,7 @@ export default function BreakingNewsCarousel({ articles, language, mode = 'slide
               {article.thumbnailUrl
                 ? <Image source={{ uri: article.thumbnailUrl }} style={s.img} contentFit="cover" />
                 : <View style={[s.img, { backgroundColor: t.bgAlt }]} />}
-              {/* Dark gradient overlay */}
               <View style={s.overlay} />
-              {/* Title on image */}
               <View style={s.textWrap}>
                 <Text style={s.cardTitle} numberOfLines={2}>{title}</Text>
                 <Text style={s.cardTime}>{timeAgo(article.publishedAt)}</Text>
@@ -87,7 +86,6 @@ export default function BreakingNewsCarousel({ articles, language, mode = 'slide
         })}
       </ScrollView>
 
-      {/* DOT INDICATORS */}
       {mode !== 'single' && articles.length > 1 && (
         <View style={[s.dots, { backgroundColor: t.bg }]}>
           {articles.map((_, i) => (
@@ -110,8 +108,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4,
   },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
-  tickerLabel: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
-  tickerText: { flex: 1, color: '#fff', fontSize: 12, fontWeight: '600' },
+  tickerLabel: { color: '#fff', fontSize: 10, fontFamily: FONT_FAMILIES.uiBold, letterSpacing: 1 },
+  tickerText: { flex: 1, color: '#fff', fontSize: 12, fontFamily: FONT_FAMILIES.displaySemiBold },
 
   card: { height: 220 },
   img: { width: '100%', height: '100%' },
@@ -119,12 +117,9 @@ const s = StyleSheet.create({
     position: 'absolute', bottom: 0, left: 0, right: 0, height: '65%',
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
-  textWrap: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    padding: 16, gap: 4,
-  },
-  cardTitle: { color: '#fff', fontSize: 17, fontWeight: '800', lineHeight: 24, letterSpacing: -0.2 },
-  cardTime: { color: 'rgba(255,255,255,0.65)', fontSize: 12 },
+  textWrap: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, gap: 4 },
+  cardTitle: { color: '#fff', fontFamily: FONT_FAMILIES.displayBold, fontSize: 17, lineHeight: 24, letterSpacing: -0.2 },
+  cardTime: { color: 'rgba(255,255,255,0.65)', fontFamily: FONT_FAMILIES.uiRegular, fontSize: 12 },
 
   dots: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 8, gap: 5 },
   dot: { width: 6, height: 6, borderRadius: 3 },
