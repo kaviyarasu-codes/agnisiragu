@@ -5,8 +5,9 @@
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { requestPermissionsAsync } from '@/lib/notificationsCompat';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES, STORAGE_KEYS } from '@/constants';
@@ -25,6 +26,7 @@ export default function PermissionRequestScreen() {
   const t = useTheme();
   const { completeOnboarding } = useAppStore();
   const [busy, setBusy] = useState(false);
+  const insets = useSafeAreaInsets();
 
   function finish() {
     completeOnboarding();
@@ -34,7 +36,7 @@ export default function PermissionRequestScreen() {
   async function grant() {
     setBusy(true);
     try {
-      await Notifications.requestPermissionsAsync();
+      await requestPermissionsAsync();
       await registerGuestPushToken();
     } catch {
       // best-effort
@@ -46,7 +48,7 @@ export default function PermissionRequestScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: t.surface }]}>
+    <View style={[styles.container, { backgroundColor: t.surface, paddingTop: 60 + insets.top, paddingBottom: 24 + insets.bottom }]}>
       <Icon name="permissionBell" size={46} color={t.red} />
       <Text style={[styles.title, { color: t.ink }]}>முக்கிய செய்திகளை உடனே அறியுங்கள்</Text>
       <Text style={[styles.desc, { color: t.inkSub }]}>
@@ -69,7 +71,7 @@ export default function PermissionRequestScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, paddingTop: 60 },
+  container: { flex: 1, padding: 24 },
   title: { fontFamily: FONT_FAMILIES.displayExtraBold, fontSize: 22, lineHeight: 28, marginTop: 24, letterSpacing: -0.3 },
   desc: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 13.5, lineHeight: 24, marginTop: 10 },
   bullets: { gap: 9, marginTop: 24 },

@@ -7,10 +7,11 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
-import { FONT_FAMILIES } from '@/constants';
+import { FONT_FAMILIES, DISTRICTS } from '@/constants';
 import { patch } from '@/lib/api';
 import TextField from '@/components/ui/TextField';
 import Button from '@/components/ui/Button';
@@ -18,8 +19,11 @@ import Icon from '@/components/icons/Icon';
 
 export default function EditProfileScreen() {
   const t = useTheme();
-  const { language } = useAppStore();
+  const { language, district } = useAppStore();
   const { user, setUser } = useAuthStore();
+  const districtName = DISTRICTS.find((d) => d.id === district)?.nameTa
+    ?? (language === 'ta' ? 'தேர்வு செய்யவும்' : 'Select district');
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState(user?.name ?? '');
   const [saving, setSaving] = useState(false);
 
@@ -42,7 +46,7 @@ export default function EditProfileScreen() {
 
   return (
     <KeyboardAvoidingView style={[styles.container, { backgroundColor: t.surface }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <View style={[styles.header, { borderBottomColor: t.border }]}>
+      <View style={[styles.header, { borderBottomColor: t.border, paddingTop: insets.top, paddingBottom: 8 }]}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
           <Icon name="back" size={17} color={t.ink} />
         </TouchableOpacity>
@@ -73,6 +77,17 @@ export default function EditProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        <Text style={[styles.caption, { color: t.inkMuted }]}>
+          {language === 'ta' ? 'மாவட்டம்' : 'District'}
+        </Text>
+        <TouchableOpacity
+          style={[styles.districtRow, { borderColor: t.border }]}
+          onPress={() => router.push('/language-district')}
+        >
+          <Text style={[styles.districtText, { color: t.ink }]}>{districtName}</Text>
+          <Icon name="chevronDown" size={11} color={t.inkMuted} />
+        </TouchableOpacity>
+
         <Button
           label={language === 'ta' ? 'சேமி' : 'Save'}
           onPress={handleSave}
@@ -86,8 +101,14 @@ export default function EditProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { height: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
+  header: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
   headerTitle: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 16 },
   body: { padding: 22 },
   changeLink: { fontFamily: FONT_FAMILIES.displaySemiBold, fontSize: 12.5, marginTop: 8 },
+  caption: { fontFamily: FONT_FAMILIES.condensedBold, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginTop: 18, marginBottom: 8 },
+  districtRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    height: 48, borderWidth: 1, borderRadius: 9, paddingHorizontal: 12,
+  },
+  districtText: { fontFamily: FONT_FAMILIES.displayRegular, fontSize: 15 },
 });

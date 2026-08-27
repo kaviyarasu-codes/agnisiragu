@@ -9,6 +9,9 @@ import {
   ArticleListQueryDto,
   SearchArticleDto,
 } from './news.dto';
+import { buildArticleSearchText, canonicalizeForSearch } from '../common/utils/tamil-transliterate';
+
+type ReactionType = 'LIKE' | 'DISLIKE';
 
 @Injectable()
 export class NewsService {
@@ -138,6 +141,19 @@ export class NewsService {
         { bodyTa: { contains: query.q, mode: 'insensitive' } },
         { bodyEn: { contains: query.q, mode: 'insensitive' } },
       ];
+
+      // Thanglish/English-typed-Tamil support: searchText is a precomputed
+      // phonetic transliteration blob (see buildArticleSearchText). Canon-
+      // icalize the query the same way and require every word to appear —
+      // so "chennai mazhai" matches an article whose Tamil title
+      // transliterates to "...chennaiyil mazhai...".
+      const canonQ = canonicalizeForSearch(query.q);
+      const terms = canonQ.split(' ').filter(Boolean);
+      if (terms.length) {
+        where.OR.push({
+          AND: terms.map((term) => ({ searchText: { contains: term, mode: 'insensitive' } })),
+        });
+      }
     }
 
     const articles = await this.prisma.article.findMany({
@@ -155,6 +171,32 @@ export class NewsService {
     return { data, meta: { hasMore, nextCursor } };
   }
 
+  // ─── Public: like / dislike ───────────────────────────────────────────────
+  // No auth required — guests react too. `delta` is 1 (add) or -1 (undo);
+  // the reader-app decides which to send based on its own on-device
+  // AsyncStorage record of what this device already reacted with, since
+  // there's no per-user Like table to check against server-side.
+
+  async react(id: string, type: ReactionType, delta: 1 | -1) {
+    const field = type === 'LIKE' ? 'likeCount' : 'dislikeCount';
+    const existing = await this.prisma.article.findUnique({
+      where: { id },
+      select: { id: true, likeCount: true, dislikeCount: true },
+    });
+    if (!existing || existing.id !== id) throw new NotFoundException('Article not found');
+
+    const current = type === 'LIKE' ? existing.likeCount : existing.dislikeCount;
+    const next = Math.max(0, current + delta);
+
+    const article = await this.prisma.article.update({
+      where: { id },
+      data: { [field]: next },
+      select: { id: true, likeCount: true, dislikeCount: true, commentCount: true },
+    });
+
+    return { data: article };
+  }
+
   // ─── Admin: create ────────────────────────────────────────────────────────
 
   async create(dto: CreateArticleDto, adminId: string, ip?: string, device?: string) {
@@ -162,6 +204,14 @@ export class NewsService {
     if (!category) throw new NotFoundException('Category not found');
 
     const status = dto.status ?? 'DRAFT';
+    const searchText = buildArticleSearchText({
+      titleTa: dto.titleTa,
+      bodyTa: dto.bodyTa,
+      titleEn: dto.titleEn ?? dto.titleTa,
+      excerpt: dto.excerpt,
+      byline: dto.byline,
+      categoryNameEn: category.nameEn,
+    });
     const article = await this.prisma.article.create({
       data: {
         titleTa: dto.titleTa,
@@ -174,9 +224,11 @@ export class NewsService {
         categoryId: dto.categoryId,
         adminId,
         isBreaking: dto.isBreaking ?? false,
+        cardStyle: dto.cardStyle ?? 'STANDARD',
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
         status,
         publishedAt: status === 'PUBLISHED' ? new Date() : null,
+        searchText,
       },
       include: { category: true },
     });
@@ -204,12 +256,29 @@ export class NewsService {
     const existing = await this.prisma.article.findUnique({ where: { id } });
     if (!existing || existing.status === 'DELETED') throw new NotFoundException('Article not found');
 
+    // Recompute the search index whenever any of its source fields change,
+    // using existing values as the fallback for whatever this PATCH omits.
+    const categoryIdForSearch = dto.categoryId ?? existing.categoryId;
+    const categoryForSearch = await this.prisma.category.findUnique({
+      where: { id: categoryIdForSearch },
+      select: { nameEn: true },
+    });
+    const searchText = buildArticleSearchText({
+      titleTa: dto.titleTa ?? existing.titleTa,
+      bodyTa: dto.bodyTa ?? existing.bodyTa,
+      titleEn: dto.titleEn ?? existing.titleEn,
+      excerpt: dto.excerpt ?? existing.excerpt,
+      byline: dto.byline ?? existing.byline,
+      categoryNameEn: categoryForSearch?.nameEn,
+    });
+
     const article = await this.prisma.article.update({
       where: { id },
       data: {
         ...dto,
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
         ...(dto.status === 'PUBLISHED' && existing.status !== 'PUBLISHED' ? { publishedAt: new Date() } : {}),
+        searchText,
       },
       include: { category: true },
     });

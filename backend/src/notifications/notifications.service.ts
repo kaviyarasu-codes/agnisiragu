@@ -1,9 +1,24 @@
 // src/notifications/notifications.service.ts
-import { Injectable, OnModuleInit, Logger, InternalServerErrorException } from '@nestjs/common';
+//
+// Sends push notifications via Expo's push service, NOT Firebase Admin SDK
+// directly. This matters: the reader-app registers its device token with
+// `getExpoPushTokenAsync()` (see apps/reader-app/src/lib/push.ts), which
+// produces an Expo push token in the form "ExponentPushToken[...]" — not a
+// raw FCM registration token. Firebase Admin's `sendEachForMulticast` only
+// accepts real FCM tokens, so every send against Expo-format tokens failed
+// silently (or threw), which is why every notification in the admin panel's
+// history showed status FAILED regardless of Firebase credentials being
+// configured. Expo's push service internally relays to FCM (Android) and
+// APNs (iOS) on your behalf, so no Firebase service-account credentials are
+// needed for this at all.
+//
+// The Prisma column is still named `fcmToken` (avoiding a migration for a
+// rename) — despite the name, it holds Expo push tokens.
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
 import { PrismaService } from '../prisma/prisma.service';
 import { SendNotificationDto } from './notifications.dto';
-import * as admin from 'firebase-admin';
 
 export interface NotificationLog {
   id: string;
@@ -20,37 +35,37 @@ export interface NotificationLog {
   createdAt: Date;
 }
 
+// Admin has occasionally pasted rich-text content (with <p>/<strong> tags)
+// into the plain-text title/body fields. Push notification payloads must be
+// plain text — strip any HTML before it ever reaches a device or a log.
+function stripHtml(input: string | undefined | null): string {
+  if (!input) return '';
+  return input
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 @Injectable()
-export class NotificationsService implements OnModuleInit {
+export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
-  private firebaseApp: admin.app.App;
+  private readonly expo: Expo;
 
   constructor(
     private config: ConfigService,
     private prisma: PrismaService,
-  ) {}
-
-  onModuleInit() {
-    try {
-      const projectId = this.config.get<string>('FCM_PROJECT_ID');
-      const privateKey = this.config.get<string>('FCM_PRIVATE_KEY')?.replace(/\\n/g, '\n');
-      const clientEmail = this.config.get<string>('FCM_CLIENT_EMAIL');
-
-      if (projectId && privateKey && clientEmail) {
-        if (!admin.apps.length) {
-          this.firebaseApp = admin.initializeApp({
-            credential: admin.credential.cert({ projectId, privateKey, clientEmail }),
-          });
-        } else {
-          this.firebaseApp = admin.apps[0]!;
-        }
-        this.logger.log('Firebase Admin initialized');
-      } else {
-        this.logger.warn('Firebase credentials not configured — FCM push disabled');
-      }
-    } catch (err) {
-      this.logger.error('Firebase init failed', err.message);
-    }
+  ) {
+    // accessToken is optional (only needed for Expo's enhanced security
+    // push feature); undefined is fine for standard sends.
+    this.expo = new Expo({ accessToken: this.config.get<string>('EXPO_ACCESS_TOKEN') });
   }
 
   private async resolveTokens(dto: SendNotificationDto): Promise<string[]> {
@@ -80,13 +95,22 @@ export class NotificationsService implements OnModuleInit {
   }
 
   async send(dto: SendNotificationDto, adminId?: string) {
-    const tokens = await this.resolveTokens(dto);
+    const titleTa = stripHtml(dto.titleTa);
+    const bodyTa = stripHtml(dto.bodyTa);
+    const titleEn = stripHtml(dto.titleEn);
+    const bodyEn = stripHtml(dto.bodyEn);
+
+    const rawTokens = await this.resolveTokens(dto);
+    // Filter out anything that isn't a well-formed Expo push token (e.g.
+    // stale/garbage rows) so one bad token can't blow up the whole batch.
+    const tokens = rawTokens.filter((t) => Expo.isExpoPushToken(t));
+    const invalidCount = rawTokens.length - tokens.length;
 
     const baseMetadata = {
-      titleTa: dto.titleTa,
-      bodyTa: dto.bodyTa,
-      titleEn: dto.titleEn,
-      bodyEn: dto.bodyEn,
+      titleTa,
+      bodyTa,
+      titleEn,
+      bodyEn,
       target: dto.target ?? 'ALL',
       categoryId: dto.categoryId,
     };
@@ -97,41 +121,57 @@ export class NotificationsService implements OnModuleInit {
           ...(adminId ? { adminId } : {}),
           action: 'SEND_NOTIFICATION',
           entityType: 'notification',
-          metadata: { ...baseMetadata, status: 'FAILED', successCount: 0, failureCount: 0, tokenCount: 0 } as any,
+          metadata: {
+            ...baseMetadata,
+            status: 'FAILED',
+            successCount: 0,
+            failureCount: 0,
+            tokenCount: rawTokens.length,
+            error: invalidCount > 0
+              ? `${invalidCount} token(s) were not valid Expo push tokens`
+              : 'No devices are registered to receive push notifications yet',
+          } as any,
         },
       }).catch(() => {});
       return { data: { successCount: 0, failureCount: 0, message: 'No tokens to send to' } };
     }
 
-    if (!this.firebaseApp) {
-      await this.prisma.auditLog.create({
-        data: {
-          ...(adminId ? { adminId } : {}),
-          action: 'SEND_NOTIFICATION',
-          entityType: 'notification',
-          metadata: { ...baseMetadata, status: 'FAILED', successCount: 0, failureCount: tokens.length, tokenCount: tokens.length } as any,
-        },
-      }).catch(() => {});
-      throw new InternalServerErrorException('Firebase not configured');
+    const messages: ExpoPushMessage[] = tokens.map((token) => ({
+      to: token,
+      sound: 'default',
+      title: titleTa,
+      body: bodyTa,
+      data: { titleEn, bodyEn, ...(dto.data ?? {}) },
+    }));
+
+    const chunks = this.expo.chunkPushNotifications(messages);
+    const tickets: ExpoPushTicket[] = [];
+    const errors: string[] = [];
+
+    for (const chunk of chunks) {
+      try {
+        const ticketChunk = await this.expo.sendPushNotificationsAsync(chunk);
+        tickets.push(...ticketChunk);
+      } catch (err) {
+        this.logger.error('Expo push send failed for a chunk', err?.message ?? err);
+        errors.push(err?.message ?? 'Unknown error sending a batch');
+      }
     }
 
-    // Notification chrome uses Tamil (the app's default language); the
-    // English variant travels in the data payload for a future per-user
-    // language-aware handler on the client.
-    const message: admin.messaging.MulticastMessage = {
-      tokens,
-      notification: { title: dto.titleTa, body: dto.bodyTa },
-      data: {
-        titleEn: dto.titleEn,
-        bodyEn: dto.bodyEn,
-        ...(dto.data ?? {}),
-      },
-    };
+    let successCount = 0;
+    let failureCount = 0;
+    for (const ticket of tickets) {
+      if (ticket.status === 'ok') {
+        successCount++;
+      } else {
+        failureCount++;
+        if (ticket.message) errors.push(ticket.message);
+      }
+    }
+    // Any tokens whose chunk threw entirely (no ticket at all) still count
+    // as failures so the totals reconcile with tokens.length.
+    failureCount += tokens.length - tickets.length;
 
-    const response = await admin.messaging(this.firebaseApp).sendEachForMulticast(message);
-
-    // Audit log doubles as notification history — adminId omitted for
-    // system-triggered sends (e.g. auto breaking-news push).
     await this.prisma.auditLog.create({
       data: {
         ...(adminId ? { adminId } : {}),
@@ -139,20 +179,16 @@ export class NotificationsService implements OnModuleInit {
         entityType: 'notification',
         metadata: {
           ...baseMetadata,
-          status: response.successCount > 0 ? 'SENT' : 'FAILED',
-          successCount: response.successCount,
-          failureCount: response.failureCount,
+          status: successCount > 0 ? 'SENT' : 'FAILED',
+          successCount,
+          failureCount,
           tokenCount: tokens.length,
+          ...(errors.length ? { error: errors.slice(0, 5).join('; ') } : {}),
         } as any,
       },
     }).catch(() => {});
 
-    return {
-      data: {
-        successCount: response.successCount,
-        failureCount: response.failureCount,
-      },
-    };
+    return { data: { successCount, failureCount } };
   }
 
   async getNotificationLogs(limit = 50, offset = 0) {
@@ -170,10 +206,10 @@ export class NotificationsService implements OnModuleInit {
       const m = (l.metadata as any) ?? {};
       return {
         id: l.id,
-        titleTa: m.titleTa ?? '',
-        bodyTa: m.bodyTa ?? '',
-        titleEn: m.titleEn ?? '',
-        bodyEn: m.bodyEn ?? '',
+        titleTa: stripHtml(m.titleTa),
+        bodyTa: stripHtml(m.bodyTa),
+        titleEn: stripHtml(m.titleEn),
+        bodyEn: stripHtml(m.bodyEn),
         target: m.target ?? 'ALL',
         categoryId: m.categoryId,
         status: m.status ?? 'SENT',

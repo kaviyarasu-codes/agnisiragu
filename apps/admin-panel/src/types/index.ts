@@ -83,6 +83,10 @@ export interface Article {
   admin: { id: string; name: string };
   status: ArticleStatus;
   isBreaking: boolean;
+  cardStyle?: 'STANDARD' | 'FULL_BLEED' | 'NEWSPRINT';
+  likeCount?: number;
+  dislikeCount?: number;
+  commentCount?: number;
   scheduledAt?: string;
   publishedAt?: string;
   createdAt: string;

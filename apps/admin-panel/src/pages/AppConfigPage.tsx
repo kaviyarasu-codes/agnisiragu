@@ -14,6 +14,7 @@ import {
   Megaphone, Bell, Image, Navigation, Layers, Flag, Tag,
   Sliders, Zap, Clock, BookOpen, Radio, Star, Package,
   Settings2, Eye, EyeOff, Tablet, CheckCircle2, CircleDashed,
+  Images, Plus, Trash2, Upload,
 } from 'lucide-react';
 import { apiGet, apiPatch } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
@@ -146,6 +147,26 @@ const SECTIONS: ConfigSection[] = [
     status: 'live',
     app: 'reader',
     plannedFields: ['Background Color', 'Duration (ms)', 'Animation Style', 'Show App Tagline', 'Tagline Text (Tamil + English)', 'Splash Logo URL'],
+  },
+  {
+    id: 'reader_rate_ticker',
+    label: 'Rate Ticker',
+    labelTa: 'விலை பட்டி',
+    description: 'The gold/silver rate + sponsor credit strip shown under the Home feed',
+    icon: <Tag size={16} />,
+    status: 'live',
+    app: 'reader',
+    plannedFields: ['Enable/Disable', 'Sponsor Name', 'Gold Rate', 'Silver Rate'],
+  },
+  {
+    id: 'reader_onboarding',
+    label: 'Onboarding Carousel',
+    labelTa: 'அறிமுக ஸ்லைடுகள்',
+    description: 'First-launch slides — image, Tamil + English title and description, shown before language/district setup',
+    icon: <Images size={16} />,
+    status: 'live',
+    app: 'reader',
+    plannedFields: ['Slide Image URL', 'Title (Tamil + English)', 'Description (Tamil + English)', 'Add / Remove Slides', 'Slide Order'],
   },
 
   // ── Reporter App ────────────────────────────────────────────────────────
@@ -927,6 +948,170 @@ function LiveSplash() {
   );
 }
 
+// ─── Live: Rate Ticker ──────────────────────────────────────────────────────
+
+function LiveRateTicker() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+    onError: () => toast.error('Save failed'),
+  });
+  const cfg = data?.data ?? {};
+  const enabled: boolean = cfg.rateTickerEnabled ?? true;
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+        <div>
+          <p className="text-sm font-medium text-text-primary">Show Rate Ticker</p>
+          <p className="text-xs text-text-muted">The strip under the Home feed with sponsor name + gold/silver rates</p>
+        </div>
+        <button type="button" onClick={() => saveMut.mutate({ rateTickerEnabled: !enabled })}
+          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${enabled ? 'bg-green-500' : 'bg-gray-200'}`}>
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-5' : ''}`} />
+        </button>
+      </div>
+
+      <div>
+        <label className="label">Sponsor Name</label>
+        <input defaultValue={cfg.rateTickerSponsorName ?? 'ஸ்ரீ லக்ஷ்மி நகைமாளிகை'}
+          onBlur={(e) => saveMut.mutate({ rateTickerSponsorName: e.target.value })}
+          className="input-field mt-1" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="label">Gold Rate (22K, per gram)</label>
+          <input defaultValue={cfg.rateTickerGoldRate ?? '₹7,240'}
+            onBlur={(e) => saveMut.mutate({ rateTickerGoldRate: e.target.value })}
+            className="input-field mt-1" />
+        </div>
+        <div>
+          <label className="label">Silver Rate (per gram)</label>
+          <input defaultValue={cfg.rateTickerSilverRate ?? '₹96'}
+            onBlur={(e) => saveMut.mutate({ rateTickerSilverRate: e.target.value })}
+            className="input-field mt-1" />
+        </div>
+      </div>
+      <p className="text-xs text-text-muted">Rates are entered manually — there's no live market-rate feed wired up yet.</p>
+    </div>
+  );
+}
+
+// ─── Live: Onboarding Carousel ────────────────────────────────────────────────
+
+interface OnboardingSlide {
+  imageUrl: string | null;
+  titleTa: string;
+  titleEn: string;
+  descTa: string;
+  descEn: string;
+}
+
+const BLANK_SLIDE: OnboardingSlide = { imageUrl: null, titleTa: '', titleEn: '', descTa: '', descEn: '' };
+
+function LiveOnboardingCarousel() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+    onError: () => toast.error('Save failed'),
+  });
+
+  const cfg = data?.data ?? {};
+  const slides: OnboardingSlide[] = cfg.onboardingSlides ?? [];
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  const updateSlide = (i: number, patch: Partial<OnboardingSlide>) => {
+    const next = slides.map((s, idx) => (idx === i ? { ...s, ...patch } : s));
+    saveMut.mutate({ onboardingSlides: next });
+  };
+
+  const addSlide = () => saveMut.mutate({ onboardingSlides: [...slides, { ...BLANK_SLIDE }] });
+  const removeSlide = (i: number) => {
+    if (slides.length <= 1) { toast.error('At least 1 slide is required'); return; }
+    saveMut.mutate({ onboardingSlides: slides.filter((_, idx) => idx !== i) });
+  };
+  const moveSlide = (i: number, dir: 'up' | 'down') => {
+    const j = dir === 'up' ? i - 1 : i + 1;
+    if (j < 0 || j >= slides.length) return;
+    const next = [...slides];
+    [next[i], next[j]] = [next[j], next[i]];
+    saveMut.mutate({ onboardingSlides: next });
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-text-muted">
+        Shown to first-time users before the language/district setup screen. Reader app falls back to its built-in default slides if this list is empty.
+      </p>
+
+      {slides.map((s, i) => (
+        <div key={i} className="p-4 rounded-xl border border-border space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">Slide {i + 1}</span>
+            <div className="flex gap-1">
+              <button type="button" disabled={i === 0} onClick={() => moveSlide(i, 'up')} className="btn-ghost px-2 py-1 text-xs disabled:opacity-30">↑</button>
+              <button type="button" disabled={i === slides.length - 1} onClick={() => moveSlide(i, 'down')} className="btn-ghost px-2 py-1 text-xs disabled:opacity-30">↓</button>
+              <button type="button" onClick={() => removeSlide(i)} className="btn-ghost px-2 py-1 text-xs text-red">
+                <Trash2 size={13} />
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Image URL (optional — falls back to a placeholder)</label>
+            <div className="flex items-center gap-2 mt-1">
+              <Upload size={14} className="text-text-muted flex-shrink-0" />
+              <input defaultValue={s.imageUrl ?? ''} placeholder="https://..."
+                onBlur={(e) => updateSlide(i, { imageUrl: e.target.value || null })}
+                className="input-field h-9 text-xs" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Title (Tamil)</label>
+              <input defaultValue={s.titleTa} onBlur={(e) => updateSlide(i, { titleTa: e.target.value })} className="input-field h-9 text-sm" />
+            </div>
+            <div>
+              <label className="label">Title (English)</label>
+              <input defaultValue={s.titleEn} onBlur={(e) => updateSlide(i, { titleEn: e.target.value })} className="input-field h-9 text-sm" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Description (Tamil)</label>
+              <textarea defaultValue={s.descTa} rows={2} onBlur={(e) => updateSlide(i, { descTa: e.target.value })} className="input-field resize-none text-sm" />
+            </div>
+            <div>
+              <label className="label">Description (English)</label>
+              <textarea defaultValue={s.descEn} rows={2} onBlur={(e) => updateSlide(i, { descEn: e.target.value })} className="input-field resize-none text-sm" />
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <button type="button" onClick={addSlide} className="btn-secondary w-full justify-center">
+        <Plus size={14} /> Add Slide
+      </button>
+    </div>
+  );
+}
+
 // ─── Live: Theme default mode (rest of Theme & Colors remains Planned) ───────
 
 function LiveThemeDefault() {
@@ -983,7 +1168,7 @@ function SectionDetail({ section, onClose }: { section: ConfigSection; onClose: 
   const LIVE_SECTION_IDS = [
     'reader_identity', 'feature_flags', 'reader_home_layout', 'reader_widgets',
     'reader_navigation', 'reader_menu', 'reader_news_sections',
-    'reader_ads', 'reader_notifications', 'reader_splash',
+    'reader_ads', 'reader_notifications', 'reader_splash', 'reader_onboarding', 'reader_rate_ticker',
   ];
   const isLive = LIVE_SECTION_IDS.includes(section.id);
   return (
@@ -1084,6 +1269,18 @@ function SectionDetail({ section, onClose }: { section: ConfigSection; onClose: 
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
               <LiveSplash />
+            </div>
+          )}
+          {section.id === 'reader_rate_ticker' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LiveRateTicker />
+            </div>
+          )}
+          {section.id === 'reader_onboarding' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Onboarding Slides</p>
+              <LiveOnboardingCarousel />
             </div>
           )}
           {section.id === 'reader_theme' && (

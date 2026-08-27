@@ -9,10 +9,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/app.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useTheme } from '@/hooks/useTheme';
-import { STRINGS, FONT_FAMILIES } from '@/constants';
+import { STRINGS, FONT_FAMILIES, DISTRICTS } from '@/constants';
 import Avatar from '@/components/ui/Avatar';
 import Switch from '@/components/ui/Switch';
 import Icon, { IconName } from '@/components/icons/Icon';
@@ -30,10 +31,12 @@ const CORE_ITEMS: NavItem[] = [
 ];
 
 export default function SideMenu() {
-  const { sideMenuOpen, setSideMenuOpen, remoteConfig, language, setLanguage, colorScheme, setColorScheme } = useAppStore();
+  const { sideMenuOpen, setSideMenuOpen, remoteConfig, language, setLanguage, colorScheme, setColorScheme, district } = useAppStore();
   const { isAuthenticated, user } = useAuthStore();
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   const ta = language === 'ta';
+  const districtName = DISTRICTS.find((d) => d.id === district)?.nameTa ?? (ta ? 'தேர்வு செய்யவும்' : 'Select');
 
   const close = () => setSideMenuOpen(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,7 +50,7 @@ export default function SideMenu() {
         <Pressable style={StyleSheet.absoluteFill} onPress={close} />
         <View style={[styles.panel, { backgroundColor: t.surface }]}>
           <TouchableOpacity
-            style={[styles.header, { backgroundColor: t.red }]}
+            style={[styles.header, { backgroundColor: t.red, paddingTop: 22 + insets.top }]}
             activeOpacity={0.9}
             onPress={() => go(remoteConfig.sideMenuShowProfile ? '/profile' : '/login')}
           >
@@ -96,7 +99,7 @@ export default function SideMenu() {
           </ScrollView>
 
           {(remoteConfig.sideMenuShowDarkMode || remoteConfig.sideMenuShowLanguage) && (
-            <View style={[styles.footer, { borderTopColor: t.border }]}>
+            <View style={[styles.footer, { borderTopColor: t.border, paddingBottom: 20 + insets.bottom }]}>
               {remoteConfig.sideMenuShowLanguage && (
                 <View style={styles.footerRow}>
                   <Text style={[styles.footerLabel, { color: t.inkMuted }]}>{ta ? 'மொழி' : 'Language'}</Text>
@@ -115,6 +118,15 @@ export default function SideMenu() {
                     </TouchableOpacity>
                   </View>
                 </View>
+              )}
+              {remoteConfig.sideMenuShowLanguage && (
+                <TouchableOpacity style={styles.footerRow} onPress={() => go('/language-district')}>
+                  <Text style={[styles.footerLabel, { color: t.inkMuted }]}>{ta ? 'மாவட்டம்' : 'District'}</Text>
+                  <View style={styles.districtValueRow}>
+                    <Text style={[styles.districtValue, { color: t.red }]}>{districtName}</Text>
+                    <Text style={[styles.changeChip, { color: t.inkSub }]}>{ta ? 'மாற்ற' : 'change'}</Text>
+                  </View>
+                </TouchableOpacity>
               )}
               {remoteConfig.sideMenuShowDarkMode && (
                 <View style={styles.footerRow}>
@@ -136,7 +148,7 @@ export default function SideMenu() {
 const styles = StyleSheet.create({
   overlay: { flex: 1, flexDirection: 'row', backgroundColor: 'rgba(28,25,23,0.5)' },
   panel: { width: '80%', maxWidth: 320, height: '100%' },
-  header: { padding: 22, paddingTop: 54 },
+  header: { padding: 22 },
   userName: { color: '#fff', fontFamily: FONT_FAMILIES.displayBold, fontSize: 16 },
   userSub: { color: 'rgba(255,255,255,0.75)', fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 12, marginTop: 2 },
   items: { flex: 1, paddingVertical: 8 },
@@ -148,4 +160,7 @@ const styles = StyleSheet.create({
   langToggle: { flexDirection: 'row', gap: 6 },
   langBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1.5 },
   langBtnText: { fontFamily: FONT_FAMILIES.uiBold, fontSize: 12 },
+  districtValueRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  districtValue: { fontFamily: FONT_FAMILIES.displaySemiBold, fontSize: 13 },
+  changeChip: { fontFamily: FONT_FAMILIES.condensedBold, fontSize: 9.5, letterSpacing: 1, textTransform: 'uppercase' },
 });

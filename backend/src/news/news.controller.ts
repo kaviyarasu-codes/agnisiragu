@@ -7,7 +7,7 @@ import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger'
 import { Request } from 'express';
 import { NewsService } from './news.service';
 import {
-  CreateArticleDto, UpdateArticleDto, ArticleListQueryDto, SearchArticleDto,
+  CreateArticleDto, UpdateArticleDto, ArticleListQueryDto, SearchArticleDto, ReactArticleDto,
 } from './news.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -53,6 +53,12 @@ export class NewsController {
   @ApiOperation({ summary: 'Get single article. Tracks read if bearer token provided.' })
   async findOne(@Param('id') id: string, @Req() req: any) {
     return this.newsService.findOne(id, req.user?.id);
+  }
+
+  @Patch(':id/react')
+  @ApiOperation({ summary: 'Like/dislike an article (public — guests included, no dedup server-side)' })
+  react(@Param('id') id: string, @Body() dto: ReactArticleDto) {
+    return this.newsService.react(id, dto.type, dto.delta);
   }
 
   @Post()

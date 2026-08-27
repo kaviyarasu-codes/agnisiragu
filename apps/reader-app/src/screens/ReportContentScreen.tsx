@@ -8,12 +8,16 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore } from '@/store/app.store';
+import { useArticle } from '@/hooks/useArticles';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
 import { post } from '@/lib/api';
 import TextField from '@/components/ui/TextField';
 import Button from '@/components/ui/Button';
+import Switch from '@/components/ui/Switch';
 import Icon from '@/components/icons/Icon';
 
 const REASONS_TA = ['தவறான தகவல்', 'வெறுப்புணர்வு', 'பொருத்தமற்றது', 'ஸ்பேம்', 'மற்றவை'];
@@ -27,11 +31,15 @@ export default function ReportContentScreen() {
   const t = useTheme();
   const { language } = useAppStore();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { data: article } = useArticle(id);
+  const insets = useSafeAreaInsets();
   const [reasonIndex, setReasonIndex] = useState<number | null>(null);
   const [detail, setDetail] = useState('');
+  const [blockReporter, setBlockReporter] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const reasons = language === 'ta' ? REASONS_TA : REASONS_EN;
+  const byline = article?.byline?.trim();
 
   async function handleSubmit() {
     if (reasonIndex === null) {
@@ -41,6 +49,11 @@ export default function ReportContentScreen() {
     setSubmitting(true);
     try {
       await submitReport(id, REASONS_EN[reasonIndex], detail.trim());
+      if (blockReporter && byline) {
+        // Local-only — no block-reporter endpoint yet, same pattern as the
+        // follow toggle on ReporterProfileScreen.
+        await AsyncStorage.setItem(`blocked_reporter_${byline}`, '1');
+      }
       Alert.alert(
         language === 'ta' ? 'அறிக்கை அனுப்பப்பட்டது' : 'Report submitted',
         language === 'ta' ? 'எங்கள் குழு விரைவில் ஆய்வு செய்யும்' : 'Our team will review this shortly',
@@ -55,7 +68,7 @@ export default function ReportContentScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: t.surface }]}>
-      <View style={[styles.header, { borderBottomColor: t.border }]}>
+      <View style={[styles.header, { borderBottomColor: t.border, paddingTop: insets.top, paddingBottom: 8 }]}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
           <Icon name="back" size={17} color={t.ink} />
         </TouchableOpacity>
@@ -100,6 +113,15 @@ export default function ReportContentScreen() {
           style={{ minHeight: 90, paddingTop: 11 }}
         />
 
+        {byline ? (
+          <View style={[styles.blockRow, { borderColor: t.border }]}>
+            <Text style={[styles.blockLabel, { color: t.red }]}>
+              {language === 'ta' ? `${byline}-ஐ தடு` : `Block ${byline}`}
+            </Text>
+            <Switch value={blockReporter} onValueChange={setBlockReporter} />
+          </View>
+        ) : null}
+
         <Button
           label={language === 'ta' ? 'அனுப்பு' : 'Submit Report'}
           onPress={handleSubmit}
@@ -113,12 +135,17 @@ export default function ReportContentScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { height: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
+  header: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
   headerTitle: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 16 },
-  body: { padding: 22 },
+  body: { padding: 22, paddingBottom: 40 },
   h1: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 18, marginBottom: 16 },
   reasonList: { gap: 10 },
   reasonRow: { flexDirection: 'row', alignItems: 'center', gap: 11, borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13 },
   radioDot: { width: 9, height: 9, borderRadius: 4.5 },
   reasonText: { fontFamily: FONT_FAMILIES.displaySemiBold, fontSize: 14 },
+  blockRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13, marginTop: 20,
+  },
+  blockLabel: { fontFamily: FONT_FAMILIES.displaySemiBold, fontSize: 14 },
 });

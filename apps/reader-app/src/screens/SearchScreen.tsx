@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSearch } from '@/hooks/useArticles';
 import { useCategories } from '@/hooks/useCategories';
 import { useAppStore } from '@/store/app.store';
@@ -38,6 +39,7 @@ export default function SearchScreen() {
   const [filterType, setFilterType] = useState<FilterType>('word');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [showDateRange, setShowDateRange] = useState(false);
+  const insets = useSafeAreaInsets();
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -156,7 +158,7 @@ export default function SearchScreen() {
       )}
 
       {showResults && categories && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chips}>
           <Chip
             label={language === 'ta' ? 'அனைத்தும்' : 'All'}
             active={!selectedCategoryId}
@@ -206,7 +208,7 @@ export default function SearchScreen() {
               renderItem={({ item }) => (
                 <ArticleCard article={item} onPress={handleArticlePress} language={language} />
               )}
-              contentContainerStyle={{ paddingVertical: 8 }}
+              contentContainerStyle={{ paddingVertical: 8, paddingBottom: 8 + insets.bottom }}
             />
           ) : (
             <View style={styles.center}>
@@ -240,7 +242,8 @@ const styles = StyleSheet.create({
     flex: 1, height: 40, borderWidth: 1, borderRadius: 9, paddingHorizontal: 12,
     fontSize: 12.5, fontFamily: FONT_FAMILIES.uiRegular,
   },
-  chips: { paddingHorizontal: 12, paddingBottom: 10, gap: 8, flexDirection: 'row' },
+  chipsScroll: { flexGrow: 0, flexShrink: 0 },
+  chips: { paddingHorizontal: 12, paddingBottom: 10, gap: 8, flexDirection: 'row', alignItems: 'center' },
   catChip: { paddingVertical: 6 },
   recentSection: { padding: 16 },
   recentHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },

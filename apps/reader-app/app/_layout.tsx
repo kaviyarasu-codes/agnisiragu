@@ -20,6 +20,7 @@ import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
 import * as SplashScreenNative from 'expo-splash-screen';
+import { usePreventScreenCapture } from 'expo-screen-capture';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -190,6 +191,15 @@ function RootStack() {
 }
 
 export default function RootLayout() {
+  // Blocks screenshots/screen recording for the app's entire lifetime.
+  // Fully effective on Android (sets FLAG_SECURE — screenshot attempts
+  // produce a black frame and the app is hidden from the recent-apps
+  // thumbnail). On iOS, Apple does not allow apps to block the OS
+  // screenshot gesture; this only lets the app detect one after the fact
+  // (see expo-screen-capture's addScreenshotListener, not wired up here
+  // since there's no in-app action to take on detection yet).
+  usePreventScreenCapture();
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>

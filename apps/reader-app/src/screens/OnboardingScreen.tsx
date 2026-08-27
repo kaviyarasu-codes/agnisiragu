@@ -2,27 +2,32 @@
 // Screen 2a — 3-slide onboarding carousel (skip / illustration / progress
 // dashes / next). Finishes into /language-district rather than straight to
 // Home, since district selection is now its own step (see 1a's setup screen).
+//
+// Slide content (image + Tamil/English title + description) is fully admin-
+// controlled via App Configuration -> Onboarding Carousel in the admin panel
+// (remoteConfig.onboardingSlides, GET /config) — falls back to the original
+// hardcoded Tamil copy if the backend is unreachable on first launch.
 
 import React, { useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/useTheme';
+import { useAppStore } from '@/store/app.store';
 import { FONT_FAMILIES } from '@/constants';
 import { SkeletonBlock } from '@/components/ui/Skeleton';
 import Button from '@/components/ui/Button';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const SLIDES = [
-  { title: 'உங்கள் ஊரின் செய்தி, உடனே', desc: 'உங்கள் மாவட்டத்தில் நடப்பதை முதலில் தெரிந்து கொள்ளுங்கள். சரிபார்க்கப்பட்ட செய்திகள் மட்டும்.' },
-  { title: 'உள்ளூர் மக்களே நிருபர்கள்', desc: 'உங்கள் பகுதியில் நடப்பதை நீங்களே பதிவு செய்யலாம் — ஆசிரியர் குழு சரிபார்த்த பிறகு உடனே வெளியிடப்படும்.' },
-  { title: 'எழுதி சம்பாதியுங்கள்', desc: 'தொடர்ந்து செய்தி அளிக்கும் நிருபர்களுக்கு புள்ளிகள் மற்றும் அதிகாரப்பூர்வ பத்திரிகையாளர் அடையாள அட்டை.' },
-];
-
 export default function OnboardingScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const [slide, setSlide] = useState(0);
   const t = useTheme();
+  const insets = useSafeAreaInsets();
+  const { language, remoteConfig } = useAppStore();
+  const SLIDES = remoteConfig.onboardingSlides;
   const isLast = slide === SLIDES.length - 1;
 
   function goNext() {
@@ -40,9 +45,11 @@ export default function OnboardingScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: t.surface }]}>
-      <View style={styles.skipRow}>
+      <View style={[styles.skipRow, { paddingTop: insets.top }]}>
         {!isLast ? (
-          <Text style={[styles.skip, { color: t.inkMuted }]} onPress={skip}>skip</Text>
+          <Text style={[styles.skip, { color: t.inkMuted }]} onPress={skip}>
+            {language === 'ta' ? 'தவிர்' : 'skip'}
+          </Text>
         ) : <View style={{ height: 20 }} />}
       </View>
 
@@ -55,14 +62,22 @@ export default function OnboardingScreen() {
       >
         {SLIDES.map((s, i) => (
           <View key={i} style={[styles.slide, { width: SCREEN_WIDTH }]}>
-            <SkeletonBlock style={styles.illustration} />
-            <Text style={[styles.title, { color: t.ink }]}>{s.title}</Text>
-            <Text style={[styles.desc, { color: t.inkSub }]}>{s.desc}</Text>
+            {s.imageUrl ? (
+              <Image source={{ uri: s.imageUrl }} style={styles.illustration} contentFit="cover" />
+            ) : (
+              <SkeletonBlock style={styles.illustration} />
+            )}
+            <Text style={[styles.title, { color: t.ink }]}>
+              {language === 'ta' ? s.titleTa : s.titleEn}
+            </Text>
+            <Text style={[styles.desc, { color: t.inkSub }]}>
+              {language === 'ta' ? s.descTa : s.descEn}
+            </Text>
           </View>
         ))}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: 24 + insets.bottom }]}>
         <View style={styles.dots}>
           {SLIDES.map((_, i) => (
             <View

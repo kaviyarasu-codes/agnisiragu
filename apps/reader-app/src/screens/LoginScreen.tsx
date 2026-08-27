@@ -9,6 +9,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
@@ -30,6 +31,7 @@ export default function LoginScreen() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { sendOtp, verifyOtp } = useAuth();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
@@ -99,7 +101,7 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView style={[styles.container, { backgroundColor: t.surface }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <View style={[styles.header, { borderBottomColor: t.border }]}>
+      <View style={[styles.header, { borderBottomColor: t.border, paddingTop: insets.top, paddingBottom: 8 }]}>
         <TouchableOpacity onPress={() => (step === 'otp' ? setStep('phone') : router.back())} hitSlop={10}>
           <Icon name="back" size={17} color={t.ink} />
         </TouchableOpacity>
@@ -173,7 +175,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { height: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
+  header: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
   headerTitle: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 16 },
   body: { padding: 26 },
   h1: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 22, letterSpacing: -0.2 },

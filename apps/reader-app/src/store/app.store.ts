@@ -14,6 +14,14 @@ export interface NavTabConfig {
   visible: boolean;
 }
 
+export interface OnboardingSlideConfig {
+  imageUrl: string | null;
+  titleTa: string;
+  titleEn: string;
+  descTa: string;
+  descEn: string;
+}
+
 interface RemoteConfig {
   // Feature flags
   loginGate: boolean;
@@ -64,6 +72,15 @@ interface RemoteConfig {
 
   // Theme
   defaultThemeMode: 'light' | 'dark' | 'system';
+
+  // Onboarding carousel — admin-editable in App Configuration
+  onboardingSlides: OnboardingSlideConfig[];
+
+  // Rate ticker strip under the Home feed
+  rateTickerEnabled: boolean;
+  rateTickerSponsorName: string;
+  rateTickerGoldRate: string;
+  rateTickerSilverRate: string;
 }
 
 const DEFAULT_CONFIG: RemoteConfig = {
@@ -107,6 +124,35 @@ const DEFAULT_CONFIG: RemoteConfig = {
   splashTaglineEn: 'Your town, your news',
 
   defaultThemeMode: 'system',
+
+  rateTickerEnabled: true,
+  rateTickerSponsorName: 'ஸ்ரீ லக்ஷ்மி நகைமாளிகை',
+  rateTickerGoldRate: '₹7,240',
+  rateTickerSilverRate: '₹96',
+
+  onboardingSlides: [
+    {
+      imageUrl: null,
+      titleTa: 'உங்கள் ஊரின் செய்தி, உடனே',
+      titleEn: "Your town's news, instantly",
+      descTa: 'உங்கள் மாவட்டத்தில் நடப்பதை முதலில் தெரிந்து கொள்ளுங்கள். சரிபார்க்கப்பட்ட செய்திகள் மட்டும்.',
+      descEn: "Be the first to know what's happening in your district. Verified news only.",
+    },
+    {
+      imageUrl: null,
+      titleTa: 'உள்ளூர் மக்களே நிருபர்கள்',
+      titleEn: 'Locals are the reporters',
+      descTa: 'உங்கள் பகுதியில் நடப்பதை நீங்களே பதிவு செய்யலாம் — ஆசிரியர் குழு சரிபார்த்த பிறகு உடனே வெளியிடப்படும்.',
+      descEn: "Report what's happening in your area yourself — published instantly after editorial review.",
+    },
+    {
+      imageUrl: null,
+      titleTa: 'எழுதி சம்பாதியுங்கள்',
+      titleEn: 'Write and earn',
+      descTa: 'தொடர்ந்து செய்தி அளிக்கும் நிருபர்களுக்கு புள்ளிகள் மற்றும் அதிகாரப்பூர்வ பத்திரிகையாளர் அடையாள அட்டை.',
+      descEn: 'Consistent reporters earn points and an official Press ID card.',
+    },
+  ],
 };
 
 interface AppStore {

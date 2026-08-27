@@ -10,7 +10,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
 import { trackLocalAdImpression, trackLocalAdClick, type LocalAd } from '@/hooks/useLocalAds';
 
-const CTA_LABEL: Record<LocalAd['ctaType'], { ta: string; en: string }> = {
+export const CTA_LABEL: Record<LocalAd['ctaType'], { ta: string; en: string }> = {
   WHATSAPP: { ta: 'வாட்ஸ்அப்', en: 'WhatsApp' },
   PHONE:    { ta: 'அழைக்க',    en: 'Call' },
   WEBSITE:  { ta: 'பார்வையிட', en: 'Visit' },
@@ -19,7 +19,7 @@ const CTA_LABEL: Record<LocalAd['ctaType'], { ta: string; en: string }> = {
   FORM:     { ta: 'படிவம்',     en: 'Open' },
 };
 
-function resolveUrl(ad: LocalAd): string {
+export function resolveUrl(ad: LocalAd): string {
   const v = ad.ctaValue?.trim() ?? '';
   switch (ad.ctaType) {
     case 'WHATSAPP': {

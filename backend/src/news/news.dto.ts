@@ -1,10 +1,10 @@
 // src/news/news.dto.ts
 import {
-  IsString, IsOptional, IsBoolean, IsEnum, IsUUID, IsDateString,
+  IsString, IsOptional, IsBoolean, IsEnum, IsUUID, IsDateString, IsIn,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
-import { ArticleStatus } from '@prisma/client';
+import { ArticleStatus, CardStyle } from '@prisma/client';
 
 export class CreateArticleDto {
   @ApiProperty({ example: 'சென்னையில் மழை' })
@@ -48,6 +48,13 @@ export class CreateArticleDto {
   @IsOptional()
   @IsBoolean()
   isBreaking?: boolean;
+
+  // Admin-only override for which feed card layout renders this article —
+  // STANDARD (default) defers to the app's legacy automatic rules.
+  @ApiPropertyOptional({ enum: CardStyle, default: 'STANDARD' })
+  @IsOptional()
+  @IsEnum(CardStyle)
+  cardStyle?: CardStyle;
 
   @ApiPropertyOptional({ enum: ArticleStatus, default: 'DRAFT' })
   @IsOptional()
@@ -111,6 +118,11 @@ export class UpdateArticleDto {
   @IsBoolean()
   isBreaking?: boolean;
 
+  @ApiPropertyOptional({ enum: CardStyle })
+  @IsOptional()
+  @IsEnum(CardStyle)
+  cardStyle?: CardStyle;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
@@ -137,6 +149,19 @@ export class ArticleListQueryDto {
   @IsOptional()
   @IsString()
   lang?: string;
+}
+
+// Public reaction toggle (like/dislike). Guests can react too — there's no
+// per-user Like table, so de-dup ("already liked this device") happens
+// client-side (AsyncStorage) and this endpoint just nudges the counter.
+export class ReactArticleDto {
+  @ApiProperty({ enum: ['LIKE', 'DISLIKE'] })
+  @IsIn(['LIKE', 'DISLIKE'])
+  type: 'LIKE' | 'DISLIKE';
+
+  @ApiProperty({ enum: [1, -1], description: '1 to add a reaction, -1 to undo it' })
+  @IsIn([1, -1])
+  delta: 1 | -1;
 }
 
 export class SearchArticleDto {

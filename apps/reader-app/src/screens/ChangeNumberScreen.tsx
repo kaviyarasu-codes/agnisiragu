@@ -11,6 +11,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/auth.store';
 import { useTheme } from '@/hooks/useTheme';
@@ -33,6 +34,7 @@ export default function ChangeNumberScreen() {
   const t = useTheme();
   const currentUser = useAuthStore((s) => s.user);
   const { sendOtp, verifyOtp } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [step, setStep] = useState<Step>('new');
   const [newPhone, setNewPhone] = useState('');
@@ -116,7 +118,7 @@ export default function ChangeNumberScreen() {
 
   return (
     <KeyboardAvoidingView style={[styles.container, { backgroundColor: t.surface }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <View style={[styles.header, { borderBottomColor: t.border }]}>
+      <View style={[styles.header, { borderBottomColor: t.border, paddingTop: insets.top, paddingBottom: 8 }]}>
         <TouchableOpacity onPress={() => (step === 'otp' ? setStep('new') : router.back())} hitSlop={10}>
           <Icon name="back" size={17} color={t.ink} />
         </TouchableOpacity>
@@ -198,9 +200,9 @@ export default function ChangeNumberScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { height: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
+  header: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
   headerTitle: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 16 },
-  body: { padding: 26 },
+  body: { padding: 26, paddingBottom: 40 },
   h1: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 22, letterSpacing: -0.2 },
   sub: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 13.5, lineHeight: 22, marginTop: 8 },
   caption: { fontFamily: FONT_FAMILIES.condensedBold, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginTop: 24, marginBottom: 8 },

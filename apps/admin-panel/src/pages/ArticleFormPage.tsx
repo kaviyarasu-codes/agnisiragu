@@ -26,6 +26,7 @@ const schema = z.object({
   categoryId: z.string().min(1, 'Category is required'),
   status: z.enum(['DRAFT', 'REVIEW', 'PUBLISHED', 'UNPUBLISHED', 'DELETED']),
   isBreaking: z.boolean(),
+  cardStyle: z.enum(['STANDARD', 'FULL_BLEED', 'NEWSPRINT']),
   thumbnailUrl: z.string().optional(),
   scheduledAt: z.string().optional(),
   excerpt: z.string().optional(),
@@ -89,7 +90,7 @@ export default function ArticleFormPage({ mode }: Props) {
 
   const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { status: 'DRAFT', isBreaking: false, byline: '', thumbnailUrl: '' },
+    defaultValues: { status: 'DRAFT', isBreaking: false, cardStyle: 'STANDARD', byline: '', thumbnailUrl: '' },
   });
 
   const thumbnailUrl = watch('thumbnailUrl');
@@ -107,6 +108,7 @@ export default function ArticleFormPage({ mode }: Props) {
       setValue('categoryId', a.category.id);
       setValue('status', a.status);
       setValue('isBreaking', a.isBreaking);
+      setValue('cardStyle', a.cardStyle ?? 'STANDARD');
       setValue('thumbnailUrl', a.thumbnailUrl ?? '');
       setValue('excerpt', a.excerpt ?? '');
       setValue('scheduledAt', a.scheduledAt ?? '');
@@ -391,6 +393,35 @@ export default function ArticleFormPage({ mode }: Props) {
                 <span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
                 Breaking News
               </label>
+            </div>
+
+            <div className="pt-2 border-t border-gray-100">
+              <Label>Feed Card Style</Label>
+              <p className="text-[11px] text-gray-400 mb-2 normal-case">
+                Overrides the automatic layout. Leave "Standard" unless you want this article to stand out with a different look.
+              </p>
+              <Controller name="cardStyle" control={control} render={({ field }) => (
+                <div className="space-y-2">
+                  {([
+                    { value: 'STANDARD', label: 'Standard (A)', hint: 'Default feed card' },
+                    { value: 'FULL_BLEED', label: 'Full-bleed (B / 1b)', hint: 'Full photo, headline over image' },
+                    { value: 'NEWSPRINT', label: 'Newsprint (1c)', hint: 'Headline first, photo below' },
+                  ] as const).map((opt) => (
+                    <div key={opt.value} className="flex items-center gap-2.5">
+                      <input
+                        type="checkbox"
+                        id={`cardStyle-${opt.value}`}
+                        checked={field.value === opt.value}
+                        onChange={() => field.onChange(opt.value)}
+                        className="w-4 h-4 rounded border-gray-300 text-red-500 focus:ring-red-400 cursor-pointer"
+                      />
+                      <label htmlFor={`cardStyle-${opt.value}`} className="text-sm text-gray-700 cursor-pointer">
+                        {opt.label} <span className="text-[11px] text-gray-400 normal-case">— {opt.hint}</span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )} />
             </div>
           </div>
 

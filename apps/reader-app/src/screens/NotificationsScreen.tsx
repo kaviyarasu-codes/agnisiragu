@@ -7,8 +7,9 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, Linking, Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import { useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getPermissionsAsync, requestPermissionsAsync } from '@/lib/notificationsCompat';
 import { useCategories } from '@/hooks/useCategories';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/store/app.store';
@@ -25,11 +26,12 @@ export default function NotificationsScreen() {
   const { language } = useAppStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const { data: categories } = useCategories();
+  const insets = useSafeAreaInsets();
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
   const [categoryPrefs, setCategoryPrefs] = useState<string[]>([]);
 
   const refreshPermission = useCallback(async () => {
-    const { status } = await Notifications.getPermissionsAsync();
+    const { status } = await getPermissionsAsync();
     setPermissionGranted(status === 'granted');
   }, []);
 
@@ -43,7 +45,7 @@ export default function NotificationsScreen() {
 
   async function handleMasterToggle(next: boolean) {
     if (next) {
-      const { status } = await Notifications.requestPermissionsAsync();
+      const { status } = await requestPermissionsAsync();
       setPermissionGranted(status === 'granted');
       if (status === 'granted') {
         if (isAuthenticated) await registerPushToken();
@@ -68,7 +70,7 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}>
       <View style={[styles.masterRow, { backgroundColor: t.surface, borderColor: t.border }]}>
         <View style={styles.masterIconWrap}>
           <Icon name="bell" size={18} color={t.red} />

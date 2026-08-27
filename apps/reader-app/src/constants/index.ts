@@ -96,6 +96,8 @@ export const STORAGE_KEYS = {
   DISTRICT: 'district_id',
   ONBOARDING_DONE: 'onboarding_done',
   NOTIF_PERMISSION_ASKED: 'notif_permission_asked',
+  LOCATION_PERMISSION_ASKED: 'location_permission_asked',
+  SWIPE_HINT_SHOWN: 'swipe_hint_shown',
 };
 
 export const AD_UNIT_IDS = {

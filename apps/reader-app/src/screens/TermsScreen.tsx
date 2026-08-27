@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
@@ -56,6 +57,7 @@ const PRIVACY_EN = `We respect your privacy.
 export default function TermsScreen() {
   const t = useTheme();
   const { language } = useAppStore();
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('terms');
 
   const body = tab === 'terms'
@@ -64,7 +66,7 @@ export default function TermsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: t.surface }]}>
-      <View style={[styles.header, { borderBottomColor: t.border }]}>
+      <View style={[styles.header, { borderBottomColor: t.border, paddingTop: insets.top, paddingBottom: 8 }]}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
           <Icon name="back" size={17} color={t.ink} />
         </TouchableOpacity>
@@ -88,7 +90,7 @@ export default function TermsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 48 + insets.bottom }]}>
         <Text style={[styles.body, { color: t.inkSub }]}>{body}</Text>
       </ScrollView>
     </View>
@@ -97,7 +99,7 @@ export default function TermsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { height: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
+  header: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
   headerTitle: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 16 },
   tabRow: { flexDirection: 'row', borderBottomWidth: 1 },
   tabBtn: { flex: 1, alignItems: 'center', paddingVertical: 13 },

@@ -64,6 +64,38 @@ export class ConfigController {
 
         // Theme
         defaultThemeMode: data.defaultThemeMode ?? 'system',
+
+        // Rate ticker strip (sponsor credit + gold/silver rates) shown under
+        // the Home feed — previously hardcoded in the reader app.
+        rateTickerEnabled: data.rateTickerEnabled ?? true,
+        rateTickerSponsorName: data.rateTickerSponsorName ?? 'ஸ்ரீ லக்ஷ்மி நகைமாளிகை',
+        rateTickerGoldRate: data.rateTickerGoldRate ?? '₹7,240',
+        rateTickerSilverRate: data.rateTickerSilverRate ?? '₹96',
+
+        // Onboarding carousel (first-launch slides, before language/district)
+        onboardingSlides: data.onboardingSlides ?? [
+          {
+            imageUrl: null,
+            titleTa: 'உங்கள் ஊரின் செய்தி, உடனே',
+            titleEn: 'Your town\'s news, instantly',
+            descTa: 'உங்கள் மாவட்டத்தில் நடப்பதை முதலில் தெரிந்து கொள்ளுங்கள். சரிபார்க்கப்பட்ட செய்திகள் மட்டும்.',
+            descEn: 'Be the first to know what\'s happening in your district. Verified news only.',
+          },
+          {
+            imageUrl: null,
+            titleTa: 'உள்ளூர் மக்களே நிருபர்கள்',
+            titleEn: 'Locals are the reporters',
+            descTa: 'உங்கள் பகுதியில் நடப்பதை நீங்களே பதிவு செய்யலாம் — ஆசிரியர் குழு சரிபார்த்த பிறகு உடனே வெளியிடப்படும்.',
+            descEn: 'Report what\'s happening in your area yourself — published instantly after editorial review.',
+          },
+          {
+            imageUrl: null,
+            titleTa: 'எழுதி சம்பாதியுங்கள்',
+            titleEn: 'Write and earn',
+            descTa: 'தொடர்ந்து செய்தி அளிக்கும் நிருபர்களுக்கு புள்ளிகள் மற்றும் அதிகாரப்பூர்வ பத்திரிகையாளர் அடையாள அட்டை.',
+            descEn: 'Consistent reporters earn points and an official Press ID card.',
+          },
+        ],
       },
     };
   }

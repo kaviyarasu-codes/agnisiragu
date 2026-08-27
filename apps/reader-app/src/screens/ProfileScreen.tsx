@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
 import { useBookmarksStore } from '@/store/bookmarks.store';
@@ -34,6 +35,7 @@ export default function ProfileScreen() {
   const [tab, setTab] = useState<Tab>('saved');
   const [loggingOut, setLoggingOut] = useState(false);
   const [showLogoutSheet, setShowLogoutSheet] = useState(false);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => { hydrateHistory(); }, [hydrateHistory]);
 
@@ -137,7 +139,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         ) : null
       }
-      contentContainerStyle={{ paddingBottom: 40 }}
+      contentContainerStyle={{ paddingBottom: 40 + insets.bottom }}
     />
     <LogoutConfirmSheet
       visible={showLogoutSheet}

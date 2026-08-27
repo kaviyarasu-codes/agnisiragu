@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Image, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
 import { DISTRICTS, FONT_FAMILIES } from '@/constants';
@@ -16,16 +17,17 @@ export default function LanguageDistrictScreen() {
   const { language, setLanguage, district, setDistrict, onboardingDone } = useAppStore();
   const [selectedLang, setSelectedLang] = useState(language);
   const [selectedDistrict, setSelectedDistrict] = useState(district ?? DISTRICTS[0].id);
+  const insets = useSafeAreaInsets();
 
   function handleStart() {
     setLanguage(selectedLang);
     setDistrict(selectedDistrict);
-    router.replace(onboardingDone ? '/' : '/permission');
+    router.replace(onboardingDone ? '/' : '/permission-location');
   }
 
   return (
     <View style={[styles.container, { backgroundColor: t.surface }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: 34 + insets.top }]} showsVerticalScrollIndicator={false}>
         <Image
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           source={require('../../assets/logo.png')}
@@ -73,7 +75,7 @@ export default function LanguageDistrictScreen() {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: 12 + insets.bottom }]}>
         <Button label="தொடங்கு" onPress={handleStart} variant="dark" style={{ width: '100%' }} />
         <Text style={[styles.footerNote, { color: t.inkMuted }]}>CHANGE ANYTIME IN MENU</Text>
       </View>

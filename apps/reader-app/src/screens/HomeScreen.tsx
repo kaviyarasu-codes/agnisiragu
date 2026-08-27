@@ -5,6 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Image, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
 import { DISTRICTS, FONT_FAMILIES } from '@/constants';
@@ -16,6 +17,7 @@ export default function HomeScreen() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const { setSideMenuOpen, district, language } = useAppStore();
   const t = useTheme();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (params.categoryId) setSelectedCategoryId(params.categoryId);
@@ -28,7 +30,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: t.bg }]}>
-      <View style={[styles.header, { backgroundColor: t.surface, borderBottomColor: t.border }]}>
+      <View style={[styles.header, { backgroundColor: t.surface, borderBottomColor: t.border, paddingTop: insets.top, paddingBottom: 8 }]}>
         <TouchableOpacity onPress={() => setSideMenuOpen(true)} hitSlop={10} style={styles.iconBtn}>
           <Icon name="menu" size={17} color={t.ink} />
         </TouchableOpacity>
@@ -61,7 +63,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    height: 52,
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,

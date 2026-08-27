@@ -10,8 +10,9 @@ import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
 import { useLocalAds } from '@/hooks/useLocalAds';
-import LocalAdCard from '@/components/LocalAdCard';
+import SponsoredFeedCard from './SponsoredFeedCard';
 import Avatar from '@/components/ui/Avatar';
+import { stripHtmlToPlainText } from '@/lib/richText';
 import type { Article, Language } from '@/types';
 
 function timeAgo(dateString: string): string {
@@ -35,7 +36,8 @@ interface FeedCardProps {
 export function ArticleFeedCard({ article, language, index, total, width, onOpen }: FeedCardProps) {
   const t = useTheme();
   const title = language === 'ta' ? article.titleTa : article.titleEn;
-  const body = language === 'ta' ? article.bodyTa : article.bodyEn;
+  const rawBody = language === 'ta' ? article.bodyTa : article.bodyEn;
+  const body = article.excerpt || stripHtmlToPlainText(rawBody);
   const catName = language === 'ta' ? article.category.nameTa : article.category.nameEn;
 
   return (
@@ -76,15 +78,15 @@ export function AdFeedCard({ width }: { width: number }) {
   const { data: ads } = useLocalAds();
   const ad = ads?.[0];
 
+  if (ad) {
+    return <SponsoredFeedCard ad={ad} language="ta" width={width} />;
+  }
+
   return (
     <View style={[styles.card, styles.adCard, { width, backgroundColor: t.surface, borderColor: t.border }]}>
-      {ad ? (
-        <LocalAdCard ad={ad} language="ta" style={styles.adInner} />
-      ) : (
-        <View style={styles.adFallback}>
-          <Text style={[styles.adLabel, { color: t.inkMuted }]}>ADVERTISEMENT</Text>
-        </View>
-      )}
+      <View style={styles.adFallback}>
+        <Text style={[styles.adLabel, { color: t.inkMuted }]}>ADVERTISEMENT</Text>
+      </View>
     </View>
   );
 }

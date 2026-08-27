@@ -45,6 +45,17 @@ enum ArticleStatus {
   DELETED
 }
 
+// Admin-controlled feed card layout override (product decision: only an
+// admin may pick this — see the checkbox group in the admin panel's article
+// form). STANDARD means "no explicit choice" and falls back to the app's
+// legacy automatic rules (isBreaking -> full-bleed, Cinema category ->
+// peeking-deck) so existing articles keep rendering exactly as before.
+enum CardStyle {
+  STANDARD    // "A" — the default feed card
+  FULL_BLEED  // "B" / design screen 1b — full-bleed breaking-style photo card
+  NEWSPRINT   // design screen 1c — headline-first newsprint order
+}
+
 enum ReporterStatus {
   TEMPORARY
   VERIFIED
@@ -161,10 +172,27 @@ model Article {
   admin        Admin         @relation(fields: [adminId], references: [id])
   status       ArticleStatus @default(DRAFT)
   isBreaking   Boolean       @default(false)
+  cardStyle    CardStyle     @default(STANDARD)
   scheduledAt  DateTime?
   publishedAt  DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+
+  // Reaction counters — increment-only from the client, deduped on-device
+  // (AsyncStorage) rather than per-account, so guests can react too. Not a
+  // full Like junction table by design: this app's read model is guest-
+  // first (most installs never log in), so a per-user unique constraint
+  // would exclude the majority of reactions.
+  likeCount    Int           @default(0)
+  dislikeCount Int           @default(0)
+  commentCount Int           @default(0)
+
+  // Precomputed at create/update time (see news.service.ts's buildSearchText)
+  // — a normalized blob combining a phonetic Tamil->Latin transliteration of
+  // titleTa/bodyTa with titleEn/excerpt/byline, so a reader typing in plain
+  // English or Thanglish (e.g. "mazhai") still finds Tamil-only articles
+  // (e.g. "மழை") in Archive/Search. Not shown anywhere — search index only.
+  searchText   String?       @db.Text
 
   reads        ArticleRead[]
 }

@@ -16,6 +16,7 @@ import Animated, {
   interpolate,
   Easing,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FONT_FAMILIES } from '@/constants';
 
 const DURATION = 3400;
@@ -29,6 +30,11 @@ interface WingSplashProps {
 
 export default function WingSplash({ tagline = 'உங்கள் ஊர் செய்திகள்', bgColor = '#ffffff' }: WingSplashProps) {
   const progress = useSharedValue(0);
+  // The progress bar and footer text are bottom-anchored with fixed pixel
+  // offsets — on phones with a 3-button nav bar (no gesture nav), those
+  // offsets land behind the bar and get clipped. Push both up by the
+  // bottom safe-area inset so they always clear it.
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     progress.value = withRepeat(
@@ -95,16 +101,21 @@ export default function WingSplash({ tagline = 'உங்கள் ஊர் ச
         />
       </Animated.View>
       {tagline ? <Text style={styles.tagline}>{tagline}</Text> : null}
-      <View style={styles.barTrack}>
+      <View style={[styles.barTrack, { bottom: 56 + insets.bottom }]}>
         <Animated.View style={[styles.barFill, barStyle]} />
       </View>
-      <Text style={styles.footer}>AGNISIRAGU NEWS</Text>
+      <Text style={[styles.footer, { bottom: 24 + insets.bottom }]}>AGNISIRAGU NEWS</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  // width/height: '100%' (not just flex: 1) because the parent
+  // (SplashOverlay) centers its content with alignItems: 'center', which
+  // stops a flexed child from stretching to fill the cross axis — without
+  // an explicit width this shrinks to content size instead of the full
+  // screen, exactly the narrow centered strip that was showing up.
+  container: { flex: 1, width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
   wingsRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', height: 110 },
   wing: { width: 80, height: 104 },
   logo: { width: 158, height: 72, marginTop: 26 },

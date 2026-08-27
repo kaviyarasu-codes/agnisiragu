@@ -22,6 +22,7 @@ interface CreateArticlePayload {
   categoryId: string;
   status: ArticleStatus;
   isBreaking: boolean;
+  cardStyle?: 'STANDARD' | 'FULL_BLEED' | 'NEWSPRINT';
   scheduledAt?: string;
 }
 

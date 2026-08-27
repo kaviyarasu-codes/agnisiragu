@@ -8,6 +8,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Image, Linking, Platform, StyleSheet } from 'react-native';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES, STRINGS } from '@/constants';
@@ -39,13 +40,14 @@ export default function ContactScreen() {
   const t = useTheme();
   const { language } = useAppStore();
   const version = Constants.expoConfig?.version ?? '1.0.0';
+  const insets = useSafeAreaInsets();
 
   function rateUs() {
     Linking.openURL(Platform.OS === 'ios' ? APP_STORE_URL : PLAY_STORE_URL);
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={[styles.content, { paddingBottom: 44 + insets.bottom }]}>
       <View style={styles.logoBlock}>
         <Image
           // eslint-disable-next-line @typescript-eslint/no-require-imports

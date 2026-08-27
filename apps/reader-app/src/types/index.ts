@@ -30,8 +30,12 @@ export interface Article {
   byline?: string;
   category: Category;
   isBreaking: boolean;
+  cardStyle?: 'STANDARD' | 'FULL_BLEED' | 'NEWSPRINT';
   publishedAt: string;
   createdAt: string;
+  likeCount?: number;
+  dislikeCount?: number;
+  commentCount?: number;
 }
 
 export interface ApiResponse<T> {

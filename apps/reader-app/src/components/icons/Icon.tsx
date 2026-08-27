@@ -13,19 +13,21 @@ export type IconName =
   | 'menu' | 'search' | 'bell' | 'back' | 'close' | 'more'
   | 'like' | 'comment' | 'share' | 'bookmarkNav' | 'bookmarkLarge'
   | 'calendar' | 'chevronDown' | 'chevronRight'
-  | 'warningTriangle' | 'offlineCircle' | 'permissionBell'
+  | 'warningTriangle' | 'offlineCircle' | 'permissionBell' | 'permissionLocation'
   | 'jobsBriefcase' | 'archiveBox' | 'postPlus' | 'reportFlag'
   | 'downloadImage' | 'downloadVideo' | 'check' | 'play'
-  | 'home' | 'grid';
+  | 'home' | 'grid' | 'live' | 'thumbUp' | 'thumbDown' | 'whatsapp' | 'forward';
 
 interface IconProps {
   name: IconName;
   size?: number;
   color?: string;
   strokeWidth?: number;
+  /** Fills thumbUp/thumbDown solid instead of outline, to show a pressed/selected state. */
+  active?: boolean;
 }
 
-export default function Icon({ name, size = 18, color = '#1C1917', strokeWidth }: IconProps) {
+export default function Icon({ name, size = 18, color = '#1C1917', strokeWidth, active }: IconProps) {
   const sw = strokeWidth ?? 1.6;
   const common = { fill: 'none' as const, stroke: color, strokeWidth: sw };
 
@@ -151,6 +153,13 @@ export default function Icon({ name, size = 18, color = '#1C1917', strokeWidth }
           <Circle cx={23} cy={38} r={3} fill="none" stroke={color} strokeWidth={2} />
         </Svg>
       );
+    case 'permissionLocation':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 46 46">
+          <Path d="M23 6c-8 0-14 6.2-14 14 0 10.5 14 20 14 20s14-9.5 14-20c0-7.8-6-14-14-14z" {...common} strokeWidth={2} />
+          <Circle cx={23} cy={20} r={5.5} fill="none" stroke={color} strokeWidth={2} />
+        </Svg>
+      );
     case 'jobsBriefcase':
       return (
         <Svg width={size} height={size} viewBox="0 0 17 17">
@@ -226,6 +235,38 @@ export default function Icon({ name, size = 18, color = '#1C1917', strokeWidth }
           <Rect x={9.5} y={1} width={6.5} height={6.5} rx={1.3} {...common} strokeWidth={1.5} />
           <Rect x={1} y={9.5} width={6.5} height={6.5} rx={1.3} {...common} strokeWidth={1.5} />
           <Rect x={9.5} y={9.5} width={6.5} height={6.5} rx={1.3} {...common} strokeWidth={1.5} />
+        </Svg>
+      );
+    case 'live':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 18 18">
+          <Circle cx={9} cy={9} r={7.4} {...common} />
+          <Polygon points="7,5.5 13,9 7,12.5" fill={color} />
+        </Svg>
+      );
+    case 'thumbUp':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 18 18">
+          <Path d="M2 16h2.5V8H2v8zm14.5-8.6c0-.8-.6-1.4-1.4-1.4h-4.6l.7-3.3v-.2c0-.3-.1-.6-.3-.8L10 1 5.7 5.3c-.3.3-.4.6-.4 1V15c0 .8.6 1.5 1.4 1.5h6.8c.6 0 1.1-.4 1.3-.9l2.5-5.9c.1-.2.1-.4.1-.6V7.5z" fill={active ? color : 'none'} stroke={color} strokeWidth={sw} strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'thumbDown':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 18 18">
+          <Path d="M16 2h-2.5v8H16V2zM1.5 10.6c0 .8.6 1.4 1.4 1.4h4.6l-.7 3.3v.2c0 .3.1.6.3.8L8 17l4.3-4.3c.3-.3.4-.6.4-1V3c0-.8-.6-1.5-1.4-1.5H4.5c-.6 0-1.1.4-1.3.9L.7 8.3c-.1.2-.1.4-.1.6v1.7z" fill={active ? color : 'none'} stroke={color} strokeWidth={sw} strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'whatsapp':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 18 18">
+          <Path d="M9 1.5a7.5 7.5 0 0 0-6.5 11.2L1.5 16.5l3.9-1c1.1.6 2.3.9 3.6.9a7.5 7.5 0 0 0 0-15z" fill={color} />
+          <Path d="M5.8 5.4c.2-.4.4-.4.6-.4h.5c.2 0 .4 0 .5.4l.7 1.7c.1.2 0 .4-.1.5l-.4.5c-.1.2-.2.3-.1.5.3.5.7 1 1.2 1.4.5.4 1 .7 1.6 1 .2.1.3 0 .5-.1l.5-.6c.1-.2.3-.2.5-.1l1.6.8c.2.1.3.3.3.5 0 .9-.7 1.7-1.6 1.8-1.6.2-3.3-.5-4.6-1.7-1.3-1.2-2.1-2.8-2.1-4.3 0-.5.1-1 .3-1.4z" fill="#fff" />
+        </Svg>
+      );
+    case 'forward':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 18 18">
+          <Path d="M2 15c0-4.5 3-7.5 7.5-7.5V4L16 9.5 9.5 15v-3.5C6 11.5 3.5 12.5 2 15z" {...common} strokeLinejoin="round" />
         </Svg>
       );
     default:

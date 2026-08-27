@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "Agnisiragu Reporter",
+    "slug": "agnisiragu-reporter",
+    "scheme": "agnisiragu-reporter",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1C1917"
+      },
+      "package": "com.agnisiragu.reporter",
+      "versionCode": 1
+    },
+    "ios": {
+      "bundleIdentifier": "com.agnisiragu.reporter",
+      "supportsTablet": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#1C1917"
+        }
+      ],
+      "expo-image",
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "செய்தி பதிவேற்ற புகைப்படங்களை தேர்ந்தெடுக்க அனுமதி தேவை / Allow access to your photos to attach images to a news report.",
+          "cameraPermission": "செய்தி பதிவேற்ற புகைப்படம்/வீடியோ எடுக்க கேமரா அனுமதி தேவை / Allow camera access to capture photos or video for a news report."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "செய்தியின் இருப்பிடத்தை இணைக்க இருப்பிட அனுமதி தேவை / Allow location access to tag where a report happened."
+        }
+      ]
+    ]
+  }
+}

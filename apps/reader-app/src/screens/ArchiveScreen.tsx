@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSearch } from '@/hooks/useArticles';
 import { useCategories } from '@/hooks/useCategories';
 import { useAppStore } from '@/store/app.store';
@@ -24,7 +25,8 @@ const YEARS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - i);
 export default function ArchiveScreen() {
   const t = useTheme();
   const { language } = useAppStore();
-  const { data: categories } = useCategories();
+  const { data: categories, isLoading: categoriesLoading } = useCategories();
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -41,12 +43,14 @@ export default function ArchiveScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: t.bg }]}>
-      <View style={[styles.header, { borderBottomColor: t.border }]}>
+      <View style={[styles.header, { borderBottomColor: t.border, paddingTop: insets.top, paddingBottom: 8 }]}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
           <Icon name="back" size={17} color={t.ink} />
         </TouchableOpacity>
         <Icon name="archiveBox" size={17} color={t.ink} />
-        <Text style={[styles.headerTitle, { color: t.ink }]}>காப்பகம்</Text>
+        <Text style={[styles.headerTitle, { color: t.ink }]}>
+          {language === 'ta' ? 'காப்பகம்' : 'Archive'}
+        </Text>
       </View>
 
       <View style={[styles.inputRow, { borderColor: t.border, backgroundColor: t.surface }]}>
@@ -61,15 +65,29 @@ export default function ArchiveScreen() {
         />
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.chipsScroll}
+        contentContainerStyle={styles.chips}
+      >
         <Chip label={language === 'ta' ? 'எல்லா ஆண்டு' : 'All years'} active={!selectedYear} onPress={() => setSelectedYear(null)} style={styles.chip} tamil={language === 'ta'} />
         {YEARS.map((y) => (
           <Chip key={y} label={String(y)} active={selectedYear === y} onPress={() => setSelectedYear(y)} style={styles.chip} tamil={false} />
         ))}
       </ScrollView>
 
-      {categories && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+      {categoriesLoading ? (
+        <View style={[styles.chips, styles.chipsScroll]}>
+          <ActivityIndicator size="small" color={t.inkMuted} />
+        </View>
+      ) : categories && categories.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipsScroll}
+          contentContainerStyle={styles.chips}
+        >
           <Chip label={language === 'ta' ? 'அனைத்தும்' : 'All'} active={!selectedCategoryId} onPress={() => setSelectedCategoryId(null)} style={styles.chip} />
           {categories.map((cat) => (
             <Chip
@@ -81,7 +99,7 @@ export default function ArchiveScreen() {
             />
           ))}
         </ScrollView>
-      )}
+      ) : null}
 
       {isLoading ? (
         <View style={styles.center}><ActivityIndicator color={t.red} /></View>
@@ -90,7 +108,7 @@ export default function ArchiveScreen() {
           data={filtered}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <ArticleCard article={item} onPress={handlePress} language={language} />}
-          contentContainerStyle={{ paddingVertical: 8 }}
+          contentContainerStyle={{ paddingVertical: 8, paddingBottom: 8 + insets.bottom }}
         />
       ) : query.length > 1 ? (
         <EmptyState
@@ -111,14 +129,15 @@ export default function ArchiveScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { height: 52, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, borderBottomWidth: 1 },
+  header: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, borderBottomWidth: 1 },
   headerTitle: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 17 },
   inputRow: {
     flexDirection: 'row', alignItems: 'center', gap: 9, margin: 16, marginBottom: 10,
     borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 14, height: 46,
   },
   input: { flex: 1, fontSize: 14.5, fontFamily: FONT_FAMILIES.uiRegular },
-  chips: { paddingHorizontal: 16, paddingBottom: 10, gap: 8, flexDirection: 'row' },
+  chipsScroll: { flexGrow: 0, flexShrink: 0 },
+  chips: { paddingHorizontal: 16, paddingBottom: 10, gap: 8, flexDirection: 'row', alignItems: 'center' },
   chip: { paddingVertical: 6 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

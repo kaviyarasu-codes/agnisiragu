@@ -3,9 +3,11 @@
 // account, and about links, reached from Profile's settings row (and the
 // side menu).
 
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { useAppStore } from '@/store/app.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useTheme } from '@/hooks/useTheme';
@@ -38,6 +40,23 @@ export default function SettingsScreen() {
   const { language, setLanguage, colorScheme, setColorScheme, district } = useAppStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const districtLabel = DISTRICTS.find((d) => d.id === district);
+  const insets = useSafeAreaInsets();
+  const [clearingCache, setClearingCache] = useState(false);
+
+  async function handleClearCache() {
+    setClearingCache(true);
+    try {
+      await Promise.all([Image.clearDiskCache(), Image.clearMemoryCache()]);
+      Alert.alert(
+        language === 'ta' ? 'சேமிப்பு அழிக்கப்பட்டது' : 'Cache cleared',
+        language === 'ta' ? 'தற்காலிக சேமிப்பு அழிக்கப்பட்டது' : 'Temporary image cache has been cleared',
+      );
+    } catch {
+      Alert.alert('பிழை', language === 'ta' ? 'அழிக்க முடியவில்லை' : 'Could not clear cache');
+    } finally {
+      setClearingCache(false);
+    }
+  }
 
   async function handleLanguageToggle(lang: Language) {
     setLanguage(lang);
@@ -57,7 +76,7 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}>
       <Caption label={language === 'ta' ? 'தோற்றம்' : 'Appearance'} />
       <View style={[styles.section, { backgroundColor: t.surface, borderColor: t.border }]}>
         <Row label={language === 'ta' ? 'தீம்' : 'Theme'} value={themeLabel} onPress={cycleTheme} last />
@@ -89,6 +108,16 @@ export default function SettingsScreen() {
         <Row
           label={STRINGS.NOTIFICATIONS_TA + ' / ' + STRINGS.NOTIFICATIONS_EN}
           onPress={() => router.push('/notifications')}
+          last
+        />
+      </View>
+
+      <Caption label={language === 'ta' ? 'தரவு' : 'Data'} />
+      <View style={[styles.section, { backgroundColor: t.surface, borderColor: t.border }]}>
+        <Row
+          label={language === 'ta' ? 'தற்காலிக சேமிப்பை அழி' : 'Clear cache'}
+          value={clearingCache ? (language === 'ta' ? 'அழிக்கிறது...' : 'Clearing...') : undefined}
+          onPress={handleClearCache}
           last
         />
       </View>

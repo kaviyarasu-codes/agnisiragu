@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { Modal, View, Pressable, StyleSheet, ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/useTheme';
 
 interface BottomSheetProps {
@@ -17,10 +18,14 @@ interface BottomSheetProps {
 
 export default function BottomSheet({ visible, onDismiss, children, style, showHandle = true }: BottomSheetProps) {
   const t = useTheme();
+  // Modals render outside SafeAreaProvider's normal layout flow, so the
+  // sheet's bottom padding needs the inset added explicitly or it lands
+  // right under (and gets partly hidden by) a 3-button nav bar.
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
       <Pressable style={styles.backdrop} onPress={onDismiss}>
-        <Pressable style={[styles.sheet, { backgroundColor: t.surface }, style]}>
+        <Pressable style={[styles.sheet, { backgroundColor: t.surface, paddingBottom: 30 + insets.bottom }, style]}>
           {showHandle ? <View style={[styles.handle, { backgroundColor: t.border }]} /> : null}
           {children}
         </Pressable>

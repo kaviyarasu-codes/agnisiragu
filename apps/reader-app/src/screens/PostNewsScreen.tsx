@@ -15,6 +15,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCategories } from '@/hooks/useCategories';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
@@ -53,7 +54,8 @@ async function submitCitizenReport(payload: {
 export default function PostNewsScreen() {
   const t = useTheme();
   const { language, district } = useAppStore();
-  const { data: categories } = useCategories();
+  const { data: categories, isLoading: categoriesLoading, isError: categoriesError, refetch: refetchCategories } = useCategories();
+  const insets = useSafeAreaInsets();
 
   const [media, setMedia] = useState<PickedMedia | null>(null);
   const [headline, setHeadline] = useState('');
@@ -125,8 +127,8 @@ export default function PostNewsScreen() {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={styles.content}>
-      <View style={[styles.header, { borderBottomColor: t.border }]}>
+    <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}>
+      <View style={[styles.header, { borderBottomColor: t.border, paddingTop: insets.top, paddingBottom: 8 }]}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
           <Icon name="back" size={17} color={t.ink} />
         </TouchableOpacity>
@@ -179,17 +181,29 @@ export default function PostNewsScreen() {
       />
 
       <Caption label={language === 'ta' ? 'பிரிவு' : 'Category'} />
-      <View style={styles.chipRow}>
-        {(categories ?? []).map((cat) => (
-          <Chip
-            key={cat.id}
-            label={language === 'ta' ? cat.nameTa : cat.nameEn}
-            active={categoryId === cat.id}
-            onPress={() => setCategoryId(cat.id)}
-            style={styles.chip}
-          />
-        ))}
-      </View>
+      {categoriesLoading ? (
+        <View style={styles.chipRow}>
+          <ActivityIndicator size="small" color={t.inkMuted} />
+        </View>
+      ) : categoriesError || !categories?.length ? (
+        <TouchableOpacity style={styles.chipRow} onPress={() => refetchCategories()}>
+          <Text style={[styles.retryText, { color: t.red }]}>
+            {language === 'ta' ? 'பிரிவுகளை ஏற்ற முடியவில்லை — மீண்டும் முயற்சிக்க தட்டவும்' : "Couldn't load categories — tap to retry"}
+          </Text>
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.chipRow}>
+          {categories.map((cat) => (
+            <Chip
+              key={cat.id}
+              label={language === 'ta' ? cat.nameTa : cat.nameEn}
+              active={categoryId === cat.id}
+              onPress={() => setCategoryId(cat.id)}
+              style={styles.chip}
+            />
+          ))}
+        </View>
+      )}
 
       <Caption label={language === 'ta' ? 'இருப்பிடம்' : 'Location'} />
       <View style={[styles.locationRow, { borderColor: t.border, backgroundColor: t.bgAlt }]}>
@@ -208,6 +222,11 @@ export default function PostNewsScreen() {
         loading={submitting}
         style={{ marginTop: 26 }}
       />
+      <Text style={[styles.submitNote, { color: t.inkMuted }]}>
+        {language === 'ta'
+          ? 'ஆசிரியர் குழு சரிபார்த்த பிறகு வெளியிடப்படும்'
+          : 'Will be published after editorial verification'}
+      </Text>
     </ScrollView>
   );
 }
@@ -215,7 +234,7 @@ export default function PostNewsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingBottom: 40 },
-  header: { height: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
+  header: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
   headerTitle: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 16 },
   mediaBox: { margin: 18, marginBottom: 0, height: 170, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', overflow: 'hidden' },
   mediaPreview: { width: '100%', height: '100%' },
@@ -223,7 +242,9 @@ const styles = StyleSheet.create({
   mediaEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   mediaEmptyText: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 12.5 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 18 },
+  retryText: { fontFamily: FONT_FAMILIES.uiSemiBold, fontSize: 12.5 },
   chip: { paddingVertical: 6 },
   locationRow: { marginHorizontal: 18, borderWidth: 1, borderRadius: 9, paddingHorizontal: 12, paddingVertical: 11 },
   locationText: { fontFamily: FONT_FAMILIES.uiMedium, fontSize: 13.5 },
+  submitNote: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 10.5, textAlign: 'center', marginTop: 9, paddingHorizontal: 18 },
 });

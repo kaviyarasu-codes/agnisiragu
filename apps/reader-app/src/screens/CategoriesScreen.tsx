@@ -3,11 +3,18 @@
 // clears any category filter; "தொகு" (edit) toggles a selection mode used to
 // mark pinned/followed categories (stored in app.store's selectedCategories,
 // which already drives home section ordering elsewhere).
+//
+// Visual polish pass: cards now have a soft elevated shadow and a translucent
+// circular icon badge (instead of the icon floating directly on the flat
+// color), and categories without an admin-uploaded iconUrl get a distinct
+// emoji per topic (CATEGORY_EMOJI) instead of every card showing the same
+// generic newspaper glyph.
 
 import React, { useState } from 'react';
 import { FlatList, View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCategories } from '@/hooks/useCategories';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
@@ -21,11 +28,36 @@ const COLUMNS = 2;
 const GAP = 14;
 const CARD_SIZE = (SCREEN_WIDTH - 32 - GAP) / COLUMNS;
 
+// Per-topic emoji used when a category has no admin-uploaded iconUrl — keeps
+// the grid visually distinct instead of every card showing the same generic
+// newspaper glyph.
+const CATEGORY_EMOJI: Record<string, string> = {
+  politics: '🏛️',
+  sports: '🏆',
+  cinema: '🎬',
+  entertainment: '🎬',
+  business: '💼',
+  technology: '💻',
+  health: '🩺',
+  education: '🎓',
+  weather: '⛅',
+  crime: '🚨',
+  agriculture: '🌾',
+  automobile: '🚗',
+  spiritual: '🛕',
+  world: '🌍',
+  lifestyle: '🌟',
+  food: '🍽️',
+  jobs: '🧰',
+};
+const DEFAULT_EMOJI = '📰';
+
 export default function CategoriesScreen() {
   const t = useTheme();
   const { data: categories, isLoading, isError } = useCategories();
   const { language, selectedCategories, toggleCategory } = useAppStore();
   const [editMode, setEditMode] = useState(false);
+  const insets = useSafeAreaInsets();
 
   if (isLoading) {
     return (
@@ -52,11 +84,13 @@ export default function CategoriesScreen() {
   function renderAllCard() {
     return (
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: t.red }]}
+        style={[styles.card, styles.cardShadow, { backgroundColor: t.red }]}
         onPress={() => (editMode ? undefined : goToCategory(undefined))}
         activeOpacity={0.85}
       >
-        <Text style={styles.allIcon}>📰</Text>
+        <View style={styles.iconBadge}>
+          <Text style={styles.allIcon}>📰</Text>
+        </View>
         <Text style={styles.cardName} numberOfLines={2}>
           {language === 'ta' ? 'அனைத்தும்' : 'All'}
         </Text>
@@ -68,10 +102,11 @@ export default function CategoriesScreen() {
     const name = language === 'ta' ? item.nameTa : item.nameEn;
     const bg = CAT_COLORS[item.slug] ?? CAT_COLORS.default;
     const pinned = selectedCategories.includes(item.id);
+    const emoji = CATEGORY_EMOJI[item.slug] ?? DEFAULT_EMOJI;
 
     return (
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: bg }]}
+        style={[styles.card, styles.cardShadow, { backgroundColor: bg }]}
         onPress={() => (editMode ? toggleCategory(item.id) : goToCategory(item.id))}
         activeOpacity={0.85}
       >
@@ -80,11 +115,13 @@ export default function CategoriesScreen() {
             {pinned && <Icon name="check" size={11} color={bg} strokeWidth={2.4} />}
           </View>
         )}
-        {item.iconUrl ? (
-          <Image source={{ uri: item.iconUrl }} style={styles.icon} contentFit="contain" />
-        ) : (
-          <Text style={styles.allIcon}>📰</Text>
-        )}
+        <View style={styles.iconBadge}>
+          {item.iconUrl ? (
+            <Image source={{ uri: item.iconUrl }} style={styles.icon} contentFit="contain" />
+          ) : (
+            <Text style={styles.allIcon}>{emoji}</Text>
+          )}
+        </View>
         <Text style={styles.cardName} numberOfLines={2}>{name}</Text>
       </TouchableOpacity>
     );
@@ -92,19 +129,25 @@ export default function CategoriesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: t.bg }]}>
-      <View style={[styles.header, { borderBottomColor: t.border }]}>
+      <View style={[styles.header, { borderBottomColor: t.border, paddingTop: insets.top, paddingBottom: 8 }]}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
           <Icon name="back" size={17} color={t.ink} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: t.ink, flex: 1 }]}>பிரிவுகள்</Text>
+        <Text style={[styles.headerTitle, { color: t.ink, flex: 1 }]}>
+          {language === 'ta' ? 'பிரிவுகள்' : 'Categories'}
+        </Text>
         <TouchableOpacity onPress={() => setEditMode((v) => !v)} hitSlop={10}>
-          <Text style={[styles.editLabel, { color: t.red }]}>{editMode ? 'முடிந்தது' : 'தொகு'}</Text>
+          <Text style={[styles.editLabel, { color: t.red }]}>
+            {editMode ? (language === 'ta' ? 'முடிந்தது' : 'Done') : (language === 'ta' ? 'தொகு' : 'Edit')}
+          </Text>
         </TouchableOpacity>
       </View>
 
       {editMode && (
         <Text style={[styles.editHint, { color: t.inkMuted }]}>
-          உங்களுக்கு பிடித்த பிரிவுகளை தேர்ந்தெடுக்கவும் — முகப்பில் முதலில் தோன்றும்
+          {language === 'ta'
+            ? 'உங்களுக்கு பிடித்த பிரிவுகளை தேர்ந்தெடுக்கவும் — முகப்பில் முதலில் தோன்றும்'
+            : 'Pick your favorite categories — they\'ll appear first on Home'}
         </Text>
       )}
 
@@ -114,7 +157,7 @@ export default function CategoriesScreen() {
         renderItem={renderItem}
         numColumns={COLUMNS}
         ListHeaderComponent={renderAllCard}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 16 + insets.bottom }]}
         columnWrapperStyle={styles.row}
       />
     </View>
@@ -126,7 +169,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   errorText: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 14, textAlign: 'center', lineHeight: 24 },
   header: {
-    height: 52, flexDirection: 'row', alignItems: 'center', gap: 12,
+    minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 18, borderBottomWidth: 1,
   },
   headerTitle: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 18 },
@@ -135,15 +178,25 @@ const styles = StyleSheet.create({
   list: { padding: 16, gap: GAP },
   row: { gap: GAP },
   card: {
-    width: CARD_SIZE, height: CARD_SIZE * 0.82, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center', padding: 14, gap: 8,
+    width: CARD_SIZE, height: CARD_SIZE * 0.82, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center', padding: 14, gap: 10,
+  },
+  cardShadow: {
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.14, shadowRadius: 8,
+    elevation: 3,
+  },
+  iconBadge: {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center', justifyContent: 'center',
   },
   pinBadge: {
     position: 'absolute', top: 9, right: 9, width: 18, height: 18, borderRadius: 9,
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.7)', alignItems: 'center', justifyContent: 'center',
+    zIndex: 1,
   },
-  icon: { width: 40, height: 40 },
-  allIcon: { fontSize: 32 },
+  icon: { width: 30, height: 30 },
+  allIcon: { fontSize: 26 },
   cardName: {
     color: '#fff', fontFamily: FONT_FAMILIES.displayBold, fontSize: 14, textAlign: 'center', lineHeight: 19,
   },

@@ -20,6 +20,7 @@ import { FREE_ARTICLE_LIMIT, FONT_FAMILIES } from '@/constants';
 import { useBookmarksStore } from '@/store/bookmarks.store';
 import { useHistoryStore } from '@/store/history.store';
 import ArticleCard from '@/components/ArticleCard';
+import ArticleBody from '@/components/ArticleBody';
 import AdBanner from '@/components/AdBanner';
 import LoginGateModal from '@/components/LoginGateModal';
 import ShareSheet from '@/components/sheets/ShareSheet';
@@ -154,7 +155,7 @@ export default function ArticleDetailScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <Text style={[styles.body, { color: t.inkSub }]}>{body}</Text>
+            <ArticleBody html={body} textStyle={[styles.body, { color: t.inkSub }]} linkColor={t.red} />
           )}
 
           <View style={styles.actionRow}>

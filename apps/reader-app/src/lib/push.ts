@@ -12,8 +12,8 @@
 // never gets silently downgraded back to a guest.
 
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import { getPermissionsAsync, getExpoPushTokenAsync } from '@/lib/notificationsCompat';
 import { patch } from '@/lib/api';
 import { getOrCreateDeviceId } from '@/lib/storage';
 
@@ -23,14 +23,13 @@ let didRegisterUserThisSession = false;
 
 async function getExpoToken(): Promise<string | null> {
   if (cachedExpoToken) return cachedExpoToken;
-  const { status } = await Notifications.getPermissionsAsync();
+  const { status } = await getPermissionsAsync();
   if (status !== 'granted') return null; // don't prompt here — Onboarding owns the permission ask
 
   const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-  const tokenResponse = await Notifications.getExpoPushTokenAsync(
-    projectId ? { projectId } : undefined,
-  );
-  cachedExpoToken = tokenResponse.data;
+  const token = await getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+  if (!token) return null;
+  cachedExpoToken = token;
   return cachedExpoToken;
 }
 

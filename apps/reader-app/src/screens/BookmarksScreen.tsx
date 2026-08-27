@@ -5,6 +5,7 @@
 import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBookmarksStore } from '@/store/bookmarks.store';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
@@ -17,6 +18,7 @@ export default function BookmarksScreen() {
   const t = useTheme();
   const { bookmarks, clearAll } = useBookmarksStore();
   const { language } = useAppStore();
+  const insets = useSafeAreaInsets();
 
   const handlePress = useCallback((article: Article) => {
     router.push(`/article/${article.id}`);
@@ -67,7 +69,7 @@ export default function BookmarksScreen() {
             </TouchableOpacity>
           </View>
         }
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 32 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       />
     </View>
