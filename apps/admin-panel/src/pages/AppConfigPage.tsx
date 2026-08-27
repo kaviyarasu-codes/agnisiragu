@@ -869,9 +869,9 @@ function LiveSplash() {
     onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
   });
   const cfg = data?.data ?? {};
-  const bgColor: string = cfg.splashBgColor ?? '#000000';
-  const duration: number = cfg.splashDurationMs ?? 1200;
-  const animation: 'fade' | 'none' = cfg.splashAnimation ?? 'fade';
+  const bgColor: string = cfg.splashBgColor ?? '#F5F1EB';
+  const duration: number = cfg.splashDurationMs ?? 3400;
+  const animation: 'wings' | 'fade' | 'none' = cfg.splashAnimation ?? 'wings';
   const showTagline: boolean = cfg.splashShowTagline ?? true;
 
   if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
@@ -896,15 +896,18 @@ function LiveSplash() {
         <div>
           <label className="label">Duration (ms)</label>
           <input type="number" min={400} max={4000} step={100} defaultValue={duration}
-            onBlur={(e) => saveMut.mutate({ splashDurationMs: Math.max(400, Math.min(4000, Number(e.target.value) || 1200)) })}
+            onBlur={(e) => saveMut.mutate({ splashDurationMs: Math.max(400, Math.min(4000, Number(e.target.value) || 3400)) })}
             className="input-field mt-1" />
+          {animation === 'wings' && (
+            <p className="text-2xs text-text-muted mt-1">The wing animation's own loop is 3.4s — shorter durations will cut it off mid-animation.</p>
+          )}
         </div>
       </div>
 
       <div>
         <label className="label">Animation Style</label>
         <div className="inline-flex bg-page rounded-lg p-0.5 border border-border mt-1">
-          {(['fade', 'none'] as const).map(s => (
+          {(['wings', 'fade', 'none'] as const).map(s => (
             <button key={s} type="button" onClick={() => saveMut.mutate({ splashAnimation: s })}
               className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${animation === s ? 'bg-white text-text-primary shadow-sm' : 'text-text-muted'}`}>
               {s}
@@ -925,13 +928,13 @@ function LiveSplash() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="label">Tagline (Tamil)</label>
-            <input defaultValue={cfg.splashTaglineTa ?? 'உண்மையை உரக்கச் சொல்வோம்'}
+            <input defaultValue={cfg.splashTaglineTa ?? 'உங்கள் ஊர் செய்திகள்'}
               onBlur={(e) => saveMut.mutate({ splashTaglineTa: e.target.value })}
               className="input-field mt-1" />
           </div>
           <div>
             <label className="label">Tagline (English)</label>
-            <input defaultValue={cfg.splashTaglineEn ?? 'Truth, Told Loud'}
+            <input defaultValue={cfg.splashTaglineEn ?? 'Your town, your news'}
               onBlur={(e) => saveMut.mutate({ splashTaglineEn: e.target.value })}
               className="input-field mt-1" />
           </div>

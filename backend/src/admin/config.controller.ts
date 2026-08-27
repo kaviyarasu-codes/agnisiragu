@@ -53,23 +53,23 @@ export class ConfigController {
         localAdsEnable: data.localAdsEnable ?? true,
         admobEnable: data.admobEnable ?? false,
 
-        // Splash screen
-        splashBgColor: data.splashBgColor ?? '#000000',
-        splashDurationMs: data.splashDurationMs ?? 1200,
-        // Was defaulting to 'fade' here while the reader app's own local
-        // default (app.store.ts's DEFAULT_CONFIG) is 'wings' — since no
-        // admin had ever explicitly set this key in App Config, every
-        // launch fetched 'fade' from the backend and silently overrode the
-        // client's default, so the app always showed the old plain logo
-        // splash (no wing animation, no "AGNISIRAGU NEWS" watermark text,
-        // which only exists inside WingSplash). Aligning the default here
-        // fixes it for the already-live build too, since this is fetched
-        // fresh on every app launch — no new build required.
+        // Splash screen — these five defaults previously didn't match the
+        // design or the reader app's own local fallback (app.store.ts's
+        // DEFAULT_CONFIG): bg was black instead of the warm cream '#F5F1EB',
+        // duration was 1200ms (cuts the 3.4s wing-animation loop off before
+        // it even settles), animation was 'fade' instead of 'wings', and
+        // both taglines were different copy entirely. Since no admin has
+        // ever explicitly set these keys, every launch was silently
+        // overridden by these wrong backend defaults. Aligned all five to
+        // match the design now — takes effect immediately on next launch,
+        // no new app build required.
+        splashBgColor: data.splashBgColor ?? '#F5F1EB',
+        splashDurationMs: data.splashDurationMs ?? 3400,
         splashAnimation: data.splashAnimation ?? 'wings',
         splashLogoUrl: data.splashLogoUrl ?? null,
         splashShowTagline: data.splashShowTagline ?? true,
-        splashTaglineTa: data.splashTaglineTa ?? 'உண்மையை உரக்கச் சொல்வோம்',
-        splashTaglineEn: data.splashTaglineEn ?? 'Truth, Told Loud',
+        splashTaglineTa: data.splashTaglineTa ?? 'உங்கள் ஊர் செய்திகள்',
+        splashTaglineEn: data.splashTaglineEn ?? 'Your town, your news',
 
         // Theme
         defaultThemeMode: data.defaultThemeMode ?? 'system',
