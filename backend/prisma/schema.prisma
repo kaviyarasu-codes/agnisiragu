@@ -165,6 +165,10 @@ model Article {
   bodyEn       String
   excerpt      String?
   thumbnailUrl String?
+  // Extra gallery photos/videos beyond the single thumbnail — see
+  // CreateArticleDto.mediaUrls. Empty by default; the reader app falls
+  // back to a single-image card using thumbnailUrl when this is empty.
+  mediaUrls    String[]      @default([])
   byline       String?       // "by Publisher Name" shown in reader app
   categoryId   String
   category     Category      @relation(fields: [categoryId], references: [id])

@@ -28,6 +28,9 @@ const schema = z.object({
   isBreaking: z.boolean(),
   cardStyle: z.enum(['STANDARD', 'FULL_BLEED', 'NEWSPRINT']),
   thumbnailUrl: z.string().optional(),
+  // Extra gallery photos beyond the single required thumbnail — the reader
+  // app renders these as a swipeable "1/3"-style carousel when present.
+  mediaUrls: z.array(z.string()).optional(),
   scheduledAt: z.string().optional(),
   excerpt: z.string().optional(),
 });
@@ -76,6 +79,7 @@ export default function ArticleFormPage({ mode }: Props) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'ta' | 'en'>('ta');
   const [uploading, setUploading] = useState(false);
+  const [mediaUploading, setMediaUploading] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState('');
   const [bylineMode, setBylineMode] = useState<'select' | 'custom'>('select');
 
@@ -90,10 +94,11 @@ export default function ArticleFormPage({ mode }: Props) {
 
   const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { status: 'DRAFT', isBreaking: false, cardStyle: 'STANDARD', byline: '', thumbnailUrl: '' },
+    defaultValues: { status: 'DRAFT', isBreaking: false, cardStyle: 'STANDARD', byline: '', thumbnailUrl: '', mediaUrls: [] },
   });
 
   const thumbnailUrl = watch('thumbnailUrl');
+  const mediaUrls = watch('mediaUrls') || [];
   const byline = watch('byline');
 
   const tamilEditor = useEditor({ extensions: [StarterKit, Image, Link], content: '' });
@@ -110,6 +115,7 @@ export default function ArticleFormPage({ mode }: Props) {
       setValue('isBreaking', a.isBreaking);
       setValue('cardStyle', a.cardStyle ?? 'STANDARD');
       setValue('thumbnailUrl', a.thumbnailUrl ?? '');
+      setValue('mediaUrls', a.mediaUrls ?? []);
       setValue('excerpt', a.excerpt ?? '');
       setValue('scheduledAt', a.scheduledAt ?? '');
       if (a.thumbnailUrl) setThumbnailPreview(a.thumbnailUrl);
@@ -140,6 +146,46 @@ export default function ArticleFormPage({ mode }: Props) {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleMediaUpload = async (files: FileList) => {
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+      toast.error('Cloudinary not configured — paste URLs below instead');
+      return;
+    }
+    setMediaUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const file of Array.from(files)) {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+        fd.append('folder', 'agnisiragu');
+        const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`, { method: 'POST', body: fd });
+        if (!res.ok) continue;
+        const data = await res.json() as { secure_url: string };
+        uploaded.push(data.secure_url);
+      }
+      if (uploaded.length) {
+        setValue('mediaUrls', [...mediaUrls, ...uploaded]);
+        toast.success(`${uploaded.length} media item(s) uploaded`);
+      } else {
+        toast.error('Upload failed — paste URLs below instead');
+      }
+    } finally {
+      setMediaUploading(false);
+    }
+  };
+
+  const removeMediaUrl = (index: number) => {
+    setValue('mediaUrls', mediaUrls.filter((_, i) => i !== index));
+  };
+
+  const addMediaUrlFromText = (url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    setValue('mediaUrls', [...mediaUrls, trimmed]);
   };
 
   const onSubmit = async (values: FormValues, publishNow = false) => {
@@ -175,6 +221,7 @@ export default function ArticleFormPage({ mode }: Props) {
       excerpt: values.excerpt || undefined,
       byline: values.byline || undefined,
       thumbnailUrl: values.thumbnailUrl || undefined,
+      mediaUrls: values.mediaUrls?.length ? values.mediaUrls : undefined,
     };
     try {
       if (mode === 'create') { await createMutation.mutateAsync(payload); toast.success('Article created'); }
@@ -351,6 +398,61 @@ export default function ArticleFormPage({ mode }: Props) {
             <Controller name="thumbnailUrl" control={control} render={({ field }) => <input {...field} type="hidden" />} />
             {errors.thumbnailUrl && <p className="mt-2 text-xs text-red-500">{errors.thumbnailUrl.message}</p>}
           </div>
+
+          {/* Additional Media — optional gallery beyond the thumbnail. The
+              reader app shows these as a swipeable "1/3" carousel on the
+              feed card and full-story hero image when there's more than
+              one. Photos and videos both upload here (Cloudinary picks the
+              right resource type from the file); thumbnailUrl above stays
+              the single "cover" image used everywhere else. */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <Label>Additional Media <span className="normal-case font-normal text-gray-400">(optional gallery — photos/videos)</span></Label>
+
+            {mediaUrls.length > 0 && (
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                {mediaUrls.map((url, i) => (
+                  <div key={`${url}-${i}`} className="relative rounded-lg overflow-hidden aspect-square bg-gray-100">
+                    {/\.(mp4|mov|webm|m3u8)(\?|$)/i.test(url) ? (
+                      <video src={url} className="w-full h-full object-cover" muted />
+                    ) : (
+                      <img src={url} alt={`Media ${i + 1}`} className="w-full h-full object-cover" />
+                    )}
+                    <button type="button" onClick={() => removeMediaUrl(i)}
+                      className="absolute top-1 right-1 w-6 h-6 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center text-[11px] transition-colors">
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-red-DEFAULT hover:bg-blue-50/50 transition-all mb-3 group">
+              {mediaUploading ? (
+                <Loader2 size={18} className="animate-spin text-red" />
+              ) : (
+                <>
+                  <Upload size={16} className="text-gray-300 group-hover:text-red mb-1 transition-colors" />
+                  <span className="text-xs font-medium text-gray-500 group-hover:text-red transition-colors">Add photos or videos</span>
+                  <span className="text-[11px] text-gray-300 mt-0.5">Multiple files supported</span>
+                </>
+              )}
+              <input type="file" accept="image/*,video/*" multiple className="hidden"
+                onChange={(e) => { if (e.target.files?.length) void handleMediaUpload(e.target.files); e.target.value = ''; }} />
+            </label>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-gray-400 whitespace-nowrap">Or paste URL:</span>
+              <input type="url" className="input-field h-9 text-xs flex-1"
+                placeholder="https://example.com/photo.jpg"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addMediaUrlFromText((e.target as HTMLInputElement).value);
+                    (e.target as HTMLInputElement).value = '';
+                  }
+                }} />
+            </div>
+          </div>
         </div>
 
         {/* ── RIGHT (1/3) ────────────────────────────────────────── */}
@@ -395,34 +497,13 @@ export default function ArticleFormPage({ mode }: Props) {
               </label>
             </div>
 
-            <div className="pt-2 border-t border-gray-100">
-              <Label>Feed Card Style</Label>
-              <p className="text-[11px] text-gray-400 mb-2 normal-case">
-                Overrides the automatic layout. Leave "Standard" unless you want this article to stand out with a different look.
-              </p>
-              <Controller name="cardStyle" control={control} render={({ field }) => (
-                <div className="space-y-2">
-                  {([
-                    { value: 'STANDARD', label: 'Standard (A)', hint: 'Default feed card' },
-                    { value: 'FULL_BLEED', label: 'Full-bleed (B / 1b)', hint: 'Full photo, headline over image' },
-                    { value: 'NEWSPRINT', label: 'Newsprint (1c)', hint: 'Headline first, photo below' },
-                  ] as const).map((opt) => (
-                    <div key={opt.value} className="flex items-center gap-2.5">
-                      <input
-                        type="checkbox"
-                        id={`cardStyle-${opt.value}`}
-                        checked={field.value === opt.value}
-                        onChange={() => field.onChange(opt.value)}
-                        className="w-4 h-4 rounded border-gray-300 text-red-500 focus:ring-red-400 cursor-pointer"
-                      />
-                      <label htmlFor={`cardStyle-${opt.value}`} className="text-sm text-gray-700 cursor-pointer">
-                        {opt.label} <span className="text-[11px] text-gray-400 normal-case">— {opt.hint}</span>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              )} />
-            </div>
+            {/* Feed Card Style picker removed — the reader app now renders every
+                article with the single standard card (Full-bleed/Newsprint/
+                Cinema variants stay in the reader-app codebase for possible
+                reuse elsewhere, e.g. category banners, but are no longer
+                selectable per-article). cardStyle stays wired to its
+                'STANDARD' default via the form schema below so existing
+                articles that still have an old explicit value keep working. */}
           </div>
 
           {/* Actions card */}

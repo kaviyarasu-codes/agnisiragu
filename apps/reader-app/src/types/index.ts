@@ -27,6 +27,7 @@ export interface Article {
   bodyEn: string;
   excerpt?: string;
   thumbnailUrl?: string;
+  mediaUrls?: string[];
   byline?: string;
   category: Category;
   isBreaking: boolean;

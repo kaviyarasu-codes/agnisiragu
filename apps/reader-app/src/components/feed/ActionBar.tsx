@@ -19,7 +19,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
 import Icon from '@/components/icons/Icon';
 
-interface ActionBarProps {
+export interface ActionBarProps {
   liked: boolean;
   disliked: boolean;
   likeCount: number;

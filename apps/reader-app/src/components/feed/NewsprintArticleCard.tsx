@@ -11,6 +11,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
+import ImageWatermark from './ImageWatermark';
+import ActionBar, { type ActionBarProps } from './ActionBar';
 import { stripHtmlToPlainText } from '@/lib/richText';
 import type { Article, Language } from '@/types';
 
@@ -19,9 +21,10 @@ interface Props {
   language: Language;
   width: number;
   onOpen: () => void;
+  actionBar: ActionBarProps;
 }
 
-export default function NewsprintArticleCard({ article, language, width, onOpen }: Props) {
+export default function NewsprintArticleCard({ article, language, width, onOpen, actionBar }: Props) {
   const t = useTheme();
   const title = language === 'ta' ? article.titleTa : article.titleEn;
   const body = article.excerpt || stripHtmlToPlainText(language === 'ta' ? article.bodyTa : article.bodyEn);
@@ -33,26 +36,32 @@ export default function NewsprintArticleCard({ article, language, width, onOpen 
       onPress={onOpen}
       style={[styles.card, { width, backgroundColor: t.bg, borderColor: t.border }]}
     >
-      <Text style={[styles.catLabel, { color: t.inkMuted }]} numberOfLines={1}>
-        {catLabel.toUpperCase()}
-      </Text>
-      <Text style={[styles.title, { color: t.ink }]} numberOfLines={3}>{title}</Text>
-
-      {article.thumbnailUrl ? (
-        <Image source={{ uri: article.thumbnailUrl }} style={styles.image} contentFit="cover" />
-      ) : (
-        <View style={[styles.image, { backgroundColor: t.bgAlt }]} />
-      )}
-
-      <Text style={[styles.desc, { color: t.inkSub }]} numberOfLines={5}>{body}</Text>
-
-      <View style={{ flex: 1 }} />
-
-      <View style={[styles.footer, { borderTopColor: t.border }]}>
-        <Text style={[styles.byline, { color: t.inkMuted }]} numberOfLines={1}>
-          {article.byline || 'Agnisiragu'}
+      <View style={styles.inner}>
+        <Text style={[styles.catLabel, { color: t.inkMuted }]} numberOfLines={1}>
+          {catLabel.toUpperCase()}
         </Text>
+        <Text style={[styles.title, { color: t.ink }]} numberOfLines={3}>{title}</Text>
+
+        <View style={styles.imageWrap}>
+          {article.thumbnailUrl ? (
+            <Image source={{ uri: article.thumbnailUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: t.bgAlt }]} />
+          )}
+          <ImageWatermark />
+        </View>
+
+        <Text style={[styles.desc, { color: t.inkSub }]} numberOfLines={5}>{body}</Text>
+
+        <View style={{ flex: 1 }} />
+
+        <View style={[styles.footer, { borderTopColor: t.border }]}>
+          <Text style={[styles.byline, { color: t.inkMuted }]} numberOfLines={1}>
+            {article.byline || 'Agnisiragu'}
+          </Text>
+        </View>
       </View>
+      <ActionBar {...actionBar} />
     </TouchableOpacity>
   );
 }
@@ -63,8 +72,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     overflow: 'hidden',
-    padding: 15,
   },
+  inner: { flex: 1, padding: 15 },
   catLabel: {
     fontFamily: FONT_FAMILIES.condensedBold,
     fontSize: 10.5,
@@ -78,6 +87,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   image: { width: '100%', height: 130, borderRadius: 8, marginTop: 12 },
+  imageWrap: {
+    width: '100%', height: 130, borderRadius: 8, marginTop: 12,
+    position: 'relative', overflow: 'hidden',
+  },
   desc: {
     fontFamily: FONT_FAMILIES.bodyRegular,
     fontSize: 14,

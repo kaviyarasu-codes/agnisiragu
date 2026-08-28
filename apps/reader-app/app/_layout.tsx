@@ -15,12 +15,11 @@
 // app's version).
 
 import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import { View, Text } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
 import * as SplashScreenNative from 'expo-splash-screen';
-import { usePreventScreenCapture } from 'expo-screen-capture';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -175,7 +174,19 @@ function RootStack() {
       <Stack.Screen name="deep-link" options={{ headerShown: false }} />
 
       {/* Screens with no in-screen header — themed native header */}
-      <Stack.Screen name="article/[id]" options={{ title: '' }} />
+      <Stack.Screen
+        name="article/[id]"
+        options={{
+          title: '',
+          // Matches the design's "FULL STORY" red label, top-right of the
+          // header, on the full article screen.
+          headerRight: () => (
+            <Text style={{ color: t.red, fontWeight: '800', fontSize: 12, letterSpacing: 0.6 }}>
+              FULL STORY
+            </Text>
+          ),
+        }}
+      />
       <Stack.Screen name="contact" options={{ title: 'எங்களை தொடர்பு கொள்ள / Contact Us' }} />
       <Stack.Screen name="search" options={{ title: 'தேடல் / Search' }} />
       <Stack.Screen name="bookmarks" options={{ title: 'சேமிப்பு / Saved' }} />
@@ -191,14 +202,10 @@ function RootStack() {
 }
 
 export default function RootLayout() {
-  // Blocks screenshots/screen recording for the app's entire lifetime.
-  // Fully effective on Android (sets FLAG_SECURE — screenshot attempts
-  // produce a black frame and the app is hidden from the recent-apps
-  // thumbnail). On iOS, Apple does not allow apps to block the OS
-  // screenshot gesture; this only lets the app detect one after the fact
-  // (see expo-screen-capture's addScreenshotListener, not wired up here
-  // since there's no in-app action to take on detection yet).
-  usePreventScreenCapture();
+  // Screenshot/screen-recording blocking (usePreventScreenCapture, Android
+  // FLAG_SECURE) is disabled for now so screenshots can be taken freely
+  // during testing — re-enable before a real public release if the anti-
+  // piracy protection is wanted back.
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

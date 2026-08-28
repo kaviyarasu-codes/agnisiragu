@@ -220,6 +220,7 @@ export class NewsService {
         bodyEn: dto.bodyEn ?? dto.bodyTa,
         excerpt: dto.excerpt,
         thumbnailUrl: dto.thumbnailUrl,
+        mediaUrls: dto.mediaUrls ?? [],
         byline: dto.byline,
         categoryId: dto.categoryId,
         adminId,

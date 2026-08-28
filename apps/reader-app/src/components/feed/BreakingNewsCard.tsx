@@ -12,6 +12,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
+import ImageWatermark from './ImageWatermark';
+import ActionBar, { type ActionBarProps } from './ActionBar';
 import { stripHtmlToPlainText } from '@/lib/richText';
 import type { Article, Language } from '@/types';
 
@@ -20,9 +22,10 @@ interface Props {
   language: Language;
   width: number;
   onOpen: () => void;
+  actionBar: ActionBarProps;
 }
 
-export default function BreakingNewsCard({ article, language, width, onOpen }: Props) {
+export default function BreakingNewsCard({ article, language, width, onOpen, actionBar }: Props) {
   const t = useTheme();
   const title = language === 'ta' ? article.titleTa : article.titleEn;
   const rawBody = language === 'ta' ? article.bodyTa : article.bodyEn;
@@ -42,6 +45,8 @@ export default function BreakingNewsCard({ article, language, width, onOpen }: P
       <View style={[styles.scrimBand, { height: '55%', bottom: 0, backgroundColor: 'rgba(28,25,23,0.45)' }]} />
       <View style={[styles.scrimBand, { height: '78%', bottom: 0, backgroundColor: 'rgba(28,25,23,0.18)' }]} />
 
+      <ImageWatermark corner="top-right" />
+
       {article.isBreaking && (
         <View style={styles.topRow}>
           <View style={styles.breakingChip}>
@@ -60,6 +65,10 @@ export default function BreakingNewsCard({ article, language, width, onOpen }: P
           <Text style={styles.hint}>{language === 'ta' ? 'ஸ்வைப் →' : 'swipe →'}</Text>
         </View>
       </View>
+
+      <View style={styles.actionBarWrap}>
+        <ActionBar {...actionBar} />
+      </View>
     </TouchableOpacity>
   );
 }
@@ -67,7 +76,6 @@ export default function BreakingNewsCard({ article, language, width, onOpen }: P
 const styles = StyleSheet.create({
   card: {
     height: '100%',
-    borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#000',
   },
@@ -85,7 +93,8 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     letterSpacing: 1,
   },
-  textWrap: { position: 'absolute', left: 16, right: 16, bottom: 16 },
+  textWrap: { position: 'absolute', left: 16, right: 16, bottom: 56 },
+  actionBarWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   catLabel: {
     color: '#E9B84A',
     fontFamily: FONT_FAMILIES.displaySemiBold,

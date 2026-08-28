@@ -1,6 +1,6 @@
 // src/news/news.dto.ts
 import {
-  IsString, IsOptional, IsBoolean, IsEnum, IsUUID, IsDateString, IsIn,
+  IsString, IsOptional, IsBoolean, IsEnum, IsUUID, IsDateString, IsIn, IsArray,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
@@ -34,6 +34,18 @@ export class CreateArticleDto {
   @IsOptional()
   @IsString()
   thumbnailUrl?: string;
+
+  // Extra gallery photos/videos beyond the single thumbnail — the reader
+  // app renders these as a swipeable "1/3"-style carousel on the feed card
+  // and hero image when there's more than one (see FeedCard.tsx /
+  // ArticleDetailScreen.tsx). thumbnailUrl stays the single "cover" image
+  // used everywhere else (notifications, share previews, list rows), so
+  // existing behavior is unaffected when this is left empty.
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  mediaUrls?: string[];
 
   @ApiPropertyOptional({ example: 'சிவா குமார்' })
   @IsOptional()
@@ -97,6 +109,12 @@ export class UpdateArticleDto {
   @IsOptional()
   @IsString()
   thumbnailUrl?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  mediaUrls?: string[];
 
   @ApiPropertyOptional()
   @IsOptional()

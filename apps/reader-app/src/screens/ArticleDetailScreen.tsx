@@ -1,34 +1,38 @@
 // src/screens/ArticleDetailScreen.tsx
 // Full story screen — design 2c / 1a's "full story" card: hero media,
-// reporter row with follow, full body, related stories, and a comments
-// section. Comments are UI-only for now (no `/articles/:id/comments`
-// endpoint exists yet on the backend) — same pattern ArticleCard.tsx
-// already uses for its like counter.
+// reporter row with follow, full body, and a comments section. Uses the
+// same ActionBar component as the feed cards (like/dislike counts,
+// comment, whatsapp/more/share) instead of its own separate button set,
+// for visual consistency between the feed and the full-story read. The
+// "Related" section has been removed per product decision. Comments are
+// UI-only for now (no `/articles/:id/comments` endpoint exists yet on the
+// backend) — same pattern ArticleCard.tsx already uses for its like
+// counter.
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Share, StyleSheet, TextInput, KeyboardAvoidingView, Platform,
+  ScrollView, View, Text, TouchableOpacity, Share, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useArticle, useRelatedArticles } from '@/hooks/useArticles';
+import { useArticle } from '@/hooks/useArticles';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
+import { useReactionsStore } from '@/store/reactions.store';
 import { useTheme } from '@/hooks/useTheme';
 import { patch } from '@/lib/api';
 import { FREE_ARTICLE_LIMIT, FONT_FAMILIES } from '@/constants';
-import { useBookmarksStore } from '@/store/bookmarks.store';
 import { useHistoryStore } from '@/store/history.store';
-import ArticleCard from '@/components/ArticleCard';
 import ArticleBody from '@/components/ArticleBody';
 import AdBanner from '@/components/AdBanner';
 import LoginGateModal from '@/components/LoginGateModal';
 import ShareSheet from '@/components/sheets/ShareSheet';
+import MoreActionsSheet from '@/components/sheets/MoreActionsSheet';
 import EmptyState from '@/components/ui/EmptyState';
 import { FeedSkeleton } from '@/components/ui/Skeleton';
 import Avatar from '@/components/ui/Avatar';
 import Icon from '@/components/icons/Icon';
-import type { Article } from '@/types';
+import ActionBar from '@/components/feed/ActionBar';
+import MediaCarousel from '@/components/feed/MediaCarousel';
 
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString('ta-IN', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -41,14 +45,16 @@ export default function ArticleDetailScreen() {
   const { data: article, isLoading, isError } = useArticle(id);
   const { isAuthenticated, articleReadCount, incrementReadCount } = useAuthStore();
   const { language, remoteConfig } = useAppStore();
-  const { isBookmarked, toggleBookmark } = useBookmarksStore();
   const addToHistory = useHistoryStore((s) => s.addToHistory);
+  const { hydrate: hydrateReactions, getReaction, react } = useReactionsStore();
   const t = useTheme();
   const [showLoginGate, setShowLoginGate] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const [comments, setComments] = useState<LocalComment[]>([]);
   const [draft, setDraft] = useState('');
   const [following, setFollowing] = useState(false);
+  const [countDelta, setCountDelta] = useState({ like: 0, dislike: 0 });
   const commentsRef = useRef<View>(null);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -57,7 +63,7 @@ export default function ArticleDetailScreen() {
     : Infinity;
   const shouldGate = !isAuthenticated && articleReadCount >= freeArticleLimit;
 
-  const { data: related } = useRelatedArticles(article?.category.id ?? '', article?.id ?? '');
+  useEffect(() => { hydrateReactions(); }, [hydrateReactions]);
 
   useEffect(() => {
     if (article && isAuthenticated) {
@@ -97,10 +103,38 @@ export default function ArticleDetailScreen() {
   const title = language === 'ta' ? article.titleTa : article.titleEn;
   const body = language === 'ta' ? article.bodyTa : article.bodyEn;
   const categoryName = language === 'ta' ? article.category.nameTa : article.category.nameEn;
-  const saved = isBookmarked(article.id);
 
-  async function handleShare() {
+  function handleShare() {
     setShowShare(true);
+  }
+
+  function handleMore() {
+    setShowMore(true);
+  }
+
+  function scrollToComments() {
+    commentsRef.current?.measure((_x, y) => scrollRef.current?.scrollTo({ y, animated: true }));
+  }
+
+  async function handleWhatsapp() {
+    const url = `https://agnisiragu.com/a/${article.id}`;
+    const text = `${title}\n${url}`;
+    const waUrl = `whatsapp://send?text=${encodeURIComponent(text)}`;
+    try {
+      const canOpen = await Linking.canOpenURL(waUrl);
+      if (canOpen) {
+        await Linking.openURL(waUrl);
+        return;
+      }
+    } catch {
+      // fall through to generic share below
+    }
+    Share.share({ message: text }).catch(() => {});
+  }
+
+  async function applyReaction(type: 'LIKE' | 'DISLIKE') {
+    const { likeDelta, dislikeDelta } = await react(article.id, type);
+    setCountDelta((prev) => ({ like: prev.like + likeDelta, dislike: prev.dislike + dislikeDelta }));
   }
 
   function postComment() {
@@ -109,14 +143,14 @@ export default function ArticleDetailScreen() {
     setDraft('');
   }
 
+  const reaction = getReaction(article.id);
+
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView ref={scrollRef} style={[styles.container, { backgroundColor: t.surface }]} showsVerticalScrollIndicator={false}>
-        {article.thumbnailUrl ? (
-          <Image source={{ uri: article.thumbnailUrl }} style={styles.heroImage} contentFit="cover" />
-        ) : (
-          <View style={[styles.heroImage, { backgroundColor: t.bgAlt }]} />
-        )}
+        <View style={styles.heroWrap}>
+          <MediaCarousel mediaUrls={article.mediaUrls} thumbnailUrl={article.thumbnailUrl} />
+        </View>
 
         <View style={styles.content}>
           <View style={styles.metaRow}>
@@ -157,34 +191,27 @@ export default function ArticleDetailScreen() {
           ) : (
             <ArticleBody html={body} textStyle={[styles.body, { color: t.inkSub }]} linkColor={t.red} />
           )}
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={[styles.actionBtn, { borderColor: t.red }]} onPress={handleShare}>
-              <Icon name="share" size={16} color={t.red} />
-              <Text style={[styles.actionText, { color: t.red }]}>பகிர் / Share</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, { borderColor: saved ? t.red : t.border, backgroundColor: saved ? t.redSoft : t.surface }]}
-              onPress={() => toggleBookmark(article)}
-            >
-              <Icon name="bookmarkNav" size={16} color={saved ? t.red : t.ink} />
-              <Text style={[styles.actionText, { color: saved ? t.red : t.ink }]}>{saved ? 'சேமிக்கப்பட்டது' : 'சேமி'}</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         {!shouldGate && (
           <>
-            <AdBanner />
+            <View style={[styles.actionBarWrap, { borderTopColor: t.border, borderBottomColor: t.border }]}>
+              <ActionBar
+                liked={reaction === 'LIKE'}
+                disliked={reaction === 'DISLIKE'}
+                likeCount={Math.max(0, (article.likeCount ?? 0) + countDelta.like)}
+                dislikeCount={Math.max(0, (article.dislikeCount ?? 0) + countDelta.dislike)}
+                commentCount={article.commentCount ?? comments.length}
+                onLike={() => applyReaction('LIKE')}
+                onDislike={() => applyReaction('DISLIKE')}
+                onComment={scrollToComments}
+                onWhatsapp={handleWhatsapp}
+                onShare={handleShare}
+                onMore={handleMore}
+              />
+            </View>
 
-            {related && related.length > 0 && (
-              <View style={styles.relatedSection}>
-                <Text style={[styles.sectionHeading, { color: t.ink }]}>தொடர்புடைய செய்திகள் / Related</Text>
-                {related.map((rel) => (
-                  <ArticleCard key={rel.id} article={rel} onPress={(a: Article) => router.push(`/article/${a.id}`)} language={language} />
-                ))}
-              </View>
-            )}
+            <AdBanner />
 
             <View ref={commentsRef} style={styles.commentsSection}>
               <Text style={[styles.sectionHeading, { color: t.ink }]}>கருத்துகள் · {comments.length}</Text>
@@ -224,6 +251,7 @@ export default function ArticleDetailScreen() {
 
       <LoginGateModal visible={showLoginGate} onDismiss={() => setShowLoginGate(false)} />
       <ShareSheet visible={showShare} onDismiss={() => setShowShare(false)} article={article} language={language} />
+      <MoreActionsSheet visible={showMore} onDismiss={() => setShowMore(false)} article={article} />
     </KeyboardAvoidingView>
   );
 }
@@ -231,6 +259,7 @@ export default function ArticleDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   heroImage: { width: '100%', height: 210 },
+  heroWrap: { width: '100%', height: 210, position: 'relative' },
   content: { padding: 16 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 9 },
   category: { fontFamily: FONT_FAMILIES.displaySemiBold, fontSize: 11, letterSpacing: 0.6 },
@@ -250,14 +279,8 @@ const styles = StyleSheet.create({
   loginButton: { paddingHorizontal: 28, paddingVertical: 12, borderRadius: 10 },
   loginButtonText: { color: '#fff', fontFamily: FONT_FAMILIES.uiBold, fontSize: 15 },
   body: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 15, lineHeight: 27, marginTop: 14 },
-  actionRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
-  actionBtn: {
-    flex: 1, flexDirection: 'row', gap: 7, borderWidth: 1.5, borderRadius: 10,
-    paddingVertical: 12, alignItems: 'center', justifyContent: 'center',
-  },
-  actionText: { fontFamily: FONT_FAMILIES.uiSemiBold, fontSize: 13.5 },
+  actionBarWrap: { borderTopWidth: 1, borderBottomWidth: 1, marginTop: 6 },
   sectionHeading: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 15, paddingHorizontal: 16, paddingVertical: 12 },
-  relatedSection: { paddingTop: 8, paddingBottom: 12 },
   commentsSection: { paddingBottom: 100 },
   noComments: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 13, paddingHorizontal: 16 },
   commentRow: { flexDirection: 'row', gap: 9, paddingHorizontal: 16, paddingVertical: 8, alignItems: 'flex-start' },

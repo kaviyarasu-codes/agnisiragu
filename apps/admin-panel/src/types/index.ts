@@ -78,6 +78,7 @@ export interface Article {
   bodyEn: string;
   excerpt?: string;
   thumbnailUrl?: string;
+  mediaUrls?: string[];
   byline?: string;
   category: Category;
   admin: { id: string; name: string };

@@ -14,7 +14,12 @@
       },
       "package": "com.agnisiragu.reader",
       "versionCode": 13,
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "ios": {
       "bundleIdentifier": "com.agnisiragu.reader",
@@ -30,7 +35,7 @@
         {
           "image": "./assets/splash.png",
           "resizeMode": "contain",
-          "backgroundColor": "#000000"
+          "backgroundColor": "#F5F1EB"
         }
       ],
       "expo-image",
@@ -47,12 +52,15 @@
         {
           "locationWhenInUsePermission": "உங்கள் அருகிலுள்ள செய்திகளை காட்டவும், பதிவிடும் செய்திக்கு இருப்பிடத்தை இணைக்கவும் இருப்பிட அனுமதி தேவை / Allow location access to show news near you and tag the location on a submitted report."
         }
-      ]
+      ],
+      "./plugins/withShareAppQueries.js"
     ],
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "bb5e005e-2ef5-4482-befe-76d8db54014b"
+        "projectId": "354230e7-7a81-410e-92b3-44c0607c32d0"
       }
-    }
+    },
+    "owner": "agnisiragu_new"
   }
 }

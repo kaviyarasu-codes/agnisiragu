@@ -366,7 +366,7 @@ const FLAGS = [
 
 function LiveFeatureFlags() {
   const [flags, setFlags] = useState<Record<string, boolean>>({
-    loginGate: true, breakingAlerts: true, maintenanceMode: false,
+    loginGate: true, breakingAlerts: true, maintenanceMode: false, localAdsEnable: true,
   });
   const qc = useQueryClient();
   const { data } = useQuery({

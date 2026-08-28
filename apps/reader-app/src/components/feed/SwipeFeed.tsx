@@ -1,23 +1,47 @@
 // src/components/feed/SwipeFeed.tsx
-// The Home experience: a horizontally swipeable, one-card-at-a-time deck
-// (design 1a step 03 "Feed"), with a compact action bar (like+count/
-// dislike+count/comment+count, then WhatsApp/more/share icons), a rate
-// ticker, and the persistent bottom nav (Archive/Jobs/Post/Lives/Saved)
-// below it.
+// The Home experience: a full-bleed, horizontal one-story-at-a-time feed
+// (design 1a step 03 "Feed") — swipe left/right to move between stories,
+// like turning a page in a book, edge-to-edge with no gaps (Way2News-style
+// full-bleed cards). A separate swipe-DOWN gesture (pull-to-refresh style)
+// reloads the feed for new news — see the PanResponder wiring below. That
+// gesture is only armed over the fixed image region of the card (the top
+// FEED_IMAGE_HEIGHT_FRACTION of the screen — see FeedCard.tsx), since each
+// card's article text now scrolls in its own ScrollView underneath the
+// image; scoping the refresh gesture to just the non-scrolling image area
+// keeps it from fighting that ScrollView for vertical drags, and a
+// horizontal drag anywhere still passes straight through to the FlatList's
+// own paging. A rate ticker and the persistent bottom nav (Archive/Jobs/
+// Post/Lives/Saved) sit below the feed.
 //
-// Card selection: most articles render as the standard ArticleFeedCard.
-// See resolveCardStyle() below — an admin's explicit Card Style choice
-// (Article.cardStyle, set via checkboxes in the admin panel) always wins;
-// otherwise these legacy automatic rules apply:
-//   - isBreaking articles      -> BreakingNewsCard (1b, full-bleed photo)
-//   - Cinema/Entertainment cat -> CinemaFeedCard (1e, peeking-deck)
-//   - sponsored/local-ad slots -> SponsoredFeedCard (1c, newsprint order)
-// An admin can also force any article into 1b (BreakingNewsCard) or 1c
-// (NewsprintArticleCard) regardless of isBreaking/category.
+// Page-turn transition: each card rotates around its left/right edge
+// (rotateY, anchored via the standard translate/rotate/translate-back
+// trick) as it scrolls past center, with a shadow overlay that darkens
+// toward the fold — a hand-rolled Animated-only effect (no extra native
+// dependency; an earlier attempt used the react-native-page-flipper
+// library but it carried an unresolved Reanimated version mismatch and was
+// reverted). A vertical variant of this same transform briefly replaced
+// this one for a vertical-swipe experiment; reverted back to horizontal
+// per an explicit request for the book-page-turn feel specifically.
+//
+// Each card renders its own ActionBar (like+count/dislike+count/comment+
+// count, then WhatsApp/more/share icons) INSIDE the card itself, so the
+// action row turns/flips together with the card — see buildActionBarProps
+// below, which computes one card's reaction state on demand instead of
+// assuming a single shared "active" card.
+//
+// Card selection: every article renders as the single standard
+// ArticleFeedCard now — per an explicit product decision, the feed no
+// longer varies its layout per article (no more automatic Full-bleed for
+// breaking news, the Cinema peeking-deck for that category, or an admin's
+// old explicit cardStyle choice). resolveCardStyle() below always returns
+// 'STANDARD'. The old BreakingNewsCard/CinemaFeedCard/NewsprintArticleCard
+// components and the Article.cardStyle field stay in the codebase in case
+// they're reused elsewhere later — e.g. a category banner or a breaking-
+// news takeover screen — just no longer wired into the main feed.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, FlatList, Animated, Dimensions, NativeSyntheticEvent, NativeScrollEvent, StyleSheet, Linking, Share,
+  View, FlatList, Animated, Dimensions, NativeSyntheticEvent, NativeScrollEvent, StyleSheet, Linking, Share, PanResponder, Text,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,13 +50,13 @@ import { useArticles } from '@/hooks/useArticles';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
 import { useReactionsStore } from '@/store/reactions.store';
-import { FREE_ARTICLE_LIMIT, STORAGE_KEYS } from '@/constants';
+import { FREE_ARTICLE_LIMIT, STORAGE_KEYS, FONT_FAMILIES } from '@/constants';
 import { useTheme } from '@/hooks/useTheme';
-import { ArticleFeedCard, AdFeedCard } from './FeedCard';
+import { ArticleFeedCard, AdFeedCard, FEED_IMAGE_HEIGHT_FRACTION } from './FeedCard';
 import BreakingNewsCard from './BreakingNewsCard';
 import CinemaFeedCard from './CinemaFeedCard';
 import NewsprintArticleCard from './NewsprintArticleCard';
-import ActionBar from './ActionBar';
+import type { ActionBarProps } from './ActionBar';
 import BottomNav from './BottomNav';
 import SwipeHintOverlay from './SwipeHintOverlay';
 import RateTicker from '@/components/ui/RateTicker';
@@ -44,22 +68,14 @@ import ShareSheet from '@/components/sheets/ShareSheet';
 import type { Article } from '@/types';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const SIDE_PAD = 12;
-const CARD_W = SCREEN_W - SIDE_PAD * 2;
-const SNAP = CARD_W + SIDE_PAD * 2;
+const SNAP = SCREEN_W;
 
-const CINEMA_SLUGS = new Set(['cinema', 'entertainment']);
-
-// Admin's explicit Card Style choice (Article.cardStyle) always wins. When
-// left at the default ("STANDARD" = no explicit choice made), fall back to
-// the legacy automatic rules so every already-published article keeps
-// rendering exactly as it did before this admin control existed.
+// Always STANDARD now — see the header comment above. The FULL_BLEED/
+// NEWSPRINT/CINEMA branches below are unreachable in the feed itself but
+// stay in place since ArticleFeedCard/BreakingNewsCard/etc. are still
+// valid components that could power a different screen later.
 type ResolvedCardStyle = 'FULL_BLEED' | 'NEWSPRINT' | 'CINEMA' | 'STANDARD';
-function resolveCardStyle(article: Article): ResolvedCardStyle {
-  if (article.cardStyle === 'FULL_BLEED') return 'FULL_BLEED';
-  if (article.cardStyle === 'NEWSPRINT') return 'NEWSPRINT';
-  if (article.isBreaking) return 'FULL_BLEED';
-  if (CINEMA_SLUGS.has(article.category?.slug)) return 'CINEMA';
+function resolveCardStyle(_article: Article): ResolvedCardStyle {
   return 'STANDARD';
 }
 
@@ -80,7 +96,7 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
   const freeLimit = remoteConfig.loginGate ? (remoteConfig.freeArticleLimit || FREE_ARTICLE_LIMIT) : Infinity;
 
   const {
-    data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage, refetch,
+    data, isLoading, isError, isRefetching, refetch, fetchNextPage, hasNextPage, isFetchingNextPage,
   } = useArticles(categoryId);
 
   const articles = useMemo(() => data?.pages.flatMap((p) => p.data) ?? [], [data]);
@@ -97,11 +113,25 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
     return items;
   }, [articles, adFrequency]);
 
-  const [activeIndex, setActiveIndex] = useState(0);
   const [showLoginGate, setShowLoginGate] = useState(false);
   const [moreArticle, setMoreArticle] = useState<Article | null>(null);
   const [shareArticle, setShareArticle] = useState<Article | null>(null);
   const listRef = useRef<FlatList<ListItem>>(null);
+
+  // Measures the feed area's on-screen position/height so the swipe-down-
+  // to-refresh gesture (below) can tell whether a drag started inside the
+  // fixed image zone at the top of the current card, vs. lower down in the
+  // card's own scrollable text — refs, not state, since they only feed a
+  // PanResponder callback and don't need to trigger re-renders.
+  const feedAreaRef = useRef<View>(null);
+  const feedAreaTopRef = useRef(0);
+  const feedAreaHeightRef = useRef(0);
+  const measureFeedArea = useCallback(() => {
+    feedAreaRef.current?.measure((_x, _y, _w, h, _pageX, pageY) => {
+      feedAreaTopRef.current = pageY;
+      feedAreaHeightRef.current = h;
+    });
+  }, []);
 
   // Drives the book-page-flip swipe transition (see withPageFlip below) and
   // the one-time new-user swipe hint (SwipeHintOverlay). scrollX is native-
@@ -132,27 +162,52 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
 
   useEffect(() => { hydrateReactions(); }, [hydrateReactions]);
 
-  const activeItem = listData[activeIndex];
-  const activeArticle = activeItem?.type === 'article' ? activeItem.article : null;
-
-  const activeReaction = activeArticle ? getReaction(activeArticle.id) : undefined;
-  const activeDelta = (activeArticle && countDeltas[activeArticle.id]) || { like: 0, dislike: 0 };
-  const displayLikeCount = Math.max(0, (activeArticle?.likeCount ?? 0) + activeDelta.like);
-  const displayDislikeCount = Math.max(0, (activeArticle?.dislikeCount ?? 0) + activeDelta.dislike);
-  const displayCommentCount = activeArticle?.commentCount ?? 0;
-
+  // Tracks the centered card purely to know when the user has swiped at
+  // least once (to dismiss the one-time hint) — each card owns its own
+  // ActionBar/state, so this no longer needs to be React state driving a
+  // render.
+  const activeIndexRef = useRef(0);
   const onMomentumEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SNAP);
-    setActiveIndex((prev) => {
-      const next = Math.max(0, Math.min(idx, listData.length - 1));
-      if (next !== prev) dismissSwipeHint(); // the user just discovered the gesture themselves
-      return next;
-    });
+    const next = Math.max(0, Math.min(idx, listData.length - 1));
+    if (next !== activeIndexRef.current) dismissSwipeHint(); // the user just discovered the gesture themselves
+    activeIndexRef.current = next;
   }, [listData.length, dismissSwipeHint]);
 
   const onEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Swipe-DOWN-to-refresh: a pull-to-refresh-style gesture armed only over
+  // the fixed image region at the top of each card (see the imageRefreshZone
+  // View in the JSX below, sized to FEED_IMAGE_HEIGHT_FRACTION) — since the
+  // article text scrolls in its own ScrollView now, scoping this to the
+  // non-scrolling image keeps the two gestures from fighting over the same
+  // vertical drag. A horizontal drag over that same zone still falls through
+  // to the FlatList's own paging untouched (only dy-dominant, downward
+  // movement is captured here).
+  const [refreshHintOpacity] = useState(() => new Animated.Value(0));
+  const panResponder = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponderCapture: (_evt, gesture) => {
+      if (Math.abs(gesture.dy) <= 18 || Math.abs(gesture.dy) <= Math.abs(gesture.dx) * 1.5 || gesture.dy <= 0) {
+        return false;
+      }
+      const imageZoneHeight = feedAreaHeightRef.current * FEED_IMAGE_HEIGHT_FRACTION;
+      const startY = gesture.y0 - feedAreaTopRef.current;
+      return startY >= 0 && startY <= imageZoneHeight;
+    },
+    onPanResponderMove: (_evt, gesture) => {
+      const progress = Math.min(1, Math.abs(gesture.dy) / 90);
+      refreshHintOpacity.setValue(progress);
+    },
+    onPanResponderRelease: (_evt, gesture) => {
+      Animated.timing(refreshHintOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+      if (gesture.dy > 70 && !isRefetching) refetch();
+    },
+    onPanResponderTerminate: () => {
+      Animated.timing(refreshHintOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+    },
+  }), [refetch, isRefetching, refreshHintOpacity]);
 
   const openArticle = useCallback((article: Article) => {
     if (!isAuthenticated && articleReadCount >= freeLimit) {
@@ -162,9 +217,13 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
     router.push(`/article/${article.id}`);
   }, [isAuthenticated, articleReadCount, freeLimit]);
 
-  const applyReaction = useCallback(async (type: 'LIKE' | 'DISLIKE') => {
-    if (!activeArticle) return;
-    const id = activeArticle.id;
+  // These used to only act on the single "active" (centered) card, feeding
+  // one ActionBar rendered outside the FlatList. Now that every card carries
+  // its own ActionBar (so it swipes/flips together with the card — see
+  // withPageFlip and buildActionBarProps below), each handler takes the
+  // specific article it was invoked for instead of assuming "active".
+  const applyReaction = useCallback(async (article: Article, type: 'LIKE' | 'DISLIKE') => {
+    const id = article.id;
     const { likeDelta, dislikeDelta } = await react(id, type);
     setCountDeltas((prev) => {
       const current = prev[id] ?? { like: 0, dislike: 0 };
@@ -173,23 +232,19 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
         [id]: { like: current.like + likeDelta, dislike: current.dislike + dislikeDelta },
       };
     });
-  }, [activeArticle, react]);
+  }, [react]);
 
-  const toggleLike = useCallback(() => applyReaction('LIKE'), [applyReaction]);
-  const toggleDislike = useCallback(() => applyReaction('DISLIKE'), [applyReaction]);
+  const handleComment = useCallback((article: Article) => {
+    router.push(`/article/${article.id}?focus=comments`);
+  }, []);
 
-  const handleComment = useCallback(() => {
-    if (activeArticle) router.push(`/article/${activeArticle.id}?focus=comments`);
-  }, [activeArticle]);
+  const handleShare = useCallback((article: Article) => {
+    setShareArticle(article);
+  }, []);
 
-  const handleShare = useCallback(async () => {
-    if (activeArticle) setShareArticle(activeArticle);
-  }, [activeArticle]);
-
-  const handleWhatsapp = useCallback(async () => {
-    if (!activeArticle) return;
-    const title = language === 'ta' ? activeArticle.titleTa : activeArticle.titleEn;
-    const url = `https://agnisiragu.com/a/${activeArticle.id}`;
+  const handleWhatsapp = useCallback(async (article: Article) => {
+    const title = language === 'ta' ? article.titleTa : article.titleEn;
+    const url = `https://agnisiragu.com/a/${article.id}`;
     const text = `${title}\n${url}`;
     const waUrl = `whatsapp://send?text=${encodeURIComponent(text)}`;
     try {
@@ -202,37 +257,89 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
       // fall through to generic share below
     }
     Share.share({ message: text }).catch(() => {});
-  }, [activeArticle, language]);
+  }, [language]);
 
-  const handleMore = useCallback(() => {
-    if (activeArticle) setMoreArticle(activeArticle);
-  }, [activeArticle]);
+  const handleMore = useCallback((article: Article) => {
+    setMoreArticle(article);
+  }, []);
 
-  // Book-page-flip transition (item #3 of the redesign brief): as a card
-  // scrolls away from center it rotates around its vertical axis and
-  // slides slightly, like a page turning, instead of a flat slide — applied
-  // to every card in the feed, ad slots included, so the whole deck reads
-  // as one flip-book.
+  // Builds this specific card's ActionBar props from its own likeCount/
+  // dislikeCount plus this device's local reaction + optimistic delta —
+  // each card now owns its own action row instead of sharing one global bar.
+  const buildActionBarProps = useCallback((article: Article): ActionBarProps => {
+    const reaction = getReaction(article.id);
+    const delta = countDeltas[article.id] || { like: 0, dislike: 0 };
+    return {
+      liked: reaction === 'LIKE',
+      disliked: reaction === 'DISLIKE',
+      likeCount: Math.max(0, (article.likeCount ?? 0) + delta.like),
+      dislikeCount: Math.max(0, (article.dislikeCount ?? 0) + delta.dislike),
+      commentCount: article.commentCount ?? 0,
+      onLike: () => applyReaction(article, 'LIKE'),
+      onDislike: () => applyReaction(article, 'DISLIKE'),
+      onComment: () => handleComment(article),
+      onWhatsapp: () => handleWhatsapp(article),
+      onShare: () => handleShare(article),
+      onMore: () => handleMore(article),
+    };
+  }, [getReaction, countDeltas, applyReaction, handleComment, handleWhatsapp, handleShare, handleMore]);
+
+  // Book-page-flip transition: each card hinges like an actual paper page
+  // instead of just tilting on its own center. Real pages pivot at the
+  // spine, so the pivot point itself moves from the card's LEFT edge (while
+  // it's still "ahead", easing in from the right, unread) to its RIGHT edge
+  // (once it's "behind", easing out to the left, turned) — using the
+  // standard translate/rotate/translate-back anchor-point trick, since RN
+  // transforms always pivot on the view's own center by default. A soft
+  // shadow overlay darkens toward the spine as the angle increases, and a
+  // subtle scale-down sells the perspective foreshortening.
   const withPageFlip = useCallback((node: React.ReactNode, index: number) => {
     const inputRange = [(index - 1) * SNAP, index * SNAP, (index + 1) * SNAP];
-    const rotateY = scrollX.interpolate({
-      inputRange, outputRange: ['55deg', '0deg', '-55deg'], extrapolate: 'clamp',
+
+    const pivot = scrollX.interpolate({
+      inputRange, outputRange: [-SCREEN_W / 2, 0, SCREEN_W / 2], extrapolate: 'clamp',
     });
-    const translateX = scrollX.interpolate({
-      inputRange, outputRange: [-CARD_W * 0.22, 0, CARD_W * 0.22], extrapolate: 'clamp',
+    const negPivot = Animated.multiply(pivot, -1);
+
+    const rotateY = scrollX.interpolate({
+      inputRange, outputRange: ['72deg', '0deg', '-72deg'], extrapolate: 'clamp',
+    });
+    const scale = scrollX.interpolate({
+      inputRange, outputRange: [0.92, 1, 0.92], extrapolate: 'clamp',
     });
     const opacity = scrollX.interpolate({
-      inputRange, outputRange: [0.55, 1, 0.55], extrapolate: 'clamp',
+      inputRange, outputRange: [0.8, 1, 0.8], extrapolate: 'clamp',
     });
+    const foldShadow = scrollX.interpolate({
+      inputRange, outputRange: [0.45, 0, 0.45], extrapolate: 'clamp',
+    });
+
     return (
-      <Animated.View style={{ opacity, transform: [{ perspective: 900 }, { translateX }, { rotateY }] }}>
+      <Animated.View
+        style={{
+          height: '100%',
+          width: SCREEN_W,
+          opacity,
+          transform: [
+            { perspective: 1200 },
+            { translateX: pivot },
+            { rotateY },
+            { scale },
+            { translateX: negPivot },
+          ],
+        }}
+      >
         {node}
+        <Animated.View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFillObject, styles.foldShadow, { opacity: foldShadow }]}
+        />
       </Animated.View>
     );
   }, [scrollX]);
 
   const renderItem = useCallback(({ item, index }: { item: ListItem; index: number }) => {
-    if (item.type === 'ad') return withPageFlip(<AdFeedCard width={CARD_W} />, index);
+    if (item.type === 'ad') return withPageFlip(<AdFeedCard width={SCREEN_W} />, index);
 
     const { article } = item;
     const style = resolveCardStyle(article);
@@ -242,8 +349,9 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
         <BreakingNewsCard
           article={article}
           language={language}
-          width={CARD_W}
+          width={SCREEN_W}
           onOpen={() => openArticle(article)}
+          actionBar={buildActionBarProps(article)}
         />,
         index,
       );
@@ -253,8 +361,9 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
         <NewsprintArticleCard
           article={article}
           language={language}
-          width={CARD_W}
+          width={SCREEN_W}
           onOpen={() => openArticle(article)}
+          actionBar={buildActionBarProps(article)}
         />,
         index,
       );
@@ -264,8 +373,9 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
         <CinemaFeedCard
           article={article}
           language={language}
-          width={CARD_W}
+          width={SCREEN_W}
           onOpen={() => openArticle(article)}
+          actionBar={buildActionBarProps(article)}
         />,
         index,
       );
@@ -276,12 +386,13 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
         language={language}
         index={item.articleIndex}
         total={articles.length}
-        width={CARD_W}
+        width={SCREEN_W}
         onOpen={() => openArticle(article)}
+        actionBar={buildActionBarProps(article)}
       />,
       index,
     );
-  }, [language, articles.length, openArticle, withPageFlip]);
+  }, [language, articles.length, openArticle, withPageFlip, buildActionBarProps]);
 
   if (isLoading) {
     return <FeedSkeleton />;
@@ -301,7 +412,12 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
 
   return (
     <View style={[styles.col, { backgroundColor: t.bg }]}>
-      <View style={styles.feedArea}>
+      <View
+        ref={feedAreaRef}
+        style={styles.feedArea}
+        onLayout={measureFeedArea}
+        {...panResponder.panHandlers}
+      >
         <Animated.FlatList
           ref={listRef}
           data={listData}
@@ -309,35 +425,36 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
           keyExtractor={(item) => item.key}
           renderItem={renderItem}
           showsHorizontalScrollIndicator={false}
-          snapToInterval={SNAP}
+          pagingEnabled
           decelerationRate="fast"
           onScroll={onScroll}
           scrollEventThrottle={16}
           onMomentumScrollEnd={onMomentumEnd}
           onEndReached={onEndReached}
           onEndReachedThreshold={0.5}
-          ItemSeparatorComponent={() => <View style={{ width: SIDE_PAD * 2 }} />}
-          contentContainerStyle={{ paddingHorizontal: SIDE_PAD }}
           style={{ flex: 1 }}
           getItemLayout={(_, index) => ({ length: SNAP, offset: SNAP * index, index })}
           renderToHardwareTextureAndroid
         />
         <SwipeHintOverlay visible={showSwipeHint} language={language} onDismiss={dismissSwipeHint} />
+
+        {/* "Pull down for new news" indicator — fades in as the user drags
+            down from the image area, and while a refresh is in flight. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.refreshBadge,
+            { top: insets.top + 8, opacity: isRefetching ? 1 : refreshHintOpacity, backgroundColor: t.ink },
+          ]}
+        >
+          <Text style={styles.refreshBadgeText}>
+            {isRefetching
+              ? (language === 'ta' ? 'புதிய செய்திகள் ஏற்றப்படுகிறது…' : 'Loading new news…')
+              : (language === 'ta' ? 'விடுவித்து புதுப்பிக்கவும்' : 'Release to refresh')}
+          </Text>
+        </Animated.View>
       </View>
 
-      <ActionBar
-        liked={activeReaction === 'LIKE'}
-        disliked={activeReaction === 'DISLIKE'}
-        likeCount={displayLikeCount}
-        dislikeCount={displayDislikeCount}
-        commentCount={displayCommentCount}
-        onLike={toggleLike}
-        onDislike={toggleDislike}
-        onComment={handleComment}
-        onWhatsapp={handleWhatsapp}
-        onShare={handleShare}
-        onMore={handleMore}
-      />
       {remoteConfig.rateTickerEnabled && (
         <RateTicker
           sponsorName={remoteConfig.rateTickerSponsorName}
@@ -357,5 +474,18 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
 
 const styles = StyleSheet.create({
   col: { flex: 1 },
-  feedArea: { flex: 1, paddingVertical: 10 },
+  feedArea: { flex: 1 },
+  foldShadow: { backgroundColor: '#000' },
+  refreshBadge: {
+    position: 'absolute',
+    alignSelf: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  refreshBadgeText: {
+    color: '#fff',
+    fontFamily: FONT_FAMILIES.uiSemiBold,
+    fontSize: 12,
+  },
 });
