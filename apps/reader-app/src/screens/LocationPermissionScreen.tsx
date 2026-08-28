@@ -4,7 +4,8 @@
 // (the equivalent screen for notifications) so the OS location dialog only
 // ever appears after the reader has already said yes here. expo-location is
 // already a dependency (used by PostNewsScreen to tag a report's location);
-// this is the first place it's requested proactively during setup.
+// this is the first place it's requested proactively during setup. Copy is
+// admin-editable (App Configuration → Location Permission Screen).
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
@@ -12,19 +13,16 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as SecureStore from 'expo-secure-store';
+import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES, STORAGE_KEYS } from '@/constants';
 import Icon from '@/components/icons/Icon';
 import Button from '@/components/ui/Button';
 
-const BULLETS = [
-  { label: 'உங்கள் மாவட்ட செய்திகள் தானாக தேர்வு', on: true },
-  { label: 'அருகிலுள்ள நிகழ்வுகள் மற்றும் விளம்பரங்கள்', on: true },
-  { label: 'எப்போது வேண்டுமானாலும் அமைப்புகளில் மாற்றலாம்', on: false },
-];
-
 export default function LocationPermissionScreen() {
   const t = useTheme();
+  const { remoteConfig, language } = useAppStore();
+  const cfg = remoteConfig.locationPermissionScreen;
   const [busy, setBusy] = useState(false);
   const insets = useSafeAreaInsets();
 
@@ -49,22 +47,29 @@ export default function LocationPermissionScreen() {
   return (
     <View style={[styles.container, { backgroundColor: t.surface, paddingTop: 60 + insets.top, paddingBottom: 24 + insets.bottom }]}>
       <Icon name="permissionLocation" size={46} color={t.red} />
-      <Text style={[styles.title, { color: t.ink }]}>உங்கள் இருப்பிடத்தை அறிய அனுமதி தேவை</Text>
-      <Text style={[styles.desc, { color: t.inkSub }]}>
-        இருப்பிட அனுமதி அளித்தால், உங்கள் மாவட்ட செய்திகளை தானாக காட்டுவோம். இதை எப்போது வேண்டுமானாலும் அமைப்புகளில் மாற்றலாம்.
-      </Text>
+      <Text style={[styles.title, { color: t.ink }]}>{language === 'ta' ? cfg.titleTa : cfg.titleEn}</Text>
+      <Text style={[styles.desc, { color: t.inkSub }]}>{language === 'ta' ? cfg.descTa : cfg.descEn}</Text>
 
       <View style={styles.bullets}>
-        {BULLETS.map((b) => (
-          <View key={b.label} style={styles.bulletRow}>
+        {cfg.bullets.map((b, i) => (
+          <View key={i} style={styles.bulletRow}>
             <View style={[styles.bulletDot, { backgroundColor: b.on ? t.red : t.border }]} />
-            <Text style={[styles.bulletLabel, { color: b.on ? t.inkSub : t.inkMuted }]}>{b.label}</Text>
+            <Text style={[styles.bulletLabel, { color: b.on ? t.inkSub : t.inkMuted }]}>
+              {language === 'ta' ? b.labelTa : b.labelEn}
+            </Text>
           </View>
         ))}
       </View>
 
-      <Button label="அனுமதி அளி" onPress={grant} loading={busy} style={{ width: '100%', marginTop: 28 }} />
-      <Text style={[styles.skip, { color: t.inkMuted }]} onPress={next}>இப்போது வேண்டாம்</Text>
+      <Button
+        label={language === 'ta' ? cfg.buttonLabelTa : cfg.buttonLabelEn}
+        onPress={grant}
+        loading={busy}
+        style={{ width: '100%', marginTop: 28 }}
+      />
+      <Text style={[styles.skip, { color: t.inkMuted }]} onPress={next}>
+        {language === 'ta' ? cfg.skipLabelTa : cfg.skipLabelEn}
+      </Text>
     </View>
   );
 }

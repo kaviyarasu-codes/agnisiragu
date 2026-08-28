@@ -15,6 +15,7 @@ import {
   Sliders, Zap, Clock, BookOpen, Radio, Star, Package,
   Settings2, Eye, EyeOff, Tablet, CheckCircle2, CircleDashed,
   Images, Plus, Trash2, Upload,
+  BellRing, MapPin, FileText, Info, Languages,
 } from 'lucide-react';
 import { apiGet, apiPatch } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
@@ -167,6 +168,56 @@ const SECTIONS: ConfigSection[] = [
     status: 'live',
     app: 'reader',
     plannedFields: ['Slide Image URL', 'Title (Tamil + English)', 'Description (Tamil + English)', 'Add / Remove Slides', 'Slide Order'],
+  },
+  {
+    id: 'reader_notif_permission',
+    label: 'Notification Permission Screen',
+    labelTa: 'அறிவிப்பு அனுமதி திரை',
+    description: 'The soft pre-permission screen shown once before the OS notification prompt',
+    icon: <BellRing size={16} />,
+    status: 'live',
+    app: 'reader',
+    plannedFields: ['Title (Tamil + English)', 'Description (Tamil + English)', 'Bullets — add/remove/reorder', 'Button Label', 'Skip Label'],
+  },
+  {
+    id: 'reader_location_permission',
+    label: 'Location Permission Screen',
+    labelTa: 'இருப்பிட அனுமதி திரை',
+    description: 'The soft pre-permission screen shown once before the OS location prompt',
+    icon: <MapPin size={16} />,
+    status: 'live',
+    app: 'reader',
+    plannedFields: ['Title (Tamil + English)', 'Description (Tamil + English)', 'Bullets — add/remove/reorder', 'Button Label', 'Skip Label'],
+  },
+  {
+    id: 'reader_terms',
+    label: 'Terms & Privacy',
+    labelTa: 'விதிமுறைகள் & தனியுரிமை',
+    description: 'The legal copy shown on the Terms and Privacy tabs',
+    icon: <FileText size={16} />,
+    status: 'live',
+    app: 'reader',
+    plannedFields: ['Terms Text (Tamil + English)', 'Privacy Text (Tamil + English)'],
+  },
+  {
+    id: 'reader_about',
+    label: 'About / Contact Screen',
+    labelTa: 'எங்களை பற்றி / தொடர்பு',
+    description: 'App description, Help/Contact/Advertise/Rate Us rows and their links',
+    icon: <Info size={16} />,
+    status: 'live',
+    app: 'reader',
+    plannedFields: ['Description (Tamil + English)', 'Help URL', 'Contact Email', 'Advertise Email', 'Play/App Store URLs', 'Show/Hide each row'],
+  },
+  {
+    id: 'reader_language_district',
+    label: 'Language & District Screen',
+    labelTa: 'மொழி & மாவட்டம் திரை',
+    description: 'The setup screen shown once, picking language + district',
+    icon: <Languages size={16} />,
+    status: 'live',
+    app: 'reader',
+    plannedFields: ['Tagline (Tamil + English)'],
   },
 
   // ── Reporter App ────────────────────────────────────────────────────────
@@ -1115,6 +1166,376 @@ function LiveOnboardingCarousel() {
   );
 }
 
+// ─── Live: Permission screens (shared editor — notification + location) ──────
+// Same shape, different copy — see PermissionRequestScreen.tsx /
+// LocationPermissionScreen.tsx in the reader app. Defaults below match those
+// screens' own local fallback so the form is immediately editable even
+// before an admin has ever saved this key.
+
+interface PermissionScreenBullet { labelTa: string; labelEn: string; on: boolean }
+interface PermissionScreenCfg {
+  titleTa: string; titleEn: string;
+  descTa: string; descEn: string;
+  bullets: PermissionScreenBullet[];
+  buttonLabelTa: string; buttonLabelEn: string;
+  skipLabelTa: string; skipLabelEn: string;
+}
+
+const DEFAULT_NOTIF_PERMISSION: PermissionScreenCfg = {
+  titleTa: 'முக்கிய செய்திகளை உடனே அறியுங்கள்',
+  titleEn: 'Know important news instantly',
+  descTa: 'உங்கள் மாவட்டத்தில் அவசர செய்தி வரும்போது மட்டும் அறிவிப்பு அனுப்புவோம். நாளொன்றுக்கு 2–3 மட்டுமே.',
+  descEn: "We'll only notify you when there's urgent news in your district — just 2-3 a day.",
+  bullets: [
+    { labelTa: 'அவசர செய்தி எச்சரிக்கை', labelEn: 'Breaking news alerts', on: true },
+    { labelTa: 'உங்கள் ஊர் செய்திகள்', labelEn: 'News from your town', on: true },
+    { labelTa: 'விளம்பரம் இல்லை', labelEn: 'No spam', on: false },
+  ],
+  buttonLabelTa: 'அனுமதி அளி', buttonLabelEn: 'Allow',
+  skipLabelTa: 'இப்போது வேண்டாம்', skipLabelEn: 'Not now',
+};
+
+const DEFAULT_LOCATION_PERMISSION: PermissionScreenCfg = {
+  titleTa: 'உங்கள் இருப்பிடத்தை அறிய அனுமதி தேவை',
+  titleEn: 'Location access needed',
+  descTa: 'இருப்பிட அனுமதி அளித்தால், உங்கள் மாவட்ட செய்திகளை தானாக காட்டுவோம். இதை எப்போது வேண்டுமானாலும் அமைப்புகளில் மாற்றலாம்.',
+  descEn: "With location access, we'll automatically show news from your district. You can change this anytime in Settings.",
+  bullets: [
+    { labelTa: 'உங்கள் மாவட்ட செய்திகள் தானாக தேர்வு', labelEn: 'Auto-select your district news', on: true },
+    { labelTa: 'அருகிலுள்ள நிகழ்வுகள் மற்றும் விளம்பரங்கள்', labelEn: 'Nearby events and offers', on: true },
+    { labelTa: 'எப்போது வேண்டுமானாலும் அமைப்புகளில் மாற்றலாம்', labelEn: 'Change anytime in Settings', on: false },
+  ],
+  buttonLabelTa: 'அனுமதி அளி', buttonLabelEn: 'Allow',
+  skipLabelTa: 'இப்போது வேண்டாம்', skipLabelEn: 'Not now',
+};
+
+function LivePermissionScreenEditor({ configKey, fallback }: { configKey: 'notifPermissionScreen' | 'locationPermissionScreen'; fallback: PermissionScreenCfg }) {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+    onError: () => toast.error('Save failed'),
+  });
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  const cfg: PermissionScreenCfg = data?.data?.[configKey] ?? fallback;
+  const save = (patch: Partial<PermissionScreenCfg>) => saveMut.mutate({ [configKey]: { ...cfg, ...patch } });
+
+  const updateBullet = (i: number, patch: Partial<PermissionScreenBullet>) => {
+    save({ bullets: cfg.bullets.map((b, idx) => (idx === i ? { ...b, ...patch } : b)) });
+  };
+  const addBullet = () => save({ bullets: [...cfg.bullets, { labelTa: '', labelEn: '', on: true }] });
+  const removeBullet = (i: number) => save({ bullets: cfg.bullets.filter((_, idx) => idx !== i) });
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Title (Tamil)</label>
+          <input defaultValue={cfg.titleTa} onBlur={(e) => save({ titleTa: e.target.value })} className="input-field h-9 text-sm" />
+        </div>
+        <div>
+          <label className="label">Title (English)</label>
+          <input defaultValue={cfg.titleEn} onBlur={(e) => save({ titleEn: e.target.value })} className="input-field h-9 text-sm" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Description (Tamil)</label>
+          <textarea defaultValue={cfg.descTa} rows={3} onBlur={(e) => save({ descTa: e.target.value })} className="input-field resize-none text-sm" />
+        </div>
+        <div>
+          <label className="label">Description (English)</label>
+          <textarea defaultValue={cfg.descEn} rows={3} onBlur={(e) => save({ descEn: e.target.value })} className="input-field resize-none text-sm" />
+        </div>
+      </div>
+
+      <div>
+        <label className="label">Bullets</label>
+        <div className="space-y-2 mt-1">
+          {cfg.bullets.map((b, i) => (
+            <div key={i} className="p-3 rounded-lg border border-border space-y-2">
+              <div className="flex items-center justify-between">
+                <button type="button" onClick={() => updateBullet(i, { on: !b.on })}
+                  className={`text-2xs px-2 py-0.5 rounded-full border font-medium ${b.on ? 'bg-red/10 text-red border-red/30' : 'bg-page text-text-muted border-border'}`}>
+                  {b.on ? 'Highlighted' : 'Muted'}
+                </button>
+                <button type="button" onClick={() => removeBullet(i)} className="btn-ghost px-2 py-1 text-xs text-red">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input defaultValue={b.labelTa} onBlur={(e) => updateBullet(i, { labelTa: e.target.value })} className="input-field h-8 text-xs" placeholder="Tamil" />
+                <input defaultValue={b.labelEn} onBlur={(e) => updateBullet(i, { labelEn: e.target.value })} className="input-field h-8 text-xs" placeholder="English" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={addBullet} className="btn-secondary w-full justify-center mt-2">
+          <Plus size={14} /> Add Bullet
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Button Label (Tamil)</label>
+          <input defaultValue={cfg.buttonLabelTa} onBlur={(e) => save({ buttonLabelTa: e.target.value })} className="input-field h-9 text-sm" />
+        </div>
+        <div>
+          <label className="label">Button Label (English)</label>
+          <input defaultValue={cfg.buttonLabelEn} onBlur={(e) => save({ buttonLabelEn: e.target.value })} className="input-field h-9 text-sm" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Skip Label (Tamil)</label>
+          <input defaultValue={cfg.skipLabelTa} onBlur={(e) => save({ skipLabelTa: e.target.value })} className="input-field h-9 text-sm" />
+        </div>
+        <div>
+          <label className="label">Skip Label (English)</label>
+          <input defaultValue={cfg.skipLabelEn} onBlur={(e) => save({ skipLabelEn: e.target.value })} className="input-field h-9 text-sm" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Live: Terms & Privacy ────────────────────────────────────────────────────
+
+const DEFAULT_TERMS = {
+  termsTa: `இந்த செயலியை பயன்படுத்துவதன் மூலம் நீங்கள் அக்னிசிறகு பயன்பாட்டு விதிமுறைகளை ஏற்றுக்கொள்கிறீர்கள்.
+
+1. உள்ளடக்கம்: அக்னிசிறகு மூலம் வெளியிடப்படும் அனைத்து செய்திகளும் சரிபார்ப்புக்கு உட்பட்டவை.
+
+2. கணக்கு: தொலைபேசி எண் மூலம் பதிவு செய்யப்படும் கணக்குகள் அந்தந்த பயனருக்கே சொந்தமானவை.
+
+3. நடத்தை: வெறுப்புணர்வு, வன்முறை அல்லது தவறான தகவல்களை பரப்புவது தடைசெய்யப்பட்டது.
+
+4. மாற்றங்கள்: இந்த விதிமுறைகள் அவ்வப்போது புதுப்பிக்கப்படலாம்.`,
+  termsEn: `By using this app, you agree to Agnisiragu's terms of use.
+
+1. Content: All news published through Agnisiragu is subject to editorial verification.
+
+2. Accounts: Accounts registered via phone number belong to the individual user.
+
+3. Conduct: Hate speech, incitement to violence, or the deliberate spread of misinformation is prohibited.
+
+4. Changes: These terms may be updated from time to time.`,
+  privacyTa: `உங்கள் தனியுரிமையை நாங்கள் மதிக்கிறோம்.
+
+1. சேகரிக்கப்படும் தகவல்கள்: தொலைபேசி எண், விருப்பமான மொழி, மாவட்டம் மற்றும் பயன்பாட்டு புள்ளிவிவரங்கள்.
+
+2. பயன்பாடு: உங்கள் தகவல்கள் செய்திகளை தனிப்பயனாக்கவும், அறிவிப்புகள் அனுப்பவும் மட்டுமே பயன்படுத்தப்படும்.
+
+3. பகிர்வு: உங்கள் தனிப்பட்ட தகவல்கள் மூன்றாம் தரப்பினருடன் விற்கப்படாது.`,
+  privacyEn: `We respect your privacy.
+
+1. Information we collect: phone number, language preference, district, and usage analytics.
+
+2. Use: your information is used only to personalize news and send relevant alerts.
+
+3. Sharing: your personal information is never sold to third parties.`,
+};
+
+function LiveTerms() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+    onError: () => toast.error('Save failed'),
+  });
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  const cfg = data?.data?.termsScreen ?? DEFAULT_TERMS;
+  const save = (patch: Partial<typeof DEFAULT_TERMS>) => saveMut.mutate({ termsScreen: { ...cfg, ...patch } });
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-text-muted mb-2">Terms of Use</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">Tamil</label>
+            <textarea defaultValue={cfg.termsTa} rows={10} onBlur={(e) => save({ termsTa: e.target.value })} className="input-field resize-none text-sm font-mono" />
+          </div>
+          <div>
+            <label className="label">English</label>
+            <textarea defaultValue={cfg.termsEn} rows={10} onBlur={(e) => save({ termsEn: e.target.value })} className="input-field resize-none text-sm font-mono" />
+          </div>
+        </div>
+      </div>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-text-muted mb-2">Privacy Policy</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">Tamil</label>
+            <textarea defaultValue={cfg.privacyTa} rows={10} onBlur={(e) => save({ privacyTa: e.target.value })} className="input-field resize-none text-sm font-mono" />
+          </div>
+          <div>
+            <label className="label">English</label>
+            <textarea defaultValue={cfg.privacyEn} rows={10} onBlur={(e) => save({ privacyEn: e.target.value })} className="input-field resize-none text-sm font-mono" />
+          </div>
+        </div>
+      </div>
+      <p className="text-xs text-text-muted">Plain text only — blank lines become paragraph breaks in the app.</p>
+    </div>
+  );
+}
+
+// ─── Live: About / Contact ────────────────────────────────────────────────────
+
+const DEFAULT_ABOUT = {
+  descTa: 'உங்கள் ஊர் செய்திகளை உங்கள் மொழியில், சரிபார்க்கப்பட்ட நிருபர்களிடமிருந்து.',
+  descEn: "Your town's news, in your language, from verified reporters.",
+  helpUrl: 'https://agnisiragu.com/help', helpEnabled: true,
+  contactEmail: 'agni360tn@gmail.com', contactEnabled: true,
+  advertiseEmail: 'ads@agnisiragu.com', advertiseEnabled: true,
+  rateUsEnabled: true,
+  playStoreUrl: 'https://play.google.com/store/apps/details?id=com.agnisiragu.reader',
+  appStoreUrl: 'https://apps.apple.com/app/agnisiragu',
+};
+
+function ToggleRow({ label, on, onToggle }: { label: string; on: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" onClick={onToggle}
+      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${on ? 'bg-green-500' : 'bg-gray-200'}`}>
+      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${on ? 'translate-x-5' : ''}`} />
+      <span className="sr-only">{label}</span>
+    </button>
+  );
+}
+
+function LiveAbout() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+    onError: () => toast.error('Save failed'),
+  });
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  const cfg = data?.data?.aboutScreen ?? DEFAULT_ABOUT;
+  const save = (patch: Partial<typeof DEFAULT_ABOUT>) => saveMut.mutate({ aboutScreen: { ...cfg, ...patch } });
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Description (Tamil)</label>
+          <textarea defaultValue={cfg.descTa} rows={2} onBlur={(e) => save({ descTa: e.target.value })} className="input-field resize-none text-sm" />
+        </div>
+        <div>
+          <label className="label">Description (English)</label>
+          <textarea defaultValue={cfg.descEn} rows={2} onBlur={(e) => save({ descEn: e.target.value })} className="input-field resize-none text-sm" />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
+          <ToggleRow label="Help Center" on={cfg.helpEnabled} onToggle={() => save({ helpEnabled: !cfg.helpEnabled })} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-text-primary">Help Center</p>
+            <input defaultValue={cfg.helpUrl} onBlur={(e) => save({ helpUrl: e.target.value })} className="input-field h-8 text-xs mt-1" placeholder="https://..." />
+          </div>
+        </div>
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
+          <ToggleRow label="Contact Us" on={cfg.contactEnabled} onToggle={() => save({ contactEnabled: !cfg.contactEnabled })} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-text-primary">Contact Us (email)</p>
+            <input defaultValue={cfg.contactEmail} onBlur={(e) => save({ contactEmail: e.target.value })} className="input-field h-8 text-xs mt-1" placeholder="you@example.com" />
+          </div>
+        </div>
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
+          <ToggleRow label="Advertise With Us" on={cfg.advertiseEnabled} onToggle={() => save({ advertiseEnabled: !cfg.advertiseEnabled })} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-text-primary">Advertise With Us (email)</p>
+            <input defaultValue={cfg.advertiseEmail} onBlur={(e) => save({ advertiseEmail: e.target.value })} className="input-field h-8 text-xs mt-1" placeholder="you@example.com" />
+          </div>
+        </div>
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
+          <ToggleRow label="Rate Us" on={cfg.rateUsEnabled} onToggle={() => save({ rateUsEnabled: !cfg.rateUsEnabled })} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-text-primary">Rate Us</p>
+            <p className="text-2xs text-text-muted mt-1">Opens the Play Store / App Store link below</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Play Store URL</label>
+          <input defaultValue={cfg.playStoreUrl} onBlur={(e) => save({ playStoreUrl: e.target.value })} className="input-field h-9 text-xs" />
+        </div>
+        <div>
+          <label className="label">App Store URL</label>
+          <input defaultValue={cfg.appStoreUrl} onBlur={(e) => save({ appStoreUrl: e.target.value })} className="input-field h-9 text-xs" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Live: Language & District screen ─────────────────────────────────────────
+
+const DEFAULT_LANG_DISTRICT = {
+  taglineTa: 'உங்கள் ஊர் செய்திகள், ஒரே இடத்தில்',
+  taglineEn: "Your town's news, all in one place",
+};
+
+function LiveLanguageDistrict() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+    onError: () => toast.error('Save failed'),
+  });
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  const cfg = data?.data?.languageDistrictScreen ?? DEFAULT_LANG_DISTRICT;
+  const save = (patch: Partial<typeof DEFAULT_LANG_DISTRICT>) => saveMut.mutate({ languageDistrictScreen: { ...cfg, ...patch } });
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-text-muted">
+        The small tagline under the logo, shown once during setup. The district list itself (Coimbatore, Erode, ...)
+        isn't editable here yet — that's used across article filtering and reporter tagging, so changing it needs a
+        broader data migration, not just a copy change.
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Tagline (Tamil)</label>
+          <input defaultValue={cfg.taglineTa} onBlur={(e) => save({ taglineTa: e.target.value })} className="input-field h-9 text-sm" />
+        </div>
+        <div>
+          <label className="label">Tagline (English)</label>
+          <input defaultValue={cfg.taglineEn} onBlur={(e) => save({ taglineEn: e.target.value })} className="input-field h-9 text-sm" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Live: Theme default mode (rest of Theme & Colors remains Planned) ───────
 
 function LiveThemeDefault() {
@@ -1172,6 +1593,7 @@ function SectionDetail({ section, onClose }: { section: ConfigSection; onClose: 
     'reader_identity', 'feature_flags', 'reader_home_layout', 'reader_widgets',
     'reader_navigation', 'reader_menu', 'reader_news_sections',
     'reader_ads', 'reader_notifications', 'reader_splash', 'reader_onboarding', 'reader_rate_ticker',
+    'reader_notif_permission', 'reader_location_permission', 'reader_terms', 'reader_about', 'reader_language_district',
   ];
   const isLive = LIVE_SECTION_IDS.includes(section.id);
   return (
@@ -1290,6 +1712,36 @@ function SectionDetail({ section, onClose }: { section: ConfigSection; onClose: 
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
               <LiveThemeDefault />
+            </div>
+          )}
+          {section.id === 'reader_notif_permission' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LivePermissionScreenEditor configKey="notifPermissionScreen" fallback={DEFAULT_NOTIF_PERMISSION} />
+            </div>
+          )}
+          {section.id === 'reader_location_permission' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LivePermissionScreenEditor configKey="locationPermissionScreen" fallback={DEFAULT_LOCATION_PERMISSION} />
+            </div>
+          )}
+          {section.id === 'reader_terms' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LiveTerms />
+            </div>
+          )}
+          {section.id === 'reader_about' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LiveAbout />
+            </div>
+          )}
+          {section.id === 'reader_language_district' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LiveLanguageDistrict />
             </div>
           )}
 

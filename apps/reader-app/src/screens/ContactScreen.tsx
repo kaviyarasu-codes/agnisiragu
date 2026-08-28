@@ -1,8 +1,9 @@
 // src/screens/ContactScreen.tsx
 // Screen 2t — About & Contact: logo, version, description, then Help
 // Center / Contact / Advertise / Rate Us rows and Terms/Privacy links.
-// Store URL for "Rate Us" is a placeholder until the app is actually
-// published — swap PLAY_STORE_URL/APP_STORE_URL once real listings exist.
+// Description text, the four rows' URLs/emails, and each row's visibility
+// are admin-editable (App Configuration → About / Contact Screen) — falls
+// back to remoteConfig's own DEFAULT_CONFIG values if unset.
 
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Image, Linking, Platform, StyleSheet } from 'react-native';
@@ -13,12 +14,6 @@ import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES, STRINGS } from '@/constants';
 import Icon, { IconName } from '@/components/icons/Icon';
-
-const SUPPORT_EMAIL = 'agni360tn@gmail.com';
-const ADVERTISE_EMAIL = 'ads@agnisiragu.com';
-const HELP_URL = 'https://agnisiragu.com/help';
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.agnisiragu.reader';
-const APP_STORE_URL = 'https://apps.apple.com/app/agnisiragu';
 
 function Row({ icon, label, onPress, last }: { icon: IconName; label: string; onPress: () => void; last?: boolean }) {
   const t = useTheme();
@@ -38,13 +33,25 @@ function Row({ icon, label, onPress, last }: { icon: IconName; label: string; on
 
 export default function ContactScreen() {
   const t = useTheme();
-  const { language } = useAppStore();
+  const { language, remoteConfig } = useAppStore();
+  const cfg = remoteConfig.aboutScreen;
   const version = Constants.expoConfig?.version ?? '1.0.0';
   const insets = useSafeAreaInsets();
 
   function rateUs() {
-    Linking.openURL(Platform.OS === 'ios' ? APP_STORE_URL : PLAY_STORE_URL);
+    Linking.openURL(Platform.OS === 'ios' ? cfg.appStoreUrl : cfg.playStoreUrl);
   }
+
+  // Whichever enabled row renders last shouldn't draw a trailing divider —
+  // rows can be individually hidden via App Configuration, so this can't be
+  // hardcoded to always be "rate us" anymore.
+  const rowOrder: Array<{ key: string; enabled: boolean }> = [
+    { key: 'help', enabled: cfg.helpEnabled },
+    { key: 'contact', enabled: cfg.contactEnabled },
+    { key: 'advertise', enabled: cfg.advertiseEnabled },
+    { key: 'rate', enabled: cfg.rateUsEnabled },
+  ];
+  const lastVisibleRow = [...rowOrder].reverse().find((r) => r.enabled)?.key;
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: t.bg }]} contentContainerStyle={[styles.content, { paddingBottom: 44 + insets.bottom }]}>
@@ -58,17 +65,23 @@ export default function ContactScreen() {
         <Text style={[styles.appName, { color: t.ink }]}>{STRINGS.APP_NAME_TA} · {STRINGS.APP_NAME_EN}</Text>
         <Text style={[styles.version, { color: t.inkMuted }]}>VERSION {version}</Text>
         <Text style={[styles.desc, { color: t.inkSub }]}>
-          {language === 'ta'
-            ? 'உங்கள் ஊர் செய்திகளை உங்கள் மொழியில், சரிபார்க்கப்பட்ட நிருபர்களிடமிருந்து.'
-            : 'Your town\'s news, in your language, from verified reporters.'}
+          {language === 'ta' ? cfg.descTa : cfg.descEn}
         </Text>
       </View>
 
       <View style={[styles.section, { backgroundColor: t.surface, borderColor: t.border }]}>
-        <Row icon="bookmarkNav" label={language === 'ta' ? 'உதவி மையம்' : 'Help Center'} onPress={() => Linking.openURL(HELP_URL)} />
-        <Row icon="comment" label={language === 'ta' ? 'எங்களை தொடர்பு கொள்ள' : 'Contact Us'} onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`)} />
-        <Row icon="reportFlag" label={language === 'ta' ? 'விளம்பரம் செய்ய' : 'Advertise With Us'} onPress={() => Linking.openURL(`mailto:${ADVERTISE_EMAIL}`)} />
-        <Row icon="like" label={language === 'ta' ? 'எங்களை மதிப்பிடுங்கள்' : 'Rate Us'} onPress={rateUs} last />
+        {cfg.helpEnabled && (
+          <Row icon="bookmarkNav" label={language === 'ta' ? 'உதவி மையம்' : 'Help Center'} onPress={() => Linking.openURL(cfg.helpUrl)} last={lastVisibleRow === 'help'} />
+        )}
+        {cfg.contactEnabled && (
+          <Row icon="comment" label={language === 'ta' ? 'எங்களை தொடர்பு கொள்ள' : 'Contact Us'} onPress={() => Linking.openURL(`mailto:${cfg.contactEmail}`)} last={lastVisibleRow === 'contact'} />
+        )}
+        {cfg.advertiseEnabled && (
+          <Row icon="reportFlag" label={language === 'ta' ? 'விளம்பரம் செய்ய' : 'Advertise With Us'} onPress={() => Linking.openURL(`mailto:${cfg.advertiseEmail}`)} last={lastVisibleRow === 'advertise'} />
+        )}
+        {cfg.rateUsEnabled && (
+          <Row icon="like" label={language === 'ta' ? 'எங்களை மதிப்பிடுங்கள்' : 'Rate Us'} onPress={rateUs} last={lastVisibleRow === 'rate'} />
+        )}
       </View>
 
       <View style={[styles.section, { backgroundColor: t.surface, borderColor: t.border }]}>

@@ -14,9 +14,13 @@ import Button from '@/components/ui/Button';
 
 export default function LanguageDistrictScreen() {
   const t = useTheme();
-  const { language, setLanguage, district, setDistrict, onboardingDone } = useAppStore();
+  const { language, setLanguage, district, setDistrict, onboardingDone, remoteConfig } = useAppStore();
   const [selectedLang, setSelectedLang] = useState(language);
   const [selectedDistrict, setSelectedDistrict] = useState(district ?? DISTRICTS[0].id);
+  // Reacts live to the language toggle right below it, not just the app's
+  // current global language — a nice touch since this screen is exactly
+  // where the reader is choosing between Tamil/English.
+  const tagline = selectedLang === 'ta' ? remoteConfig.languageDistrictScreen.taglineTa : remoteConfig.languageDistrictScreen.taglineEn;
   const insets = useSafeAreaInsets();
 
   function handleStart() {
@@ -34,7 +38,7 @@ export default function LanguageDistrictScreen() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={[styles.tagline, { color: t.inkMuted }]}>உங்கள் ஊர் செய்திகள், ஒரே இடத்தில்</Text>
+        <Text style={[styles.tagline, { color: t.inkMuted }]}>{tagline}</Text>
 
         <Text style={[styles.caption, { color: t.inkMuted }]}>மொழி தேர்வு / language</Text>
         <View style={styles.langGrid}>
