@@ -9,14 +9,15 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
-import { DISTRICTS, FONT_FAMILIES } from '@/constants';
+import { FONT_FAMILIES } from '@/constants';
 import Button from '@/components/ui/Button';
 
 export default function LanguageDistrictScreen() {
   const t = useTheme();
   const { language, setLanguage, district, setDistrict, onboardingDone, remoteConfig } = useAppStore();
+  const districts = remoteConfig.districts;
   const [selectedLang, setSelectedLang] = useState(language);
-  const [selectedDistrict, setSelectedDistrict] = useState(district ?? DISTRICTS[0].id);
+  const [selectedDistrict, setSelectedDistrict] = useState(district ?? districts[0]?.id);
   // Reacts live to the language toggle right below it, not just the app's
   // current global language — a nice touch since this screen is exactly
   // where the reader is choosing between Tamil/English.
@@ -31,7 +32,10 @@ export default function LanguageDistrictScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: t.surface }]}>
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: 34 + insets.top }]} showsVerticalScrollIndicator={false}>
+      {/* Fixed header — logo, tagline, language toggle. Doesn't move when the
+          district list below is scrolled, so it stays visible regardless of
+          how many districts an admin has added. */}
+      <View style={[styles.header, { paddingTop: 34 + insets.top }]}>
         <Image
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           source={require('../../assets/logo.png')}
@@ -58,14 +62,19 @@ export default function LanguageDistrictScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.caption, { color: t.inkMuted, marginTop: 28 }]}>உங்கள் இருப்பிடம் / district</Text>
+        <Text style={[styles.caption, { color: t.inkMuted, marginTop: 28, marginBottom: 0 }]}>உங்கள் இருப்பிடம் / district</Text>
+      </View>
+
+      {/* Only this list scrolls — an admin-added long district list can grow
+          without pushing the Start button off-screen or shifting the header. */}
+      <ScrollView style={styles.districtScroll} contentContainerStyle={styles.districtScrollContent} showsVerticalScrollIndicator={false}>
         <View style={[styles.districtList, { borderColor: t.border }]}>
-          {DISTRICTS.map((d, i) => {
+          {districts.map((d, i) => {
             const active = selectedDistrict === d.id;
             return (
               <TouchableOpacity
                 key={d.id}
-                style={[styles.districtRow, i < DISTRICTS.length - 1 && { borderBottomColor: t.bgAlt, borderBottomWidth: 1 }]}
+                style={[styles.districtRow, i < districts.length - 1 && { borderBottomColor: t.bgAlt, borderBottomWidth: 1 }]}
                 onPress={() => setSelectedDistrict(d.id)}
               >
                 <View style={[styles.radioDot, active ? { backgroundColor: t.red } : { borderWidth: 1.5, borderColor: t.border }]} />
@@ -89,7 +98,9 @@ export default function LanguageDistrictScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { padding: 26, paddingTop: 34 },
+  header: { paddingHorizontal: 26, paddingTop: 34 },
+  districtScroll: { flex: 1 },
+  districtScrollContent: { paddingHorizontal: 26, paddingTop: 12, paddingBottom: 8 },
   logo: { width: 150, height: 68, alignSelf: 'center' },
   tagline: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 12, textAlign: 'center', marginTop: 10 },
   caption: { fontFamily: FONT_FAMILIES.condensedBold, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginTop: 38, marginBottom: 12 },

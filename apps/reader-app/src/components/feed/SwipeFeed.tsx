@@ -200,12 +200,18 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
     return v;
   }, []);
 
-  const openArticle = useCallback((article: Article) => {
+  // There's no "open the full story" tap left in the feed anymore — a card
+  // IS the full story, read via scrolling right here (see FeedCard.tsx).
+  // Comments are still a dedicated screen (no inline comment UI in the
+  // feed), so that's the one remaining place the feed navigates away to —
+  // and the free-article-limit login gate now lives on THAT trigger instead
+  // of on a "read full story" tap.
+  const openArticle = useCallback((article: Article, focus?: 'comments') => {
     if (!isAuthenticated && articleReadCount >= freeLimit) {
       setShowLoginGate(true);
       return;
     }
-    router.push(`/article/${article.id}`);
+    router.push(focus ? `/article/${article.id}?focus=${focus}` : `/article/${article.id}`);
   }, [isAuthenticated, articleReadCount, freeLimit]);
 
   // These act on the specific article they were invoked for — each page
@@ -224,8 +230,8 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
   }, [react]);
 
   const handleComment = useCallback((article: Article) => {
-    router.push(`/article/${article.id}?focus=comments`);
-  }, []);
+    openArticle(article, 'comments');
+  }, [openArticle]);
 
   const handleShare = useCallback((article: Article) => {
     setShareArticle(article);
@@ -364,11 +370,10 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
         index={item.articleIndex}
         total={articles.length}
         width={SCREEN_W}
-        onOpen={() => openArticle(article)}
         actionBar={buildActionBarProps(article)}
       />
     );
-  }, [language, articles.length, openArticle, buildActionBarProps]);
+  }, [language, articles.length, buildActionBarProps]);
 
   if (isLoading) {
     return <FeedSkeleton />;
@@ -451,6 +456,7 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
           sponsorName={remoteConfig.rateTickerSponsorName}
           goldRate={remoteConfig.rateTickerGoldRate}
           silverRate={remoteConfig.rateTickerSilverRate}
+          sensexValue={remoteConfig.rateTickerSensexValue}
         />
       )}
       <BottomNav />

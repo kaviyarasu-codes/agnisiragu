@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCategories } from '@/hooks/useCategories';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
-import { FONT_FAMILIES, DISTRICTS } from '@/constants';
+import { FONT_FAMILIES } from '@/constants';
 import { post } from '@/lib/api';
 import TextField from '@/components/ui/TextField';
 import Chip, { Caption } from '@/components/ui/Chip';
@@ -53,7 +53,7 @@ async function submitCitizenReport(payload: {
 
 export default function PostNewsScreen() {
   const t = useTheme();
-  const { language, district } = useAppStore();
+  const { language, district, remoteConfig } = useAppStore();
   const { data: categories, isLoading: categoriesLoading, isError: categoriesError, refetch: refetchCategories } = useCategories();
   const insets = useSafeAreaInsets();
 
@@ -88,7 +88,7 @@ export default function PostNewsScreen() {
     })();
   }, []);
 
-  const districtLabel = DISTRICTS.find((d) => d.id === district);
+  const districtLabel = remoteConfig.districts.find((d) => d.id === district);
 
   async function pickMedia() {
     const result = await ImagePicker.launchImageLibraryAsync({

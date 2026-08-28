@@ -15,11 +15,12 @@ interface RateTickerProps {
   sponsorName?: string;
   goldRate?: string;
   silverRate?: string;
+  sensexValue?: string;
   variant?: 'dark' | 'light';
 }
 
 export default function RateTicker({
-  sponsorName = 'Agnisiragu', goldRate = '₹7,240', silverRate = '₹96', variant = 'dark',
+  sponsorName = 'Agnisiragu', goldRate = '₹7,240', silverRate = '₹96', sensexValue = '81,050', variant = 'dark',
 }: RateTickerProps) {
   const t = useTheme();
   const dark = variant === 'dark';
@@ -34,6 +35,7 @@ export default function RateTicker({
       {dark ? <View style={[styles.divider, { backgroundColor: 'rgba(255,255,255,0.15)' }]} /> : null}
       <Text style={[styles.figure, { color: dark ? t.gold : textColor }]}>22K {goldRate}</Text>
       <Text style={[styles.figure, { color: dark ? '#C9C5C0' : dim }]}>Ag {silverRate}</Text>
+      <Text style={[styles.figure, { color: dark ? '#C9C5C0' : dim }]}>Sensex {sensexValue}</Text>
     </View>
   );
 }

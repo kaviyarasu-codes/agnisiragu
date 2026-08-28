@@ -8,14 +8,14 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
-import { DISTRICTS, FONT_FAMILIES } from '@/constants';
+import { FONT_FAMILIES } from '@/constants';
 import Icon from '@/components/icons/Icon';
 import SwipeFeed from '@/components/feed/SwipeFeed';
 
 export default function HomeScreen() {
   const params = useLocalSearchParams<{ categoryId?: string }>();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const { setSideMenuOpen, district, language } = useAppStore();
+  const { setSideMenuOpen, district, language, remoteConfig } = useAppStore();
   const t = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -23,7 +23,7 @@ export default function HomeScreen() {
     if (params.categoryId) setSelectedCategoryId(params.categoryId);
   }, [params.categoryId]);
 
-  const districtMeta = DISTRICTS.find((d) => d.id === district);
+  const districtMeta = remoteConfig.districts.find((d) => d.id === district);
   const districtLabel = districtMeta
     ? (language === 'ta' ? districtMeta.nameTa : districtMeta.nameEn).toUpperCase()
     : null;

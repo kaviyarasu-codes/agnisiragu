@@ -22,6 +22,15 @@ export interface OnboardingSlideConfig {
   descEn: string;
 }
 
+// The district picker list — admin-editable in App Configuration. Falls
+// back to the built-in DISTRICTS constant until an admin has saved their
+// own list, so nothing breaks before the first save.
+export interface DistrictConfig {
+  id: string;
+  nameTa: string;
+  nameEn: string;
+}
+
 // Shared shape for the two "soft" pre-permission screens (notification ask +
 // location ask) — same layout, different copy, so one config shape covers
 // both (see PermissionRequestScreen.tsx / LocationPermissionScreen.tsx).
@@ -128,6 +137,10 @@ interface RemoteConfig {
   rateTickerSponsorName: string;
   rateTickerGoldRate: string;
   rateTickerSilverRate: string;
+  rateTickerSensexValue: string;
+
+  // District picker list — admin-editable in App Configuration
+  districts: DistrictConfig[];
 
   // Setup-flow screens — admin-editable in App Configuration
   notifPermissionScreen: PermissionScreenConfig;
@@ -169,7 +182,14 @@ const DEFAULT_CONFIG: RemoteConfig = {
   localAdsEnable: true,
   admobEnable: false,
 
-  splashBgColor: '#F5F1EB',
+  // White, not the brand cream — every bundled logo asset (logo.png,
+  // adaptive-icon.png, logo-source.png.png) has an OPAQUE white background
+  // baked into the PNG itself (not transparent), so a cream splashBgColor
+  // makes that white rectangle show up as a visible "box" behind the logo.
+  // White eliminates the box by matching it exactly. Swap back to cream (or
+  // anything else) once a transparent-background logo asset exists — see
+  // the same note in backend/src/admin/config.controller.ts.
+  splashBgColor: '#FFFFFF',
   splashDurationMs: 3400,
   splashAnimation: 'wings',
   splashLogoUrl: null,
@@ -183,6 +203,11 @@ const DEFAULT_CONFIG: RemoteConfig = {
   rateTickerSponsorName: 'ஸ்ரீ லக்ஷ்மி நகைமாளிகை',
   rateTickerGoldRate: '₹7,240',
   rateTickerSilverRate: '₹96',
+  rateTickerSensexValue: '81,050',
+
+  // Same default list as the built-in DISTRICTS constant — kept in sync
+  // manually since the backend can't import the reader-app's constants file.
+  districts: DISTRICTS,
 
   onboardingSlides: [
     {

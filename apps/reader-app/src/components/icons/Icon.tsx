@@ -16,7 +16,7 @@ export type IconName =
   | 'warningTriangle' | 'offlineCircle' | 'permissionBell' | 'permissionLocation'
   | 'jobsBriefcase' | 'archiveBox' | 'postPlus' | 'reportFlag'
   | 'downloadImage' | 'downloadVideo' | 'check' | 'play'
-  | 'home' | 'grid' | 'live' | 'thumbUp' | 'thumbDown' | 'whatsapp' | 'forward';
+  | 'home' | 'grid' | 'live' | 'thumbUp' | 'thumbDown' | 'whatsapp' | 'forward' | 'user';
 
 interface IconProps {
   name: IconName;
@@ -267,6 +267,15 @@ export default function Icon({ name, size = 18, color = '#1C1917', strokeWidth, 
       return (
         <Svg width={size} height={size} viewBox="0 0 18 18">
           <Path d="M2 15c0-4.5 3-7.5 7.5-7.5V4L16 9.5 9.5 15v-3.5C6 11.5 3.5 12.5 2 15z" {...common} strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'user':
+      // Generic person silhouette — used as the Avatar fallback for guests
+      // (no photo, no name to derive an initial from).
+      return (
+        <Svg width={size} height={size} viewBox="0 0 18 18">
+          <Circle cx={9} cy={5.6} r={3.4} fill={color} />
+          <Path d="M2 16.2c0-3.8 3.1-6.4 7-6.4s7 2.6 7 6.4" fill={color} />
         </Svg>
       );
     default:

@@ -5,6 +5,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
+import Icon from '@/components/icons/Icon';
 
 interface AvatarProps {
   uri?: string | null;
@@ -35,7 +36,11 @@ export default function Avatar({ uri, name, size = 44 }: AvatarProps) {
     >
       {initial ? (
         <Text style={[styles.initial, { color: t.inkSub, fontSize: size * 0.4 }]}>{initial}</Text>
-      ) : null}
+      ) : (
+        // Guest / no-name state — a person silhouette instead of a blank
+        // circle, so it reads as "not signed in" rather than a broken image.
+        <Icon name="user" size={size * 0.52} color={t.inkSub} />
+      )}
     </View>
   );
 }

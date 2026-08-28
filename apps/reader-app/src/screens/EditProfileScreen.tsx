@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
-import { FONT_FAMILIES, DISTRICTS } from '@/constants';
+import { FONT_FAMILIES } from '@/constants';
 import { patch } from '@/lib/api';
 import TextField from '@/components/ui/TextField';
 import Button from '@/components/ui/Button';
@@ -19,9 +19,9 @@ import Icon from '@/components/icons/Icon';
 
 export default function EditProfileScreen() {
   const t = useTheme();
-  const { language, district } = useAppStore();
+  const { language, district, remoteConfig } = useAppStore();
   const { user, setUser } = useAuthStore();
-  const districtName = DISTRICTS.find((d) => d.id === district)?.nameTa
+  const districtName = remoteConfig.districts.find((d) => d.id === district)?.nameTa
     ?? (language === 'ta' ? 'தேர்வு செய்யவும்' : 'Select district');
   const insets = useSafeAreaInsets();
   const [name, setName] = useState(user?.name ?? '');

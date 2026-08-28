@@ -16,6 +16,7 @@ import {
   Settings2, Eye, EyeOff, Tablet, CheckCircle2, CircleDashed,
   Images, Plus, Trash2, Upload,
   BellRing, MapPin, FileText, Info, Languages,
+  RotateCcw, Save,
 } from 'lucide-react';
 import { apiGet, apiPatch } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
@@ -153,7 +154,7 @@ const SECTIONS: ConfigSection[] = [
     id: 'reader_rate_ticker',
     label: 'Rate Ticker',
     labelTa: 'விலை பட்டி',
-    description: 'The gold/silver rate + sponsor credit strip shown under the Home feed',
+    description: 'The gold/silver rate + Sensex + sponsor credit strip shown under the Home feed',
     icon: <Tag size={16} />,
     status: 'live',
     app: 'reader',
@@ -218,6 +219,16 @@ const SECTIONS: ConfigSection[] = [
     status: 'live',
     app: 'reader',
     plannedFields: ['Tagline (Tamil + English)'],
+  },
+  {
+    id: 'reader_district_list',
+    label: 'District List',
+    labelTa: 'மாவட்ட பட்டியல்',
+    description: 'The districts readers can pick from — used in setup, Settings, Post News, and the header chip',
+    icon: <MapPin size={16} />,
+    status: 'live',
+    app: 'reader',
+    plannedFields: ['Add / Remove Districts', 'District Name (Tamil + English)', 'District Order'],
   },
 
   // ── Reporter App ────────────────────────────────────────────────────────
@@ -920,7 +931,7 @@ function LiveSplash() {
     onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
   });
   const cfg = data?.data ?? {};
-  const bgColor: string = cfg.splashBgColor ?? '#F5F1EB';
+  const bgColor: string = cfg.splashBgColor ?? '#FFFFFF';
   const duration: number = cfg.splashDurationMs ?? 3400;
   const animation: 'wings' | 'fade' | 'none' = cfg.splashAnimation ?? 'wings';
   const showTagline: boolean = cfg.splashShowTagline ?? true;
@@ -1025,7 +1036,7 @@ function LiveRateTicker() {
       <div className="flex items-center justify-between p-3 rounded-lg border border-border">
         <div>
           <p className="text-sm font-medium text-text-primary">Show Rate Ticker</p>
-          <p className="text-xs text-text-muted">The strip under the Home feed with sponsor name + gold/silver rates</p>
+          <p className="text-xs text-text-muted">The strip under the Home feed with sponsor name + gold/silver rates + Sensex</p>
         </div>
         <button type="button" onClick={() => saveMut.mutate({ rateTickerEnabled: !enabled })}
           className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${enabled ? 'bg-green-500' : 'bg-gray-200'}`}>
@@ -1040,7 +1051,7 @@ function LiveRateTicker() {
           className="input-field mt-1" />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div>
           <label className="label">Gold Rate (22K, per gram)</label>
           <input defaultValue={cfg.rateTickerGoldRate ?? '₹7,240'}
@@ -1053,8 +1064,14 @@ function LiveRateTicker() {
             onBlur={(e) => saveMut.mutate({ rateTickerSilverRate: e.target.value })}
             className="input-field mt-1" />
         </div>
+        <div>
+          <label className="label">Sensex</label>
+          <input defaultValue={cfg.rateTickerSensexValue ?? '81,050'}
+            onBlur={(e) => saveMut.mutate({ rateTickerSensexValue: e.target.value })}
+            className="input-field mt-1" />
+        </div>
       </div>
-      <p className="text-xs text-text-muted">Rates are entered manually — there's no live market-rate feed wired up yet.</p>
+      <p className="text-xs text-text-muted">Rates are entered manually — there's no live market-rate feed wired up yet, so update these figures yourself when they change.</p>
     </div>
   );
 }
@@ -1518,9 +1535,8 @@ function LiveLanguageDistrict() {
   return (
     <div className="space-y-4">
       <p className="text-xs text-text-muted">
-        The small tagline under the logo, shown once during setup. The district list itself (Coimbatore, Erode, ...)
-        isn't editable here yet — that's used across article filtering and reporter tagging, so changing it needs a
-        broader data migration, not just a copy change.
+        The small tagline under the logo, shown once during setup. To add, remove, or reorder the districts
+        themselves (Coimbatore, Erode, ...), use the separate District List section.
       </p>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -1532,6 +1548,108 @@ function LiveLanguageDistrict() {
           <input defaultValue={cfg.taglineEn} onBlur={(e) => save({ taglineEn: e.target.value })} className="input-field h-9 text-sm" />
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Live: District List ──────────────────────────────────────────────────────
+
+interface DistrictRow { id: string; nameTa: string; nameEn: string }
+
+const DEFAULT_DISTRICTS: DistrictRow[] = [
+  { id: 'coimbatore',  nameTa: 'கோயம்புத்தூர்',       nameEn: 'Coimbatore' },
+  { id: 'tiruppur',    nameTa: 'திருப்பூர்',           nameEn: 'Tiruppur' },
+  { id: 'erode',       nameTa: 'ஈரோடு',               nameEn: 'Erode' },
+  { id: 'chennai',     nameTa: 'சென்னை',              nameEn: 'Chennai' },
+  { id: 'madurai',     nameTa: 'மதுரை',               nameEn: 'Madurai' },
+  { id: 'salem',       nameTa: 'சேலம்',                nameEn: 'Salem' },
+  { id: 'trichy',      nameTa: 'திருச்சிராப்பள்ளி',    nameEn: 'Tiruchirappalli' },
+  { id: 'vellore',     nameTa: 'வேலூர்',               nameEn: 'Vellore' },
+  { id: 'thanjavur',   nameTa: 'தஞ்சாவூர்',            nameEn: 'Thanjavur' },
+  { id: 'tirunelveli', nameTa: 'திருநெல்வேலி',         nameEn: 'Tirunelveli' },
+  { id: 'kanyakumari', nameTa: 'கன்னியாகுமரி',         nameEn: 'Kanyakumari' },
+  { id: 'pudukkottai', nameTa: 'புதுக்கோட்டை',         nameEn: 'Pudukkottai' },
+];
+
+function slugify(nameEn: string): string {
+  return nameEn.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `district-${Date.now()}`;
+}
+
+function LiveDistrictList() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+    onError: () => toast.error('Save failed'),
+  });
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  const districts: DistrictRow[] = data?.data?.districts ?? DEFAULT_DISTRICTS;
+  const save = (next: DistrictRow[]) => saveMut.mutate({ districts: next });
+
+  const updateDistrict = (i: number, patch: Partial<DistrictRow>) => {
+    save(districts.map((d, idx) => (idx === i ? { ...d, ...patch } : d)));
+  };
+  const addDistrict = () => save([...districts, { id: `district-${Date.now()}`, nameTa: '', nameEn: '' }]);
+  const removeDistrict = (i: number) => {
+    if (districts.length <= 1) { toast.error('At least 1 district is required'); return; }
+    save(districts.filter((_, idx) => idx !== i));
+  };
+  const moveDistrict = (i: number, dir: 'up' | 'down') => {
+    const j = dir === 'up' ? i - 1 : i + 1;
+    if (j < 0 || j >= districts.length) return;
+    const next = [...districts];
+    [next[i], next[j]] = [next[j], next[i]];
+    save(next);
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-text-muted">
+        Shown in setup, the side menu, Settings, and Post News's district picker — in this order. Readers who already
+        picked a district that gets removed here just keep showing its old name until they change it themselves.
+      </p>
+
+      <div className="space-y-2">
+        {districts.map((d, i) => (
+          <div key={i} className="p-3 rounded-lg border border-border space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">{i + 1}. {d.nameEn || 'New district'}</span>
+              <div className="flex gap-1">
+                <button type="button" disabled={i === 0} onClick={() => moveDistrict(i, 'up')} className="btn-ghost px-2 py-1 text-xs disabled:opacity-30">↑</button>
+                <button type="button" disabled={i === districts.length - 1} onClick={() => moveDistrict(i, 'down')} className="btn-ghost px-2 py-1 text-xs disabled:opacity-30">↓</button>
+                <button type="button" onClick={() => removeDistrict(i)} className="btn-ghost px-2 py-1 text-xs text-red">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input defaultValue={d.nameTa} onBlur={(e) => updateDistrict(i, { nameTa: e.target.value })}
+                className="input-field h-9 text-sm" placeholder="Tamil name" />
+              <input defaultValue={d.nameEn}
+                onBlur={(e) => {
+                  const nameEn = e.target.value;
+                  // Keep the id in sync with the English name for new/unedited
+                  // rows only — never re-slug a district a reader may already
+                  // have saved against its current id.
+                  const patch: Partial<DistrictRow> = { nameEn };
+                  if (d.id.startsWith('district-')) patch.id = slugify(nameEn);
+                  updateDistrict(i, patch);
+                }}
+                className="input-field h-9 text-sm" placeholder="English name" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button type="button" onClick={addDistrict} className="btn-secondary w-full justify-center">
+        <Plus size={14} /> Add District
+      </button>
     </div>
   );
 }
@@ -1586,14 +1704,86 @@ function LiveThemeDefault() {
   );
 }
 
+// ─── Save + Reset to Default toolbar (shared across every live section) ──────
+// Every field above already saves itself the instant you leave it (onBlur /
+// onClick) or toggle a switch — nothing is ever lost by closing this drawer.
+// This bar adds the explicit "Save" affirmation and a real "Reset to
+// Default" per section: Reset clears just that section's keys back to null,
+// which makes the backend's `data.xxx ?? default` fallback take over again.
+
+const SECTION_RESET_KEYS: Record<string, string[]> = {
+  reader_identity: ['appNameTa', 'appNameEn', 'freeArticleLimit'],
+  feature_flags: FLAGS.map((f) => f.key),
+  reader_home_layout: ['homeHeroStyle', 'homeShowBreakingBar', 'homeSectionOrder'],
+  reader_widgets: WIDGET_TOGGLES.map((w) => w.key),
+  reader_navigation: ['navTabs', 'navShowLabels'],
+  reader_menu: SIDE_MENU_TOGGLES.map((t) => t.key),
+  reader_news_sections: ['pinnedCategorySlugs', 'newsShowSeeAll'],
+  reader_ads: ['adInFeedFrequency', 'localAdsEnable'],
+  reader_notifications: ['breakingAlerts'],
+  reader_splash: ['splashBgColor', 'splashDurationMs', 'splashAnimation', 'splashShowTagline', 'splashTaglineTa', 'splashTaglineEn', 'splashLogoUrl'],
+  reader_rate_ticker: ['rateTickerEnabled', 'rateTickerSponsorName', 'rateTickerGoldRate', 'rateTickerSilverRate', 'rateTickerSensexValue'],
+  reader_onboarding: ['onboardingSlides'],
+  reader_theme: ['defaultThemeMode'],
+  reader_notif_permission: ['notifPermissionScreen'],
+  reader_location_permission: ['locationPermissionScreen'],
+  reader_terms: ['termsScreen'],
+  reader_about: ['aboutScreen'],
+  reader_language_district: ['languageDistrictScreen'],
+  reader_district_list: ['districts'],
+};
+
+function SectionSaveResetBar({ sectionId, onReset }: { sectionId: string; onReset: () => void }) {
+  const qc = useQueryClient();
+  const resetMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Reset to defaults'); qc.invalidateQueries({ queryKey: ['app-config'] }); onReset(); },
+    onError: () => toast.error('Reset failed'),
+  });
+  const keys = SECTION_RESET_KEYS[sectionId];
+  if (!keys) return null;
+
+  const handleSave = () => {
+    // Every field already auto-saves on blur/click — this just flushes
+    // whatever's currently focused (so a value you haven't tabbed out of
+    // yet still gets committed) and confirms nothing is pending.
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    toast.success('All changes saved');
+  };
+
+  const handleReset = () => {
+    if (!confirm("Reset this section to its default values? Anything you've customized here will be cleared.")) return;
+    const resetObj: Record<string, null> = {};
+    keys.forEach((k) => { resetObj[k] = null; });
+    resetMut.mutate(resetObj);
+  };
+
+  return (
+    <div className="flex items-center justify-end gap-2 pb-4 mb-1 border-b border-border">
+      <button type="button" onClick={handleReset} disabled={resetMut.isPending}
+        className="btn-ghost text-xs flex items-center gap-1.5 text-text-muted hover:text-red">
+        {resetMut.isPending ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />} Reset to Default
+      </button>
+      <button type="button" onClick={handleSave} className="btn-primary text-xs flex items-center gap-1.5">
+        <Save size={13} /> Save
+      </button>
+    </div>
+  );
+}
+
 // ─── Section Detail Drawer ────────────────────────────────────────────────────
 
 function SectionDetail({ section, onClose }: { section: ConfigSection; onClose: () => void }) {
+  // Bumped after a successful Reset — remounts the live-content block below
+  // so uncontrolled inputs (defaultValue=...) actually redraw with the
+  // now-cleared config instead of keeping whatever was last typed on screen.
+  const [resetVersion, setResetVersion] = useState(0);
   const LIVE_SECTION_IDS = [
     'reader_identity', 'feature_flags', 'reader_home_layout', 'reader_widgets',
     'reader_navigation', 'reader_menu', 'reader_news_sections',
     'reader_ads', 'reader_notifications', 'reader_splash', 'reader_onboarding', 'reader_rate_ticker',
     'reader_notif_permission', 'reader_location_permission', 'reader_terms', 'reader_about', 'reader_language_district',
+    'reader_district_list',
   ];
   const isLive = LIVE_SECTION_IDS.includes(section.id);
   return (
@@ -1635,7 +1825,14 @@ function SectionDetail({ section, onClose }: { section: ConfigSection; onClose: 
             </div>
           )}
 
-          {/* Live content */}
+          {section.status !== 'planned' && SECTION_RESET_KEYS[section.id] && (
+            <SectionSaveResetBar sectionId={section.id} onReset={() => setResetVersion((v) => v + 1)} />
+          )}
+
+          {/* Live content — keyed so Reset (above) forces a remount, which is
+              the only way uncontrolled defaultValue={...} inputs below pick
+              up the cleared config. */}
+          <div key={resetVersion}>
           {section.id === 'reader_identity' && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
@@ -1744,6 +1941,13 @@ function SectionDetail({ section, onClose }: { section: ConfigSection; onClose: 
               <LiveLanguageDistrict />
             </div>
           )}
+          {section.id === 'reader_district_list' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Districts</p>
+              <LiveDistrictList />
+            </div>
+          )}
+          </div>
 
           {/* Planned fields list */}
           <div>

@@ -63,7 +63,11 @@ export class ConfigController {
         // overridden by these wrong backend defaults. Aligned all five to
         // match the design now — takes effect immediately on next launch,
         // no new app build required.
-        splashBgColor: data.splashBgColor ?? '#F5F1EB',
+        // White, not the brand cream — every bundled logo asset has an
+        // opaque white (not transparent) background baked into the PNG, so
+        // a cream bg shows that white rectangle as a visible box. See the
+        // matching note in app.store.ts's DEFAULT_CONFIG.
+        splashBgColor: data.splashBgColor ?? '#FFFFFF',
         splashDurationMs: data.splashDurationMs ?? 3400,
         splashAnimation: data.splashAnimation ?? 'wings',
         splashLogoUrl: data.splashLogoUrl ?? null,
@@ -74,12 +78,30 @@ export class ConfigController {
         // Theme
         defaultThemeMode: data.defaultThemeMode ?? 'system',
 
-        // Rate ticker strip (sponsor credit + gold/silver rates) shown under
-        // the Home feed — previously hardcoded in the reader app.
+        // Rate ticker strip (sponsor credit + gold/silver rates + Sensex) shown
+        // under the Home feed — previously hardcoded in the reader app.
         rateTickerEnabled: data.rateTickerEnabled ?? true,
         rateTickerSponsorName: data.rateTickerSponsorName ?? 'ஸ்ரீ லக்ஷ்மி நகைமாளிகை',
         rateTickerGoldRate: data.rateTickerGoldRate ?? '₹7,240',
         rateTickerSilverRate: data.rateTickerSilverRate ?? '₹96',
+        rateTickerSensexValue: data.rateTickerSensexValue ?? '81,050',
+
+        // District picker list — mirrors the reader app's built-in DISTRICTS
+        // constant exactly, so nothing changes until an admin edits this list.
+        districts: data.districts ?? [
+          { id: 'coimbatore',  nameTa: 'கோயம்புத்தூர்',       nameEn: 'Coimbatore' },
+          { id: 'tiruppur',    nameTa: 'திருப்பூர்',           nameEn: 'Tiruppur' },
+          { id: 'erode',       nameTa: 'ஈரோடு',               nameEn: 'Erode' },
+          { id: 'chennai',     nameTa: 'சென்னை',              nameEn: 'Chennai' },
+          { id: 'madurai',     nameTa: 'மதுரை',               nameEn: 'Madurai' },
+          { id: 'salem',       nameTa: 'சேலம்',                nameEn: 'Salem' },
+          { id: 'trichy',      nameTa: 'திருச்சிராப்பள்ளி',    nameEn: 'Tiruchirappalli' },
+          { id: 'vellore',     nameTa: 'வேலூர்',               nameEn: 'Vellore' },
+          { id: 'thanjavur',   nameTa: 'தஞ்சாவூர்',            nameEn: 'Thanjavur' },
+          { id: 'tirunelveli', nameTa: 'திருநெல்வேலி',         nameEn: 'Tirunelveli' },
+          { id: 'kanyakumari', nameTa: 'கன்னியாகுமரி',         nameEn: 'Kanyakumari' },
+          { id: 'pudukkottai', nameTa: 'புதுக்கோட்டை',         nameEn: 'Pudukkottai' },
+        ],
 
         // Onboarding carousel (first-launch slides, before language/district)
         onboardingSlides: data.onboardingSlides ?? [

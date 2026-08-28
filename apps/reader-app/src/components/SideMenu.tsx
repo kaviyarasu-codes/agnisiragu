@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/app.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useTheme } from '@/hooks/useTheme';
-import { STRINGS, FONT_FAMILIES, DISTRICTS } from '@/constants';
+import { STRINGS, FONT_FAMILIES } from '@/constants';
 import Avatar from '@/components/ui/Avatar';
 import Switch from '@/components/ui/Switch';
 import Icon, { IconName } from '@/components/icons/Icon';
@@ -36,7 +36,7 @@ export default function SideMenu() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const ta = language === 'ta';
-  const districtName = DISTRICTS.find((d) => d.id === district)?.nameTa ?? (ta ? 'தேர்வு செய்யவும்' : 'Select');
+  const districtName = remoteConfig.districts.find((d) => d.id === district)?.nameTa ?? (ta ? 'தேர்வு செய்யவும்' : 'Select');
 
   const close = () => setSideMenuOpen(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

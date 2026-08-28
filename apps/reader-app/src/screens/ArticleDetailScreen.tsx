@@ -14,6 +14,7 @@ import {
   ScrollView, View, Text, TouchableOpacity, Share, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useArticle } from '@/hooks/useArticles';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
@@ -79,6 +80,21 @@ export default function ArticleDetailScreen() {
   useEffect(() => {
     if (shouldGate) setShowLoginGate(true);
   }, [shouldGate]);
+
+  // Follow status — persisted the same way ReporterProfileScreen does
+  // (AsyncStorage, keyed by byline), so following a reporter here stays in
+  // sync with their profile screen instead of resetting on every visit.
+  const byline = article?.byline?.trim() || 'அக்னிசிறகு டெஸ்க்';
+  const followKey = `followed_reporter_${byline}`;
+  useEffect(() => {
+    AsyncStorage.getItem(followKey).then((v) => setFollowing(v === '1'));
+  }, [followKey]);
+
+  async function toggleFollow() {
+    const next = !following;
+    setFollowing(next);
+    await AsyncStorage.setItem(followKey, next ? '1' : '0');
+  }
 
   useEffect(() => {
     if (focus === 'comments' && article) {
@@ -170,7 +186,7 @@ export default function ArticleDetailScreen() {
               <Text style={[styles.reporterTag, { color: t.inkMuted }]}>CITIZEN REPORTER</Text>
             </View>
             <TouchableOpacity
-              onPress={() => setFollowing((v) => !v)}
+              onPress={toggleFollow}
               style={[styles.followBtn, { borderColor: t.red, backgroundColor: following ? t.red : 'transparent' }]}
             >
               <Text style={[styles.followText, { color: following ? '#fff' : t.red }]}>

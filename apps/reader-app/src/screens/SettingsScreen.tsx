@@ -11,7 +11,7 @@ import { Image } from 'expo-image';
 import { useAppStore } from '@/store/app.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useTheme } from '@/hooks/useTheme';
-import { DISTRICTS, FONT_FAMILIES, STRINGS } from '@/constants';
+import { FONT_FAMILIES, STRINGS } from '@/constants';
 import { patch } from '@/lib/api';
 import { Caption } from '@/components/ui/Chip';
 import Icon from '@/components/icons/Icon';
@@ -37,9 +37,9 @@ function Row({
 
 export default function SettingsScreen() {
   const t = useTheme();
-  const { language, setLanguage, colorScheme, setColorScheme, district } = useAppStore();
+  const { language, setLanguage, colorScheme, setColorScheme, district, remoteConfig } = useAppStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const districtLabel = DISTRICTS.find((d) => d.id === district);
+  const districtLabel = remoteConfig.districts.find((d) => d.id === district);
   const insets = useSafeAreaInsets();
   const [clearingCache, setClearingCache] = useState(false);
 
