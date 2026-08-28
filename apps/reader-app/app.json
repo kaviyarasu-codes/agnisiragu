@@ -10,7 +10,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#F5F1EB"
       },
       "package": "com.agnisiragu.reader",
       "versionCode": 13,
@@ -33,7 +33,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash.png",
+          "image": "./assets/logo-source.png.png",
           "resizeMode": "contain",
           "backgroundColor": "#F5F1EB"
         }

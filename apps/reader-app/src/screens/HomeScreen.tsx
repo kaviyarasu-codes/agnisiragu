@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   iconBtn: { padding: 2 },
-  logo: { height: 19, width: 92 },
+  logo: { height: 30, width: 68 },
   districtChip: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     borderRadius: 20, paddingHorizontal: 9, paddingVertical: 5, maxWidth: 130,

@@ -1,30 +1,28 @@
 // src/components/feed/SwipeHintOverlay.tsx
-// One-time animated hint shown the first time a new user lands on the feed,
-// teaching the swipe-to-turn-page gesture (item #3 of the redesign brief).
-// Auto-dismisses after a few loops, on tap, or the instant the user
-// performs their own first swipe (see SwipeFeed's onMomentumEnd calling
-// dismiss()). "Shown once" state persists via SecureStore, same pattern as
-// the notification/location permission screens (STORAGE_KEYS.*_ASKED).
-//
-// `vertical` switches the hand's animated shift from left/right to up/down
-// and swaps the copy — the feed swipes vertically (Way2News-style, one
-// story per swipe) while other flip-book contexts may still swipe
-// horizontally, so this stays a prop rather than a hardcoded direction.
+// One-time hint shown the first time a new user lands on the feed, teaching
+// the page-flip gesture — per the high-fidelity design spec, a small
+// floating pill bottom-right over the page stack (prev/next chevrons + a
+// "flip" label), pointer-events none so it never blocks touches, with a
+// gentle side-to-side nudge to draw the eye. Auto-dismisses after a few
+// seconds, or the instant the user performs their own first flip (see
+// SwipeFeed's go() calling dismiss()). "Shown once" state persists via
+// SecureStore, same pattern as the notification/location permission
+// screens (STORAGE_KEYS.*_ASKED).
 
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, Animated, StyleSheet } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
+import Icon from '@/components/icons/Icon';
 import type { Language } from '@/types';
 
 interface Props {
   visible: boolean;
   language: Language;
   onDismiss: () => void;
-  vertical?: boolean;
 }
 
-export default function SwipeHintOverlay({ visible, language, onDismiss, vertical = false }: Props) {
+export default function SwipeHintOverlay({ visible, language, onDismiss }: Props) {
   const t = useTheme();
   const shift = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(0)).current;
@@ -36,9 +34,8 @@ export default function SwipeHintOverlay({ visible, language, onDismiss, vertica
 
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(shift, { toValue: 1, duration: 750, useNativeDriver: true }),
-        Animated.timing(shift, { toValue: -1, duration: 900, useNativeDriver: true }),
-        Animated.timing(shift, { toValue: 0, duration: 450, useNativeDriver: true }),
+        Animated.timing(shift, { toValue: 1, duration: 550, useNativeDriver: true }),
+        Animated.timing(shift, { toValue: 0, duration: 550, useNativeDriver: true }),
         Animated.delay(500),
       ]),
     );
@@ -54,67 +51,44 @@ export default function SwipeHintOverlay({ visible, language, onDismiss, vertica
 
   if (!visible) return null;
 
-  const shiftDistance = shift.interpolate({ inputRange: [-1, 0, 1], outputRange: [-26, 0, 26] });
-  const rotate = shift.interpolate({ inputRange: [-1, 0, 1], outputRange: ['-18deg', '0deg', '18deg'] });
-  const handTransform = vertical
-    ? [{ translateY: shiftDistance }]
-    : [{ translateX: shiftDistance }, { rotate }];
+  const shiftDistance = shift.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
 
-  // pointerEvents="box-none" on the full-screen wrapper means the overlay
-  // itself is invisible to touch — only the small card below captures taps
-  // — so a real swipe anywhere on the feed still reaches the FlatList
-  // underneath and dismisses the hint via onMomentumEnd (see SwipeFeed).
+  // pointerEvents="none" — this hint never captures touch itself, so a real
+  // flip gesture anywhere on the page stack still reaches SwipeFeed's
+  // PanResponder and dismisses the hint via go() calling dismissSwipeHint().
   return (
-    <Animated.View style={[styles.overlay, { opacity: fade }]} pointerEvents="box-none">
-      <TouchableWithoutFeedback onPress={onDismiss}>
-        <View style={[styles.card, { backgroundColor: t.ink }]}>
-          <Animated.View style={[styles.hand, { transform: handTransform }]}>
-            <Text style={styles.handGlyph}>{vertical ? '👆' : '☝'}</Text>
-          </Animated.View>
-          <Text style={styles.text}>
-            {vertical
-              ? (language === 'ta'
-                ? 'அடுத்த செய்திக்கு மேலே/கீழே ஸ்வைப் செய்யவும்'
-                : 'Swipe up or down for the next story')
-              : (language === 'ta'
-                ? 'புத்தகம் புரட்டுவது போல் இடமிருந்து வலமாக ஸ்வைப் செய்யவும்'
-                : 'Swipe left or right — like turning a page')}
-          </Text>
-          <Text style={styles.tapAway}>{language === 'ta' ? 'தொட்டு மூடவும்' : 'tap to dismiss'}</Text>
+    <Animated.View style={[styles.wrap, { opacity: fade }]} pointerEvents="none">
+      <Animated.View style={[styles.pill, { backgroundColor: 'rgba(28,25,23,0.82)', transform: [{ translateX: shiftDistance }] }]}>
+        <Icon name="back" size={11} color="rgba(255,255,255,0.75)" />
+        <Text style={styles.label}>{language === 'ta' ? 'புரட்டவும்' : 'flip'}</Text>
+        <View style={styles.chevronRight}>
+          <Icon name="chevronRight" size={11} color="#fff" />
         </View>
-      </TouchableWithoutFeedback>
+      </Animated.View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 96,
-    zIndex: 20,
+  wrap: {
+    position: 'absolute',
+    right: 14,
+    bottom: 14,
+    zIndex: 10,
   },
-  card: {
+  pill: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
-    paddingVertical: 18,
-    paddingHorizontal: 22,
-    maxWidth: 280,
+    gap: 5,
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
   },
-  hand: { marginBottom: 8 },
-  handGlyph: { fontSize: 30 },
-  text: {
+  label: {
     color: '#fff',
-    fontFamily: FONT_FAMILIES.displaySemiBold,
-    fontSize: 13.5,
-    lineHeight: 19,
-    textAlign: 'center',
+    fontFamily: FONT_FAMILIES.uiSemiBold,
+    fontSize: 11,
+    letterSpacing: 0.3,
   },
-  tapAway: {
-    color: 'rgba(255,255,255,0.55)',
-    fontFamily: FONT_FAMILIES.uiMedium,
-    fontSize: 10.5,
-    marginTop: 8,
-  },
+  chevronRight: { marginLeft: 1 },
 });

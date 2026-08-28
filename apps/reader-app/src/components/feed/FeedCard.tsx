@@ -93,10 +93,6 @@ export function ArticleFeedCard({ article, language, index, total, width, onOpen
         </TouchableOpacity>
 
         <Text style={[styles.excerpt, { color: t.inkSub }]}>{body}</Text>
-
-        <TouchableOpacity activeOpacity={0.7} onPress={onOpen} style={styles.readMore}>
-          <Text style={[styles.readMoreText, { color: t.red }]}>முழு செய்தி படிக்க / Read full story →</Text>
-        </TouchableOpacity>
       </ScrollView>
 
       <ActionBar {...actionBar} />
@@ -144,8 +140,6 @@ const styles = StyleSheet.create({
   page: { fontFamily: FONT_FAMILIES.uiSemiBold, fontSize: 9.5, letterSpacing: 0.6 },
   title: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 21, lineHeight: 27, letterSpacing: -0.2 },
   excerpt: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 14.5, lineHeight: 25, marginTop: 9 },
-  readMore: { marginTop: 16, paddingVertical: 4 },
-  readMoreText: { fontFamily: FONT_FAMILIES.uiBold, fontSize: 13 },
   adCard: { justifyContent: 'center' },
   adInner: { margin: 0, borderWidth: 0, flex: 1, height: '100%', flexDirection: 'column' },
   adFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
