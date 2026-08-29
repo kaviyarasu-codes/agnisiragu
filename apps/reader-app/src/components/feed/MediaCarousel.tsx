@@ -3,10 +3,10 @@
 // (Article.mediaUrls) — used in the fixed image zone of a feed card and in
 // the Full Story hero. Falls back to a single static image (thumbnailUrl)
 // when there's no gallery, so every existing article with just one photo
-// renders exactly as before. Video items don't have an in-app player yet
-// (that needs a native video dependency, deliberately not added here to
-// avoid destabilizing the current native build) — tapping one opens it in
-// the device's own video app/browser instead of playing inline.
+// renders exactly as before. Video items play inline via expo-video with a
+// small custom control bar (play/pause, mute, fullscreen) — previously
+// these just opened in the device's own video app/browser, which is what
+// this replaces.
 //
 // Swiping through the gallery is a horizontal drag *inside* this
 // component's own inner FlatList, which is a nested gesture region — it
@@ -16,14 +16,76 @@
 // behavior in React Native).
 
 import React, { useRef, useState } from 'react';
-import { View, FlatList, TouchableOpacity, Text, StyleSheet, Linking, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { View, FlatList, TouchableOpacity, Text, StyleSheet, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { Image } from 'expo-image';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { useEvent } from 'expo';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
+import Icon from '@/components/icons/Icon';
 import ImageWatermark from './ImageWatermark';
 
 function isVideoUrl(url: string): boolean {
   return /\.(mp4|mov|webm|m3u8)(\?|$)/i.test(url);
+}
+
+// In-app player for a single video item — tap the tile to play/pause, plus
+// a small persistent control strip (play/pause, mute, fullscreen) so it
+// never depends on remembering the tap-to-toggle gesture. Starts muted
+// (typical feed/social convention for autoplay-adjacent video, and it never
+// actually autoplays here — playback only starts on a real tap) so a reader
+// scrolling through the feed is never surprised by sudden audio.
+function VideoTile({ uri, style }: { uri: string; style: object }) {
+  const videoViewRef = useRef<React.ElementRef<typeof VideoView>>(null);
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = false;
+    p.muted = true;
+  });
+  const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
+  const [muted, setMuted] = useState(true);
+
+  const togglePlay = () => {
+    if (isPlaying) player.pause();
+    else player.play();
+  };
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    player.muted = next;
+  };
+  const goFullscreen = () => {
+    videoViewRef.current?.enterFullscreen();
+  };
+
+  return (
+    <View style={style}>
+      <VideoView
+        ref={videoViewRef}
+        style={StyleSheet.absoluteFill}
+        player={player}
+        nativeControls={false}
+        contentFit="cover"
+        allowsFullscreen
+      />
+      <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={togglePlay} />
+      {!isPlaying && (
+        <View pointerEvents="none" style={styles.centerPlayGlyph}>
+          <Icon name="play" size={22} color="#fff" />
+        </View>
+      )}
+      <View pointerEvents="box-none" style={styles.videoControlsRow}>
+        <TouchableOpacity style={styles.videoControlBtn} onPress={togglePlay} hitSlop={10}>
+          <Icon name={isPlaying ? 'pause' : 'play'} size={13} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.videoControlBtn} onPress={toggleMute} hitSlop={10}>
+          <Icon name={muted ? 'volumeOff' : 'volumeOn'} size={13} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.videoControlBtn} onPress={goFullscreen} hitSlop={10}>
+          <Icon name="fullscreen" size={12} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 }
 
 interface Props {
@@ -52,13 +114,7 @@ export default function MediaCarousel({ mediaUrls, thumbnailUrl, watermarkCorner
         <View style={[StyleSheet.absoluteFill, { backgroundColor: t.bgAlt }]} />
       ) : items.length === 1 ? (
         isVideoUrl(items[0]) ? (
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={[StyleSheet.absoluteFill, styles.videoTile, { backgroundColor: t.bgAlt }]}
-            onPress={() => Linking.openURL(items[0]).catch(() => {})}
-          >
-            <Text style={styles.playGlyph}>▶</Text>
-          </TouchableOpacity>
+          <VideoTile uri={items[0]} style={[StyleSheet.absoluteFill, styles.videoTile, { backgroundColor: t.bgAlt }]} />
         ) : (
           <Image source={{ uri: items[0] }} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
         )
@@ -73,13 +129,7 @@ export default function MediaCarousel({ mediaUrls, thumbnailUrl, watermarkCorner
           onMomentumScrollEnd={onScrollEnd}
           renderItem={({ item }) => (
             isVideoUrl(item) ? (
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={[styles.videoTile, { width, backgroundColor: t.bgAlt }]}
-                onPress={() => Linking.openURL(item).catch(() => {})}
-              >
-                <Text style={styles.playGlyph}>▶</Text>
-              </TouchableOpacity>
+              <VideoTile uri={item} style={[styles.videoTile, { width, backgroundColor: t.bgAlt }]} />
             ) : (
               <Image source={{ uri: item }} style={{ width, height: '100%' }} contentFit="cover" transition={250} />
             )
@@ -108,7 +158,19 @@ export default function MediaCarousel({ mediaUrls, thumbnailUrl, watermarkCorner
 
 const styles = StyleSheet.create({
   videoTile: { alignItems: 'center', justifyContent: 'center' },
-  playGlyph: { fontSize: 34, color: '#fff' },
+  centerPlayGlyph: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  videoControlsRow: {
+    position: 'absolute', right: 8, bottom: 8,
+    flexDirection: 'row', gap: 6,
+  },
+  videoControlBtn: {
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center', justifyContent: 'center',
+  },
   countBadge: {
     position: 'absolute', left: 10, top: 10,
     backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12,

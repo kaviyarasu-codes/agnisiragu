@@ -13,7 +13,20 @@ export async function getToken(): Promise<string | null> {
 }
 
 export async function setToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(STORAGE_KEYS.ACCESS_TOKEN, token);
+  try {
+    await SecureStore.setItemAsync(STORAGE_KEYS.ACCESS_TOKEN, token);
+  } catch (err) {
+    // On some Android devices the very first SecureStore WRITE of a fresh
+    // install has to generate the Android Keystore alias, which has been
+    // known to throw on certain OEM/OS combinations instead of just being
+    // slow — this was previously unguarded here, which is consistent with
+    // the "app closes on first launch, works the 2nd time" report (the
+    // alias exists by the 2nd launch, so the same write succeeds silently).
+    // Logging in requires the token to actually persist, so this is
+    // surfaced rather than swallowed like the read-side helpers below.
+    console.warn('[storage] setToken failed:', err instanceof Error ? err.message : err);
+    throw err;
+  }
 }
 
 export async function getRefreshToken(): Promise<string | null> {
@@ -25,12 +38,21 @@ export async function getRefreshToken(): Promise<string | null> {
 }
 
 export async function setRefreshToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, token);
+  try {
+    await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, token);
+  } catch (err) {
+    console.warn('[storage] setRefreshToken failed:', err instanceof Error ? err.message : err);
+    throw err;
+  }
 }
 
 export async function clearTokens(): Promise<void> {
-  await SecureStore.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-  await SecureStore.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+  try {
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+  } catch (err) {
+    console.warn('[storage] clearTokens failed:', err instanceof Error ? err.message : err);
+  }
 }
 
 export async function getArticleReadCount(): Promise<number> {
@@ -43,7 +65,11 @@ export async function getArticleReadCount(): Promise<number> {
 }
 
 export async function setArticleReadCount(count: number): Promise<void> {
-  await SecureStore.setItemAsync(STORAGE_KEYS.ARTICLE_READ_COUNT, String(count));
+  try {
+    await SecureStore.setItemAsync(STORAGE_KEYS.ARTICLE_READ_COUNT, String(count));
+  } catch (err) {
+    console.warn('[storage] setArticleReadCount failed:', err instanceof Error ? err.message : err);
+  }
 }
 
 export async function getUserPrefs(): Promise<UserPrefs | null> {
@@ -56,7 +82,12 @@ export async function getUserPrefs(): Promise<UserPrefs | null> {
 }
 
 export async function setUserPrefs(prefs: UserPrefs): Promise<void> {
-  await SecureStore.setItemAsync(STORAGE_KEYS.USER_PREFS, JSON.stringify(prefs));
+  try {
+    await SecureStore.setItemAsync(STORAGE_KEYS.USER_PREFS, JSON.stringify(prefs));
+  } catch (err) {
+    console.warn('[storage] setUserPrefs failed:', err instanceof Error ? err.message : err);
+    throw err;
+  }
 }
 
 // Stable per-install identifier — used to register push notifications for

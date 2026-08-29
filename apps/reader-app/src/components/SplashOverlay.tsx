@@ -56,15 +56,13 @@ export default function SplashOverlay() {
       {remoteConfig.splashLogoUrl ? (
         <Image source={{ uri: remoteConfig.splashLogoUrl }} style={styles.logo} resizeMode="contain" />
       ) : (
-        // A small, tightly-cropped logo mark — NOT assets/splash.png, which
-        // is a full-screen portrait canvas (mostly white background with
-        // the logo positioned off-center) meant for a different purpose.
-        // Using that file here (or in the native splash config below)
-        // produces a small misplaced white card artifact instead of a
-        // clean logo on the theme background — see app.json's
-        // expo-splash-screen plugin, fixed the same way.
+        // logo.png (not assets/splash.png, a full-screen portrait canvas
+        // meant for a different purpose, and not the old logo-source.png.png,
+        // which was a much lower-resolution export of the same mark and
+        // rendered visibly blurry once scaled up — this is the same crisp
+        // asset used in the header and the wings splash animation below).
         // eslint-disable-next-line @typescript-eslint/no-require-imports
-        <Image source={require('../../assets/logo-source.png.png')} style={styles.logo} resizeMode="contain" />
+        <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
       )}
       {remoteConfig.splashShowTagline && (
         <Text style={styles.tagline}>
@@ -86,9 +84,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // logo.png is a wide wordmark (not square, unlike the old asset) —
+  // width/height sized to its ~2.2:1 aspect ratio so "contain" doesn't
+  // leave large empty top/bottom bands inside the box.
   logo: {
-    width: 140,
-    height: 140,
+    width: 200,
+    height: 90,
   },
   tagline: {
     marginTop: 16,

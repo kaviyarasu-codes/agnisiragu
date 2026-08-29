@@ -16,7 +16,8 @@ export type IconName =
   | 'warningTriangle' | 'offlineCircle' | 'permissionBell' | 'permissionLocation'
   | 'jobsBriefcase' | 'archiveBox' | 'postPlus' | 'reportFlag'
   | 'downloadImage' | 'downloadVideo' | 'check' | 'play'
-  | 'home' | 'grid' | 'live' | 'thumbUp' | 'thumbDown' | 'whatsapp' | 'forward' | 'user';
+  | 'home' | 'grid' | 'live' | 'thumbUp' | 'thumbDown' | 'whatsapp' | 'forward' | 'user'
+  | 'pause' | 'volumeOn' | 'volumeOff' | 'fullscreen';
 
 interface IconProps {
   name: IconName;
@@ -276,6 +277,43 @@ export default function Icon({ name, size = 18, color = '#1C1917', strokeWidth, 
         <Svg width={size} height={size} viewBox="0 0 18 18">
           <Circle cx={9} cy={5.6} r={3.4} fill={color} />
           <Path d="M2 16.2c0-3.8 3.1-6.4 7-6.4s7 2.6 7 6.4" fill={color} />
+        </Svg>
+      );
+    case 'pause':
+      // In-app video player control (MediaCarousel) — playing state.
+      return (
+        <Svg width={size} height={size} viewBox="0 0 16 16">
+          <Rect x={3} y={2} width={3.6} height={12} rx={0.8} fill={color} />
+          <Rect x={9.4} y={2} width={3.6} height={12} rx={0.8} fill={color} />
+        </Svg>
+      );
+    case 'volumeOn':
+      // In-app video player control — tap to mute.
+      return (
+        <Svg width={size} height={size} viewBox="0 0 20 18">
+          <Polygon points="1,7 5,7 10,3 10,15 5,11 1,11" fill={color} />
+          <Path d="M13.2 5.8a5.5 5.5 0 0 1 0 6.4" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+          <Path d="M15.8 3.2a9.4 9.4 0 0 1 0 11.6" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+        </Svg>
+      );
+    case 'volumeOff':
+      // In-app video player control — tap to unmute.
+      return (
+        <Svg width={size} height={size} viewBox="0 0 20 18">
+          <Polygon points="1,7 5,7 10,3 10,15 5,11 1,11" fill={color} />
+          <Line x1={13.5} y1={6} x2={18.5} y2={12} stroke={color} strokeWidth={1.7} strokeLinecap="round" />
+          <Line x1={18.5} y1={6} x2={13.5} y2={12} stroke={color} strokeWidth={1.7} strokeLinecap="round" />
+        </Svg>
+      );
+    case 'fullscreen':
+      // In-app video player control — expand to the device's native
+      // fullscreen video presentation.
+      return (
+        <Svg width={size} height={size} viewBox="0 0 18 18">
+          <Polyline points="6,1 1,1 1,6" {...common} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+          <Polyline points="12,1 17,1 17,6" {...common} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+          <Polyline points="6,17 1,17 1,12" {...common} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+          <Polyline points="12,17 17,17 17,12" {...common} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
       );
     default:

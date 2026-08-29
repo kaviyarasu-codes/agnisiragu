@@ -14,6 +14,9 @@
 // previews from crashing on the way to testing everything else.
 
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+// Type-only import — erased at compile time, so it never triggers the
+// Expo-Go module-load crash that loadNotifications() below guards against.
+import type { NotificationResponse, Subscription } from 'expo-notifications';
 
 export function isExpoGo(): boolean {
   return Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
@@ -57,7 +60,42 @@ export async function getExpoPushTokenAsync(options?: { projectId?: string }): P
   try {
     const res = await Notifications.getExpoPushTokenAsync(options);
     return res.data;
+  } catch (err) {
+    // This used to swallow the error completely — every push-registration
+    // failure looked identical to "user just hasn't opened the app yet",
+    // with zero trail anywhere. The #1 real-world cause is missing FCM/APNs
+    // push credentials for this EAS project (run `eas credentials` to
+    // check/upload them) — but log the actual thrown error so a connected
+    // Metro/dev-client session shows the real reason instead of a guess.
+    console.warn('[push] getExpoPushTokenAsync failed:', err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+// Cold-start case: the app process was launched BY tapping a notification
+// (it wasn't already running). Returns the response that launched it, or
+// null on a normal launch / in Expo Go.
+export async function getLastNotificationResponseAsync(): Promise<NotificationResponse | null> {
+  const Notifications = loadNotifications();
+  if (!Notifications) return null;
+  try {
+    return await Notifications.getLastNotificationResponseAsync();
   } catch {
     return null;
+  }
+}
+
+// Warm case: the app was already running (foreground or background) and the
+// user tapped a notification. Returns a no-op subscription in Expo Go so
+// callers can unconditionally call .remove() on cleanup.
+export function addNotificationResponseReceivedListener(
+  callback: (response: NotificationResponse) => void,
+): Subscription {
+  const Notifications = loadNotifications();
+  if (!Notifications) return { remove: () => {} } as Subscription;
+  try {
+    return Notifications.addNotificationResponseReceivedListener(callback);
+  } catch {
+    return { remove: () => {} } as Subscription;
   }
 }

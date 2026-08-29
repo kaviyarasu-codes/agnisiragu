@@ -1,5 +1,6 @@
 // src/notifications/notifications.dto.ts
 import { IsString, IsOptional, IsUUID, IsArray, IsIn } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SendNotificationDto {
@@ -25,6 +26,13 @@ export class SendNotificationDto {
   target?: 'ALL' | 'CATEGORY';
 
   @ApiPropertyOptional({ example: 'uuid-of-category', description: 'Required when target=CATEGORY. Sends to users who have read an article in this category before.' })
+  // @IsOptional() only skips undefined/null — a "By Category" send with no
+  // category picked was arriving here as categoryId: '' (an unselected
+  // <select>'s value), which @IsUUID() correctly rejects, but as an opaque
+  // 400 with no indication of the real cause. Treat '' the same as
+  // "not provided" so this fails validation only when it's actually
+  // ambiguous, and the admin-panel form now blocks this case before submit too.
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsOptional()
   @IsUUID()
   categoryId?: string;

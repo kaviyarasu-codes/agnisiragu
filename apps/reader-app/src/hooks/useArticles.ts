@@ -24,6 +24,14 @@ export function useArticles(categoryId?: string) {
     getNextPageParam: (lastPage) =>
       lastPage.meta.hasMore ? lastPage.meta.nextCursor : undefined,
     staleTime: 1000 * 60 * 2,
+    // Backstop for "no reload for new articles" beyond the focus-refetch
+    // wired in app/_layout.tsx (AppState → focusManager): a reader who just
+    // leaves the feed open in the foreground without backgrounding it would
+    // otherwise never see anything published after their initial load.
+    // refetchIntervalInBackground defaults to false, so this pauses
+    // automatically while the app is backgrounded (via the same
+    // focusManager wiring) instead of polling pointlessly off-screen.
+    refetchInterval: 1000 * 60 * 3,
   });
 }
 
@@ -37,6 +45,7 @@ export function useBreakingNews() {
       return res.data;
     },
     staleTime: 1000 * 60 * 1,
+    refetchInterval: 1000 * 60 * 1,
   });
 }
 

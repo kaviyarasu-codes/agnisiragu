@@ -46,8 +46,11 @@ export async function registerGuestPushToken(): Promise<void> {
       platform: Platform.OS === 'ios' ? 'ios' : 'android',
     });
     didRegisterGuestThisSession = true;
-  } catch {
-    // Best-effort — never block app bootstrap on this.
+  } catch (err) {
+    // Best-effort — never block app bootstrap on this. Still log it (was
+    // silently swallowed before), since a save failure here is a different,
+    // rarer problem than getExpoToken() returning null.
+    console.warn('[push] registerGuestPushToken failed:', err instanceof Error ? err.message : err);
   }
 }
 
@@ -62,8 +65,9 @@ export async function registerPushToken(): Promise<void> {
       platform: Platform.OS === 'ios' ? 'ios' : 'android',
     });
     didRegisterUserThisSession = true;
-  } catch {
+  } catch (err) {
     // Best-effort — a failed registration just means this device won't get
     // breaking-news pushes; it must never block login or app bootstrap.
+    console.warn('[push] registerPushToken failed:', err instanceof Error ? err.message : err);
   }
 }

@@ -158,6 +158,9 @@ export interface Notification {
   target: string;
   categoryId?: string;
   status: string;
+  successCount?: number;
+  failureCount?: number;
+  error?: string;
   sentAt?: string;
   createdAt: string;
 }

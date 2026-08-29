@@ -31,6 +31,7 @@ export interface NotificationLog {
   status: 'SENT' | 'FAILED';
   successCount: number;
   failureCount: number;
+  error?: string;
   sentAt: Date;
   createdAt: Date;
 }
@@ -215,6 +216,7 @@ export class NotificationsService {
         status: m.status ?? 'SENT',
         successCount: m.successCount ?? 0,
         failureCount: m.failureCount ?? 0,
+        error: m.error,
         sentAt: l.createdAt,
         createdAt: l.createdAt,
       };

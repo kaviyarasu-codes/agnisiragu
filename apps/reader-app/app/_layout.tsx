@@ -14,14 +14,14 @@
 // force-update gate (remoteConfig.minSupportedVersion vs. the running
 // app's version).
 
-import React, { useEffect } from 'react';
-import { View, Text } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, AppState } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
 import * as SplashScreenNative from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
@@ -37,6 +37,10 @@ import ForceUpdateScreen from '@/screens/ForceUpdateScreen';
 import SideMenu from '@/components/SideMenu';
 import SplashOverlay from '@/components/SplashOverlay';
 import { registerPushToken, registerGuestPushToken } from '@/lib/push';
+import {
+  getLastNotificationResponseAsync,
+  addNotificationResponseReceivedListener,
+} from '@/lib/notificationsCompat';
 
 SplashScreenNative.preventAutoHideAsync();
 
@@ -47,6 +51,23 @@ const queryClient = new QueryClient({
       staleTime: 1000 * 60 * 5,
     },
   },
+});
+
+// React Query's default focusManager listens for the browser's
+// `visibilitychange` event, which never fires in React Native — so
+// "refetch on window focus" (what makes a stale feed re-fetch when the user
+// comes back to the app) silently never happened on any screen, on any
+// query, in this app. This was the real cause behind "there is no reload or
+// refresh for new news articles": articles fetched more than staleTime ago
+// just sat there forever until the app was fully force-closed and relaunched
+// (a fresh mount refetches regardless). Wiring AppState in makes RN's actual
+// foreground/background transitions drive the same focus-refetch behavior
+// every screen already opts into via staleTime.
+focusManager.setEventListener((handleFocus) => {
+  const sub = AppState.addEventListener('change', (state) => {
+    handleFocus(state === 'active');
+  });
+  return () => sub.remove();
 });
 
 // "1.2.0" > "1.10.0" etc. — plain string comparison breaks on multi-digit
@@ -69,6 +90,72 @@ function AppBootstrap({ children }: { children: React.ReactNode }) {
   const { hydrate: hydrateBookmarks } = useBookmarksStore();
   const { hydrate: hydrateHistory } = useHistoryStore();
   const fontsLoaded = useAppFonts();
+
+  // Safety net for the "stuck on splash forever" report: hydrateFromStorage
+  // and fetchRemoteConfig both already guarantee their own flags via
+  // finally/catch, so a rejected promise there isn't the issue. What isn't
+  // guarded is a promise that never SETTLES at all — e.g. expo-font's
+  // useFonts() only exposes `loaded` (the `error` slot is ignored below and
+  // upstream), and SecureStore/AsyncStorage calls are known to occasionally
+  // hang rather than reject on some Android OEM Keystore implementations,
+  // especially right after a fresh install. Neither case is caught by a
+  // try/catch since nothing ever throws — the awaited promise just never
+  // resolves, and previously nothing ever un-stuck the splash screen when
+  // that happened. Force everything "ready" after a timeout so the app can
+  // never hang here indefinitely — worst case it opens once with default
+  // language/theme/config instead of the saved ones, which is far better
+  // than requiring a force-close.
+  const [forceReady, setForceReady] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setForceReady(true), 6000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Notification tap → open the linked article. Two cases: cold start (the
+  // notification tap launched the app process — checked once via
+  // getLastNotificationResponseAsync) and warm (the app was already running,
+  // in foreground or background — the listener fires live). Both existed as
+  // dead weight before this: breaking-news pushes already sent
+  // data.articleId, and the admin panel's Compose Notification can now
+  // attach one too, but nothing ever read it back out on the device.
+  // Navigation is deferred until the app has actually finished booting
+  // (fonts/hydration/config, or the forceReady timeout) since the root Stack
+  // isn't mounted before then; isReadyRef avoids a stale closure since the
+  // listener is registered once on mount.
+  const isReady = (hydrated && fontsLoaded && configLoaded) || forceReady;
+  const isReadyRef = useRef(isReady);
+  useEffect(() => { isReadyRef.current = isReady; }, [isReady]);
+  const pendingArticleIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    function openLinkedArticle(articleId: string) {
+      if (isReadyRef.current) {
+        router.push(`/article/${articleId}`);
+      } else {
+        pendingArticleIdRef.current = articleId;
+      }
+    }
+
+    function handleResponse(response: { notification: { request: { content: { data?: unknown } } } }) {
+      const data = response.notification.request.content.data as { articleId?: string } | undefined;
+      if (data?.articleId) openLinkedArticle(data.articleId);
+    }
+
+    getLastNotificationResponseAsync().then((response) => {
+      if (response) handleResponse(response);
+    });
+
+    const sub = addNotificationResponseReceivedListener(handleResponse);
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (isReady && pendingArticleIdRef.current) {
+      const id = pendingArticleIdRef.current;
+      pendingArticleIdRef.current = null;
+      router.push(`/article/${id}`);
+    }
+  }, [isReady]);
 
   useEffect(() => {
     async function bootstrap() {
@@ -110,10 +197,10 @@ function AppBootstrap({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (hydrated && fontsLoaded && configLoaded) {
+    if (isReady) {
       SplashScreenNative.hideAsync().catch(() => {});
     }
-  }, [hydrated, fontsLoaded, configLoaded]);
+  }, [isReady]);
 
   useEffect(() => {
     if (hydrated && !onboardingDone) {
@@ -124,8 +211,9 @@ function AppBootstrap({ children }: { children: React.ReactNode }) {
 
   // Don't mount the navigable screens until fonts are ready — every screen
   // uses Anek Tamil / Noto Sans Tamil / Barlow. SplashOverlay (rendered by
-  // the caller regardless of this gate) covers the wait visually.
-  if (!fontsLoaded || !hydrated) {
+  // the caller regardless of this gate) covers the wait visually. forceReady
+  // overrides this after the timeout above so the app is never stuck here.
+  if ((!fontsLoaded || !hydrated) && !forceReady) {
     return <View style={{ flex: 1, backgroundColor: '#F5F1EB' }} />;
   }
 
