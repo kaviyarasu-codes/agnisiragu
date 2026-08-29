@@ -148,15 +148,50 @@ export class NotificationsService {
     const chunks = this.expo.chunkPushNotifications(messages);
     const tickets: ExpoPushTicket[] = [];
     const errors: string[] = [];
+    const deadTokens: string[] = [];
 
     for (const chunk of chunks) {
       try {
         const ticketChunk = await this.expo.sendPushNotificationsAsync(chunk);
         tickets.push(...ticketChunk);
       } catch (err) {
-        this.logger.error('Expo push send failed for a chunk', err?.message ?? err);
-        errors.push(err?.message ?? 'Unknown error sending a batch');
+        const message = err?.message ?? 'Unknown error sending a batch';
+        // Expo requires every token in one request to belong to the same
+        // Expo/EAS project. This table has accumulated tokens across many
+        // months of testing (Expo Go, older builds under different EAS
+        // project setups, etc.), so a chunk can easily mix tokens from
+        // different projects — and Expo rejects the ENTIRE chunk for that,
+        // even though most tokens in it are perfectly valid. That's the
+        // actual cause behind every send showing 0 successful deliveries.
+        // Retry one token at a time so valid tokens still get delivered,
+        // and so a genuinely broken token can be identified and pruned
+        // instead of silently poisoning every future batch it lands in.
+        if (/same project/i.test(message)) {
+          for (const single of chunk) {
+            try {
+              const singleTicket = await this.expo.sendPushNotificationsAsync([single]);
+              tickets.push(...singleTicket);
+            } catch (singleErr) {
+              const singleMessage = singleErr?.message ?? 'Unknown error sending to one token';
+              this.logger.error(`Expo push send failed for token ${single.to}`, singleMessage);
+              errors.push(singleMessage);
+              // A token that still fails when sent completely alone (no
+              // other token to "conflict" with) is permanently unusable —
+              // stale from an old build/project, not a transient issue.
+              deadTokens.push(single.to as string);
+            }
+          }
+        } else {
+          this.logger.error('Expo push send failed for a chunk', message);
+          errors.push(message);
+        }
       }
+    }
+
+    if (deadTokens.length) {
+      await this.prisma.pushToken
+        .deleteMany({ where: { fcmToken: { in: deadTokens } } })
+        .catch((err) => this.logger.error('Failed to prune dead push tokens', err?.message ?? err));
     }
 
     let successCount = 0;
@@ -184,6 +219,7 @@ export class NotificationsService {
           successCount,
           failureCount,
           tokenCount: tokens.length,
+          ...(deadTokens.length ? { prunedTokenCount: deadTokens.length } : {}),
           ...(errors.length ? { error: errors.slice(0, 5).join('; ') } : {}),
         } as any,
       },
