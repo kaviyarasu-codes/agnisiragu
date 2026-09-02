@@ -13,7 +13,7 @@
         "backgroundColor": "#FFFFFF"
       },
       "package": "com.agnisiragu.reader",
-      "versionCode": 15,
+      "versionCode": 16,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.RECORD_AUDIO",
@@ -41,6 +41,15 @@
       "expo-image",
       "expo-notifications",
       "expo-video",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ],
       [
         "expo-image-picker",
         {

@@ -68,15 +68,22 @@ function VideoTile({ uri, style }: { uri: string; style: object }) {
         allowsFullscreen
       />
       <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={togglePlay} />
+      {/* Play lives ONLY here, center-screen — tap the video anywhere (or
+          this glyph itself) to start it; it disappears once playing so it
+          never sits over the footage. Mute/fullscreen are separate, smaller
+          concerns and stay in their own corner strip below, offset to the
+          bottom-LEFT specifically so they never collide with the brand
+          watermark chip (ImageWatermark), which is fixed bottom-right. */}
       {!isPlaying && (
-        <View pointerEvents="none" style={styles.centerPlayGlyph}>
-          <Icon name="play" size={22} color="#fff" />
-        </View>
+        <TouchableOpacity
+          style={styles.centerPlayGlyph}
+          onPress={togglePlay}
+          hitSlop={16}
+        >
+          <Icon name="play" size={24} color="#fff" />
+        </TouchableOpacity>
       )}
       <View pointerEvents="box-none" style={styles.videoControlsRow}>
-        <TouchableOpacity style={styles.videoControlBtn} onPress={togglePlay} hitSlop={10}>
-          <Icon name={isPlaying ? 'pause' : 'play'} size={13} color="#fff" />
-        </TouchableOpacity>
         <TouchableOpacity style={styles.videoControlBtn} onPress={toggleMute} hitSlop={10}>
           <Icon name={muted ? 'volumeOff' : 'volumeOn'} size={13} color="#fff" />
         </TouchableOpacity>
@@ -162,8 +169,11 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     alignItems: 'center', justifyContent: 'center',
   },
+  // Bottom-LEFT (not right) — the ImageWatermark brand chip is fixed at
+  // bottom-right on every media tile, and a right-aligned row here used to
+  // sit directly on top of it.
   videoControlsRow: {
-    position: 'absolute', right: 8, bottom: 8,
+    position: 'absolute', left: 8, bottom: 8,
     flexDirection: 'row', gap: 6,
   },
   videoControlBtn: {
