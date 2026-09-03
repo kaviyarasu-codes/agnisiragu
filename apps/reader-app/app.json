@@ -13,7 +13,7 @@
         "backgroundColor": "#FFFFFF"
       },
       "package": "com.agnisiragu.reader",
-      "versionCode": 18,
+      "versionCode": 19,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.RECORD_AUDIO",

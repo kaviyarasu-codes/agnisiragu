@@ -16,6 +16,18 @@
 // "expo-image-picker" in app.json's plugins array for that ordering to
 // hold. Safe to remove entirely if a future expo-image-picker release
 // fixes the upstream issue and stops adding these on its own.
+//
+// IMPORTANT: simply omitting/filtering these out of this app's own
+// manifest is NOT enough — expo-image-picker's native Android module
+// bundles its own AndroidManifest.xml (inside its .aar) declaring these
+// permissions directly, and Gradle's manifest merger re-adds them from
+// there during the actual native build, which happens AFTER this config
+// plugin has already run at prebuild time. Confirmed this the hard way:
+// version code 19, built after the first (filter-only) version of this
+// plugin, still had them. The fix is to add an explicit
+// tools:node="remove" directive for each one, which is the documented
+// Android manifest-merger instruction to reject a permission even when a
+// merged library dependency re-declares it.
 
 const { withAndroidManifest } = require('expo/config-plugins');
 
@@ -29,12 +41,29 @@ const BLOCKED_PERMISSIONS = [
 module.exports = function withoutMediaPermissions(config) {
   return withAndroidManifest(config, (cfg) => {
     const manifest = cfg.modResults.manifest;
-    if (Array.isArray(manifest['uses-permission'])) {
-      manifest['uses-permission'] = manifest['uses-permission'].filter((perm) => {
-        const name = perm.$ && perm.$['android:name'];
-        return !BLOCKED_PERMISSIONS.includes(name);
+
+    manifest.$ = manifest.$ || {};
+    manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
+
+    if (!Array.isArray(manifest['uses-permission'])) {
+      manifest['uses-permission'] = [];
+    }
+
+    // Drop any plain (non-removal) entries already present for these —
+    // added by expo-image-picker's app.json-level plugin — then add
+    // explicit removal directives that also survive Gradle's later
+    // manifest merge from the library's own bundled manifest.
+    manifest['uses-permission'] = manifest['uses-permission'].filter((perm) => {
+      const name = perm.$ && perm.$['android:name'];
+      return !BLOCKED_PERMISSIONS.includes(name);
+    });
+
+    for (const name of BLOCKED_PERMISSIONS) {
+      manifest['uses-permission'].push({
+        $: { 'android:name': name, 'tools:node': 'remove' },
       });
     }
+
     return cfg;
   });
 };
