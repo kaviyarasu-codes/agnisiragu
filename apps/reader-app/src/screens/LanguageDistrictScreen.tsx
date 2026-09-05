@@ -14,10 +14,15 @@ import Button from '@/components/ui/Button';
 
 export default function LanguageDistrictScreen() {
   const t = useTheme();
-  const { language, setLanguage, district, setDistrict, onboardingDone, remoteConfig } = useAppStore();
+  const { language, setLanguage, district, setDistrict, detectedDistrictId, onboardingDone, remoteConfig } = useAppStore();
   const districts = remoteConfig.districts;
+  // Preference order: the reader's own previously-saved district, then the
+  // GPS-based guess from the location permission screen just before this one
+  // (see LocationPermissionScreen.tsx's detectDistrictId), then the plain
+  // first item in the list as the last-resort default.
+  const [selectedDistrict, setSelectedDistrict] = useState(district ?? detectedDistrictId ?? districts[0]?.id);
   const [selectedLang, setSelectedLang] = useState(language);
-  const [selectedDistrict, setSelectedDistrict] = useState(district ?? districts[0]?.id);
+  const isAutoDetected = !district && !!detectedDistrictId && selectedDistrict === detectedDistrictId;
   // Reacts live to the language toggle right below it, not just the app's
   // current global language — a nice touch since this screen is exactly
   // where the reader is choosing between Tamil/English.
@@ -27,7 +32,11 @@ export default function LanguageDistrictScreen() {
   function handleStart() {
     setLanguage(selectedLang);
     setDistrict(selectedDistrict);
-    router.replace(onboardingDone ? '/' : '/permission-location');
+    // Location permission (and the district auto-detect it feeds into) now
+    // runs BEFORE this screen during first-time setup — see
+    // OnboardingScreen.tsx / LocationPermissionScreen.tsx — so the only step
+    // still left for a first-time reader is the notification permission ask.
+    router.replace(onboardingDone ? '/' : '/permission');
   }
 
   return (
@@ -62,7 +71,14 @@ export default function LanguageDistrictScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.caption, { color: t.inkMuted, marginTop: 28, marginBottom: 0 }]}>உங்கள் இருப்பிடம் / district</Text>
+        <View style={styles.districtCaptionRow}>
+          <Text style={[styles.caption, { color: t.inkMuted, marginTop: 28, marginBottom: 0 }]}>உங்கள் இருப்பிடம் / district</Text>
+          {isAutoDetected && (
+            <Text style={[styles.detectedTag, { color: t.red, marginTop: 28 }]}>
+              📍 {selectedLang === 'ta' ? 'இருப்பிடத்தில் இருந்து' : 'from your location'}
+            </Text>
+          )}
+        </View>
       </View>
 
       {/* Only this list scrolls — an admin-added long district list can grow
@@ -104,6 +120,8 @@ const styles = StyleSheet.create({
   logo: { width: 150, height: 68, alignSelf: 'center' },
   tagline: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 12, textAlign: 'center', marginTop: 10 },
   caption: { fontFamily: FONT_FAMILIES.condensedBold, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginTop: 38, marginBottom: 12 },
+  districtCaptionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  detectedTag: { fontFamily: FONT_FAMILIES.uiSemiBold, fontSize: 10.5 },
   langGrid: { flexDirection: 'row', gap: 10 },
   langCard: { flex: 1, borderWidth: 2, borderRadius: 10, padding: 14 },
   langTa: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 22 },

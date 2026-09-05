@@ -107,6 +107,25 @@ export class NotificationsService {
     const tokens = rawTokens.filter((t) => Expo.isExpoPushToken(t));
     const invalidCount = rawTokens.length - tokens.length;
 
+    // Admin-controlled notification style (App Config → Notifications):
+    // whether to show the linked article's photo as a big-picture image, and
+    // whether to use the app's custom alert sound instead of the system
+    // default. Both default on/off per-flag below when the admin hasn't
+    // touched them yet.
+    const [showImageFlag, customSoundFlag] = await Promise.all([
+      this.prisma.appConfig.findUnique({ where: { key: 'notifShowArticleImage' } }),
+      this.prisma.appConfig.findUnique({ where: { key: 'notifCustomSoundEnabled' } }),
+    ]);
+    const showArticleImage = showImageFlag ? showImageFlag.value !== false : true;
+    // Android sound is entirely determined by the device-side Notification
+    // Channel (see notificationsCompat.ts's ensureNotificationChannelAsync),
+    // not by anything in this payload — channelId just routes the
+    // notification through that channel. This flag exists for later once a
+    // custom sound file is added to the channel config; today it's a no-op
+    // either way but the plumbing is ready.
+    const useCustomSound = customSoundFlag?.value === true;
+    void useCustomSound;
+
     const baseMetadata = {
       titleTa,
       bodyTa,
@@ -137,13 +156,28 @@ export class NotificationsService {
       return { data: { successCount: 0, failureCount: 0, message: 'No tokens to send to' } };
     }
 
-    const messages: ExpoPushMessage[] = tokens.map((token) => ({
-      to: token,
-      sound: 'default',
-      title: titleTa,
-      body: bodyTa,
-      data: { titleEn, bodyEn, ...(dto.data ?? {}) },
-    }));
+    // `channelId`/`richContent` are documented, current Expo push API fields
+    // (https://docs.expo.dev/push-notifications/sending-notifications/#message-request-format)
+    // that may postdate this project's pinned expo-server-sdk type defs —
+    // cast per-message rather than widening ExpoPushMessage[] itself, so a
+    // stale type def can't silently drop these fields at compile time.
+    const messages: ExpoPushMessage[] = tokens.map((token) => {
+      const base = {
+        to: token,
+        sound: 'default', // iOS only — Android's sound comes from the channel below
+        title: titleTa,
+        body: bodyTa,
+        data: { titleEn, bodyEn, ...(dto.data ?? {}) },
+        // Routes through the app's own "news-alerts" channel (icon/color/
+        // vibration configured on-device — see notificationsCompat.ts)
+        // instead of Android's generic auto-created "Default" one.
+        channelId: 'news-alerts',
+        ...(dto.imageUrl && showArticleImage
+          ? { richContent: { image: dto.imageUrl } }
+          : {}),
+      };
+      return base as ExpoPushMessage;
+    });
 
     const chunks = this.expo.chunkPushNotifications(messages);
     const tickets: ExpoPushTicket[] = [];

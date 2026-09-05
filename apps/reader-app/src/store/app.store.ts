@@ -328,6 +328,15 @@ interface AppStore {
   language: Language;
   colorScheme: 'light' | 'dark' | 'system';
   district: string | null;
+  // Best-guess district id from the device's GPS coordinates, resolved by
+  // LocationPermissionScreen (reverse-geocode → match against
+  // remoteConfig.districts) right after the reader grants location access
+  // during onboarding, BEFORE they reach the language/district picker. Not
+  // persisted — purely a one-time hint LanguageDistrictScreen pre-selects
+  // with instead of always defaulting to districts[0]; the reader can still
+  // freely pick a different one before tapping Start.
+  detectedDistrictId: string | null;
+  setDetectedDistrictId: (districtId: string | null) => void;
   onboardingDone: boolean;
   selectedCategories: string[];
   hydrated: boolean;
@@ -350,6 +359,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   language: 'ta',
   colorScheme: 'system',
   district: null,
+  detectedDistrictId: null,
+  setDetectedDistrictId: (districtId) => set({ detectedDistrictId: districtId }),
   onboardingDone: false,
   selectedCategories: [],
   hydrated: false,

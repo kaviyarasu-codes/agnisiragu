@@ -71,6 +71,7 @@ export default function PushNotificationPage() {
       apiPost<{ data: { successCount: number; failureCount: number; message?: string } }>('/notifications/send', {
         ...payload,
         ...(linkedArticle ? { data: { articleId: linkedArticle.id } } : {}),
+        ...(linkedArticle?.thumbnailUrl ? { imageUrl: linkedArticle.thumbnailUrl } : {}),
       }),
     onSuccess: (res) => {
       // The endpoint returns 200 even when nothing was actually delivered

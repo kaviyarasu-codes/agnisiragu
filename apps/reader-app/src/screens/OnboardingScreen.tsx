@@ -1,7 +1,10 @@
 // src/screens/OnboardingScreen.tsx
 // Screen 2a — 3-slide onboarding carousel (skip / illustration / progress
-// dashes / next). Finishes into /language-district rather than straight to
-// Home, since district selection is now its own step (see 1a's setup screen).
+// dashes / next). Finishes into /permission-location (not straight to Home,
+// and not directly into /language-district) — location permission is asked
+// for FIRST now, so its granted GPS fix can auto-select the reader's
+// district on the very next screen instead of always defaulting to the top
+// of the list (see LocationPermissionScreen.tsx's detectDistrictId).
 //
 // Slide content (image + Tamil/English title + description) is fully admin-
 // controlled via App Configuration -> Onboarding Carousel in the admin panel
@@ -35,7 +38,7 @@ export default function OnboardingScreen() {
       scrollRef.current?.scrollTo({ x: (slide + 1) * SCREEN_WIDTH, animated: true });
       setSlide((s) => s + 1);
     } else {
-      router.replace('/language-district');
+      router.replace('/permission-location');
     }
   }
 

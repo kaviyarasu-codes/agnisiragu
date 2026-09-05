@@ -39,7 +39,14 @@
         }
       ],
       "expo-image",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#CC1F2D",
+          "defaultChannel": "news-alerts"
+        }
+      ],
       "expo-video",
       [
         "expo-build-properties",

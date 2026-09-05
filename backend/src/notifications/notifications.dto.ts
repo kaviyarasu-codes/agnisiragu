@@ -46,4 +46,9 @@ export class SendNotificationDto {
   @ApiPropertyOptional({ description: 'Extra data payload for the notification' })
   @IsOptional()
   data?: Record<string, string>;
+
+  @ApiPropertyOptional({ description: 'Linked article\'s thumbnail — shown as a big-picture image in the notification when the admin\'s "Show Article Photo" style toggle is on' })
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
 }

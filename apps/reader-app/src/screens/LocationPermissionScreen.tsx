@@ -19,21 +19,69 @@ import { FONT_FAMILIES, STORAGE_KEYS } from '@/constants';
 import Icon from '@/components/icons/Icon';
 import Button from '@/components/ui/Button';
 
+// Best-effort: turns granted GPS coordinates into a guess at which of the
+// admin's configured districts the reader is in, by reverse-geocoding then
+// fuzzy-matching the returned subregion/city/region strings against each
+// district's English name. Android's Geocoder typically reports the
+// district as `subregion` for Indian addresses (`city` and `region` are
+// fallbacks for devices/OS versions that report it differently). Never
+// throws — a failed/ambiguous match just leaves the picker on its normal
+// default, so this can't block or break onboarding.
+async function detectDistrictId(districts: { id: string; nameEn: string }[]): Promise<string | null> {
+  try {
+    // getLastKnownPositionAsync returns instantly (cached fix) when
+    // available; only fall back to a live GPS request — which can take
+    // several seconds on a cold fix — if there's nothing cached yet, and
+    // cap that at 4s so onboarding never visibly hangs on this.
+    let position = await Location.getLastKnownPositionAsync().catch(() => null);
+    if (!position) {
+      position = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+      ]);
+    }
+    if (!position) return null;
+
+    const results = await Location.reverseGeocodeAsync({
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+    });
+    const place = results[0];
+    if (!place) return null;
+
+    const candidates = [place.subregion, place.city, place.region]
+      .filter((v): v is string => !!v)
+      .map((v) => v.toLowerCase());
+
+    const match = districts.find((d) => {
+      const name = d.nameEn.toLowerCase();
+      return candidates.some((c) => c.includes(name) || name.includes(c));
+    });
+    return match?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default function LocationPermissionScreen() {
   const t = useTheme();
-  const { remoteConfig, language } = useAppStore();
+  const { remoteConfig, language, setDetectedDistrictId } = useAppStore();
   const cfg = remoteConfig.locationPermissionScreen;
   const [busy, setBusy] = useState(false);
   const insets = useSafeAreaInsets();
 
   function next() {
-    router.replace('/permission');
+    router.replace('/language-district');
   }
 
   async function grant() {
     setBusy(true);
     try {
-      await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const detected = await detectDistrictId(remoteConfig.districts);
+        if (detected) setDetectedDistrictId(detected);
+      }
     } catch {
       // best-effort — an outright rejection or unsupported device shouldn't
       // block onboarding

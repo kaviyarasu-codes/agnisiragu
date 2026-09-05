@@ -138,7 +138,7 @@ const SECTIONS: ConfigSection[] = [
     icon: <Bell size={16} />,
     status: 'live',
     app: 'reader',
-    plannedFields: ['Breaking News Alert Enable', 'Auto-Push on Breaking Article', 'Default Notification Channels', 'Category Subscription Default', 'Notification Sound', 'Quiet Hours'],
+    plannedFields: ['Breaking News Alert Enable', 'Show Article Photo', 'Custom Notification Sound', 'Default Notification Channels', 'Category Subscription Default', 'Quiet Hours'],
   },
   {
     id: 'reader_splash',
@@ -882,6 +882,8 @@ function LiveNotifications() {
   });
   const cfg = data?.data ?? {};
   const breakingAlerts: boolean = cfg.breakingAlerts ?? true;
+  const showArticleImage: boolean = cfg.notifShowArticleImage ?? true;
+  const customSoundEnabled: boolean = cfg.notifCustomSoundEnabled ?? false;
 
   if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
 
@@ -906,8 +908,34 @@ function LiveNotifications() {
         </p>
       </div>
 
+      <div>
+        <p className="label mb-2">Notification Style</p>
+        <div className="divide-y divide-border border border-border rounded-lg">
+          <div className="flex items-center justify-between px-3 py-3">
+            <div>
+              <p className="text-sm font-medium text-text-primary">Show Article Photo</p>
+              <p className="text-xs text-text-muted">Big-picture image on the notification banner, from the linked article's thumbnail</p>
+            </div>
+            <button type="button" onClick={() => saveMut.mutate({ notifShowArticleImage: !showArticleImage })}
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${showArticleImage ? 'bg-green-500' : 'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${showArticleImage ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+          <div className="flex items-center justify-between px-3 py-3">
+            <div>
+              <p className="text-sm font-medium text-text-primary">Custom Notification Sound</p>
+              <p className="text-xs text-text-muted">Play the app's own alert sound instead of the phone's default. Needs a sound file added to the app build first — ask to have one added, then switch this on.</p>
+            </div>
+            <button type="button" onClick={() => saveMut.mutate({ notifCustomSoundEnabled: !customSoundEnabled })}
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${customSoundEnabled ? 'bg-green-500' : 'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${customSoundEnabled ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="divide-y divide-border border border-border rounded-lg">
-        {['Default Notification Channels', 'Category Subscription Default', 'Notification Sound', 'Quiet Hours'].map(f => (
+        {['Default Notification Channels', 'Category Subscription Default', 'Quiet Hours'].map(f => (
           <div key={f} className="flex items-center justify-between px-3 py-3">
             <p className="text-sm font-medium text-text-primary">{f}</p>
             <span className="text-2xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">Planned</span>

@@ -54,6 +54,39 @@ export async function requestPermissionsAsync(): Promise<{ status: PermissionSta
   }
 }
 
+// Android 8+ ignores per-notification sound/appearance settings sent from
+// the server and always uses whatever the DEVICE's own Notification Channel
+// was configured with — a channel is a one-time, on-device registration
+// that must exist BEFORE getExpoPushTokenAsync() is called (per Expo's
+// docs) or the OS's Android-13+ permission prompt never appears at all.
+// This creates (or no-ops if it already exists) the single channel every
+// breaking-news/compose push is sent through — see notifications.service.ts
+// on the backend, which sets channelId: 'news-alerts' on every message so
+// it's actually routed through this channel instead of Android's own
+// generic "Default" one.
+let didEnsureChannel = false;
+export async function ensureNotificationChannelAsync(): Promise<void> {
+  if (didEnsureChannel) return;
+  const Notifications = loadNotifications();
+  if (!Notifications) return;
+  try {
+    await Notifications.setNotificationChannelAsync('news-alerts', {
+      name: 'News Alerts',
+      importance: Notifications.AndroidImportance?.HIGH ?? 4,
+      // No `sound` key yet — omitting it uses the channel's system default.
+      // Once a custom .wav is added to assets/sounds and declared in
+      // app.json's expo-notifications plugin "sounds" array, set
+      // sound: '<filename>.wav' here (base filename only, per Expo's docs).
+      vibrationPattern: [0, 200, 150, 200],
+      lightColor: '#CC1F2D',
+    });
+    didEnsureChannel = true;
+  } catch {
+    // Best-effort — a failed channel create just means Android falls back
+    // to its own "Default" channel; never block push registration on this.
+  }
+}
+
 export async function getExpoPushTokenAsync(options?: { projectId?: string }): Promise<string | null> {
   const Notifications = loadNotifications();
   if (!Notifications) return null;

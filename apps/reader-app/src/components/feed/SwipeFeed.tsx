@@ -311,6 +311,30 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
     }
   }, [idx, listData, getRotateValue, getCurlValue, dismissSwipeHint, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  // Kept up to date every render so the scheduled demo callbacks below
+  // always call the CURRENT `go` (bound to the current `idx`) rather than a
+  // stale one closed over when the effect first scheduled them — `go`
+  // itself is re-created every time `idx` changes.
+  const goRef = useRef(go);
+  useEffect(() => { goRef.current = go; }, [go]);
+
+  // First-time-only auto demo: flips the feed forward one page, pauses, then
+  // flips it back — so a brand-new reader SEES the page-turn gesture happen
+  // once instead of only reading a static "swipe" hint pill and having to
+  // guess. Gated by the same SWIPE_HINT_SHOWN flag as the pill (see
+  // dismissSwipeHint, called by `go` itself, which marks it seen the moment
+  // the demo's first flip plays).
+  const hasPlayedDemoRef = useRef(false);
+  useEffect(() => {
+    if (!showSwipeHint || hasPlayedDemoRef.current || listData.length < 2) return;
+    hasPlayedDemoRef.current = true;
+    const forwardDelay = 900;
+    const backDelay = forwardDelay + FLIP_DURATION + 550;
+    const t1 = setTimeout(() => goRef.current(1), forwardDelay);
+    const t2 = setTimeout(() => goRef.current(-1), backDelay);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [showSwipeHint, listData.length]);
+
   // Single top-level gesture handler for both the horizontal flip and the
   // swipe-down-to-refresh. Decides the axis once per touch (on first real
   // movement) so it never fights a page's own vertical text ScrollView or

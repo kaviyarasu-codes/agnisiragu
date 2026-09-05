@@ -34,6 +34,7 @@ export class NewsService {
     excerpt: string | null;
     bodyTa: string;
     bodyEn: string;
+    thumbnailUrl?: string | null;
   }) {
     try {
       const flag = await this.prisma.appConfig.findUnique({ where: { key: 'breakingAlerts' } });
@@ -48,6 +49,7 @@ export class NewsService {
         bodyEn,
         target: 'ALL',
         data: { articleId: article.id, type: 'breaking' },
+        ...(article.thumbnailUrl ? { imageUrl: article.thumbnailUrl } : {}),
       });
     } catch (err) {
       this.logger.warn(`Breaking push skipped: ${err.message}`);
