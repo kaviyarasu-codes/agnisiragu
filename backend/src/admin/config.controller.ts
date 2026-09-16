@@ -48,10 +48,45 @@ export class ConfigController {
         pinnedCategorySlugs: data.pinnedCategorySlugs ?? [],
         newsShowSeeAll: data.newsShowSeeAll ?? true,
 
-        // Advertisement placement
+        // Advertisement placement (Reader App — AdMob + Local Ads)
         adInFeedFrequency: data.adInFeedFrequency ?? 5,
         localAdsEnable: data.localAdsEnable ?? true,
         admobEnable: data.admobEnable ?? false,
+        // Unit IDs are pre-saved in App Config so they're ready the moment
+        // react-native-google-mobile-ads is added in a native build — the
+        // client ignores these until admobEnable is true AND that package
+        // actually exists in the build.
+        admobBannerUnitId: data.admobBannerUnitId ?? null,
+        admobInterstitialUnitId: data.admobInterstitialUnitId ?? null,
+        admobNativeUnitId: data.admobNativeUnitId ?? null,
+
+        // Website ad placements (Google AdSense) — consumed by the public
+        // Next.js site (apps/website), not the mobile apps. Three slots:
+        // leaderboard (top of homepage, under the category nav), rectangle
+        // (sidebar right rail), infeed (native, inside the article grid).
+        websiteAds: data.websiteAds ?? {
+          enabled: false,
+          adsensePublisherId: '',
+          leaderboardSlotId: '',
+          rectangleSlotId: '',
+          infeedSlotId: '',
+          inFeedFrequency: 6,
+        },
+
+        // Public website (agnisiragu.com / agnisiragu.in) settings — site
+        // title/description for SEO, contact + social links for the footer,
+        // and how many category sections render on the homepage.
+        websiteConfig: data.websiteConfig ?? {
+          siteTitleTa: 'அக்னிசிறகு',
+          siteTitleEn: 'Agnisiragu',
+          metaDescription: 'Latest Tamil news — politics, cinema, sports, local and more. Managed with precision.',
+          contactEmail: 'agni360tn@gmail.com',
+          socialFacebook: '',
+          socialInstagram: '',
+          socialTwitter: '',
+          socialYoutube: '',
+          homepageSectionCount: 5,
+        },
 
         // Splash screen — these five defaults previously didn't match the
         // design or the reader app's own local fallback (app.store.ts's

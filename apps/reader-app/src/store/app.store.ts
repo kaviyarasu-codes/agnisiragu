@@ -116,6 +116,13 @@ interface RemoteConfig {
   adInFeedFrequency: number;
   localAdsEnable: boolean;
   admobEnable: boolean;
+  // Unit IDs from App Config → Advertisement Placement. Saved now so
+  // they're ready the moment react-native-google-mobile-ads is added in a
+  // native build — until then nothing in the app reads these beyond
+  // storing them, since the SDK itself isn't installed yet.
+  admobBannerUnitId: string | null;
+  admobInterstitialUnitId: string | null;
+  admobNativeUnitId: string | null;
 
   // Splash screen
   splashBgColor: string;
@@ -181,6 +188,9 @@ const DEFAULT_CONFIG: RemoteConfig = {
   adInFeedFrequency: 5,
   localAdsEnable: true,
   admobEnable: false,
+  admobBannerUnitId: null,
+  admobInterstitialUnitId: null,
+  admobNativeUnitId: null,
 
   // White, not the brand cream — every bundled logo asset (logo.png,
   // adaptive-icon.png, logo-source.png.png) has an OPAQUE white background

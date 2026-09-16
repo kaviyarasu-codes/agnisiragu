@@ -16,7 +16,7 @@ import {
   Settings2, Eye, EyeOff, Tablet, CheckCircle2, CircleDashed,
   Images, Plus, Trash2, Upload,
   BellRing, MapPin, FileText, Info, Languages,
-  RotateCcw, Save,
+  RotateCcw, Save, Globe,
 } from 'lucide-react';
 import { apiGet, apiPatch } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
@@ -32,7 +32,7 @@ interface ConfigSection {
   description: string;
   icon: React.ReactNode;
   status: SectionStatus;
-  app: 'reader' | 'reporter' | 'both' | 'system';
+  app: 'reader' | 'reporter' | 'both' | 'system' | 'website';
   plannedFields: string[];
 }
 
@@ -273,6 +273,35 @@ const SECTIONS: ConfigSection[] = [
     plannedFields: ['Max Voice Note Duration (seconds)', 'Max Photos Per Submission', 'Max Video Size (MB)', 'Submission Cooldown (minutes)', 'Auto-save Draft Enable', 'AI Transcription Enable'],
   },
 
+  // ── Website (agnisiragu.com) ────────────────────────────────────────────
+  {
+    id: 'website_ads',
+    label: 'Website Ad Placements',
+    labelTa: 'இணையதள விளம்பர இடங்கள்',
+    description: 'Where ads appear on agnisiragu.com — leaderboard banner, sidebar rectangle, and in-feed native slots — and the Google AdSense IDs that serve them',
+    icon: <Megaphone size={16} />,
+    status: 'live',
+    app: 'website',
+    plannedFields: [
+      'Enable/Disable Website Ads',
+      'AdSense Publisher ID',
+      'Leaderboard Slot ID — top of homepage, under category nav (728×90)',
+      'Rectangle Slot ID — sidebar right rail (300×250)',
+      'In-Feed Slot ID — native ad inside the article grid',
+      'In-Feed Frequency (every N articles)',
+    ],
+  },
+  {
+    id: 'website_general',
+    label: 'Website Settings',
+    labelTa: 'இணையதள அமைப்புகள்',
+    description: 'Site title, meta description, contact and social links shown in the website footer',
+    icon: <Globe size={16} />,
+    status: 'live',
+    app: 'website',
+    plannedFields: ['Site Title (Tamil + English)', 'Meta Description', 'Contact Email', 'Social Links (Facebook/Instagram/X/YouTube)', 'Homepage Category Sections Count'],
+  },
+
   // ── System ──────────────────────────────────────────────────────────────
   {
     id: 'feature_flags',
@@ -302,6 +331,7 @@ const APP_TABS = [
   { id: 'all',      label: 'All Sections',   icon: <Settings2 size={14} /> },
   { id: 'reader',   label: 'Reader App',     icon: <Smartphone size={14} /> },
   { id: 'reporter', label: 'Reporter App',   icon: <Radio size={14} /> },
+  { id: 'website',  label: 'Website',        icon: <Globe size={14} /> },
   { id: 'both',     label: 'System',         icon: <Sliders size={14} /> },
 ] as const;
 
@@ -799,11 +829,7 @@ function LiveNewsSections() {
   );
 }
 
-// ─── Live: Advertisement Placement ───────────────────────────────────────────
-
-const AD_PLANNED_TOGGLES = [
-  { key: 'admobEnable', label: 'AdMob Enable', desc: 'Requires react-native-google-mobile-ads in a native build — not wired yet' },
-] as const;
+// ─── Live: Advertisement Placement (Reader App) ──────────────────────────────
 
 function LiveAdvertisement() {
   const qc = useQueryClient();
@@ -818,6 +844,7 @@ function LiveAdvertisement() {
   const cfg = data?.data ?? {};
   const frequency: number = cfg.adInFeedFrequency ?? 5;
   const localAdsEnable: boolean = cfg.localAdsEnable ?? true;
+  const admobEnable: boolean = cfg.admobEnable ?? false;
 
   if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
 
@@ -848,22 +875,212 @@ function LiveAdvertisement() {
         </button>
       </div>
 
-      <div className="divide-y divide-border border border-border rounded-lg">
-        {AD_PLANNED_TOGGLES.map(t => (
-          <div key={t.key} className="flex items-center justify-between px-3 py-3">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-text-primary">{t.label}</p>
-              <span className="text-2xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">Planned</span>
-            </div>
-            <button type="button" disabled className="relative w-11 h-6 rounded-full bg-gray-200 opacity-40 cursor-not-allowed flex-shrink-0">
-              <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow" />
-            </button>
+      <div className="rounded-lg border border-border overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-text-primary">AdMob Enable</p>
+            <span className="text-2xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200">Needs native build</span>
           </div>
-        ))}
+          <button type="button" onClick={() => saveMut.mutate({ admobEnable: !admobEnable })}
+            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${admobEnable ? 'bg-green-500' : 'bg-gray-200'}`}>
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${admobEnable ? 'translate-x-5' : ''}`} />
+          </button>
+        </div>
+        <div className="p-3 space-y-3 bg-page/50">
+          <p className="text-xs text-text-muted">
+            Unit IDs are saved now so they're ready the moment AdMob is wired into a native build —
+            adding <code className="font-mono">react-native-google-mobile-ads</code> and rebuilding the app is a
+            separate, deliberate step (it resets the Play Store review clock), not automatic from saving here.
+          </p>
+          <div>
+            <label className="label">Banner Unit ID</label>
+            <input defaultValue={cfg.admobBannerUnitId ?? ''} placeholder="ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx"
+              onBlur={(e) => saveMut.mutate({ admobBannerUnitId: e.target.value })} className="input-field h-9 text-xs font-mono" />
+            <p className="text-2xs text-text-muted mt-1">Shown as the in-feed ad card, in place of a Local Ad, every N articles (above).</p>
+          </div>
+          <div>
+            <label className="label">Interstitial Unit ID</label>
+            <input defaultValue={cfg.admobInterstitialUnitId ?? ''} placeholder="ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx"
+              onBlur={(e) => saveMut.mutate({ admobInterstitialUnitId: e.target.value })} className="input-field h-9 text-xs font-mono" />
+            <p className="text-2xs text-text-muted mt-1">Full-screen ad shown between article reads (e.g. every few page flips).</p>
+          </div>
+          <div>
+            <label className="label">Native Unit ID</label>
+            <input defaultValue={cfg.admobNativeUnitId ?? ''} placeholder="ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx"
+              onBlur={(e) => saveMut.mutate({ admobNativeUnitId: e.target.value })} className="input-field h-9 text-xs font-mono" />
+            <p className="text-2xs text-text-muted mt-1">Native-styled ad matching the feed card layout — used if introduced as a distinct slot from the banner.</p>
+          </div>
+        </div>
       </div>
+
       <p className="text-xs text-text-muted">
-        When Local Ads is off (or no active ad matches), the feed falls back to a placeholder AdMob slot — AdMob itself isn't wired to a real ad network yet.
+        When Local Ads is off (or no active ad matches), the feed falls back to a placeholder slot — AdMob itself isn't wired to a real ad network yet, so nothing renders there until the native build above is done.
       </p>
+    </div>
+  );
+}
+
+// ─── Live: Website Ad Placements ─────────────────────────────────────────────
+
+const DEFAULT_WEBSITE_ADS = {
+  enabled: false,
+  adsensePublisherId: '',
+  leaderboardSlotId: '',
+  rectangleSlotId: '',
+  infeedSlotId: '',
+  inFeedFrequency: 6,
+};
+
+function LiveWebsiteAds() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+    onError: () => toast.error('Save failed'),
+  });
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  const cfg = { ...DEFAULT_WEBSITE_ADS, ...(data?.data?.websiteAds ?? {}) };
+  const save = (patch: Partial<typeof DEFAULT_WEBSITE_ADS>) => saveMut.mutate({ websiteAds: { ...cfg, ...patch } });
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+        <div>
+          <p className="text-sm font-medium text-text-primary">Website Ads Enable</p>
+          <p className="text-xs text-text-muted">Master switch — off shows the dashed placeholder box on agnisiragu.com instead of real ads</p>
+        </div>
+        <ToggleRow label="Website Ads Enable" on={cfg.enabled} onToggle={() => save({ enabled: !cfg.enabled })} />
+      </div>
+
+      <div>
+        <label className="label">Google AdSense Publisher ID</label>
+        <input defaultValue={cfg.adsensePublisherId} placeholder="ca-pub-xxxxxxxxxxxxxxxx"
+          onBlur={(e) => save({ adsensePublisherId: e.target.value })} className="input-field h-9 text-xs font-mono" />
+        <p className="text-2xs text-text-muted mt-1">From your Google AdSense account — one publisher ID covers all three slots below.</p>
+      </div>
+
+      <div className="space-y-3">
+        <div className="p-3 rounded-lg border border-border">
+          <p className="text-sm font-medium text-text-primary">Leaderboard — top of homepage</p>
+          <p className="text-2xs text-text-muted mt-0.5 mb-2">728×90 banner, shown right under the category nav bar, above the lead story.</p>
+          <input defaultValue={cfg.leaderboardSlotId} placeholder="Slot ID" onBlur={(e) => save({ leaderboardSlotId: e.target.value })} className="input-field h-8 text-xs font-mono" />
+        </div>
+        <div className="p-3 rounded-lg border border-border">
+          <p className="text-sm font-medium text-text-primary">Rectangle — sidebar</p>
+          <p className="text-2xs text-text-muted mt-0.5 mb-2">300×250 box, in the right-hand sidebar between the "Most Read" list and the app-promo card.</p>
+          <input defaultValue={cfg.rectangleSlotId} placeholder="Slot ID" onBlur={(e) => save({ rectangleSlotId: e.target.value })} className="input-field h-8 text-xs font-mono" />
+        </div>
+        <div className="p-3 rounded-lg border border-border">
+          <p className="text-sm font-medium text-text-primary">In-Feed — inside the article grid</p>
+          <p className="text-2xs text-text-muted mt-0.5 mb-2">Native ad card inserted into the article grid, and between dense category sections.</p>
+          <input defaultValue={cfg.infeedSlotId} placeholder="Slot ID" onBlur={(e) => save({ infeedSlotId: e.target.value })} className="input-field h-8 text-xs font-mono" />
+        </div>
+      </div>
+
+      <div>
+        <label className="label">In-Feed Frequency</label>
+        <div className="relative mt-1 max-w-[180px]">
+          <input type="number" min={3} max={20} defaultValue={cfg.inFeedFrequency}
+            onBlur={(e) => save({ inFeedFrequency: Math.max(3, Math.min(20, Number(e.target.value) || 6)) })}
+            className="input-field pr-24" />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-muted">articles</span>
+        </div>
+        <p className="text-xs text-text-muted mt-1.5">The in-feed ad repeats after every N article cards in the homepage grid.</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Live: Website Settings ───────────────────────────────────────────────────
+
+const DEFAULT_WEBSITE_CONFIG = {
+  siteTitleTa: 'அக்னிசிறகு',
+  siteTitleEn: 'Agnisiragu',
+  metaDescription: 'Latest Tamil news — politics, cinema, sports, local and more. Managed with precision.',
+  contactEmail: 'agni360tn@gmail.com',
+  socialFacebook: '',
+  socialInstagram: '',
+  socialTwitter: '',
+  socialYoutube: '',
+  homepageSectionCount: 5,
+};
+
+function LiveWebsiteGeneral() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => apiGet<{ data: Record<string, any> }>('/admin/app-config'),
+  });
+  const saveMut = useMutation({
+    mutationFn: (v: any) => apiPatch('/admin/app-config', v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['app-config'] }); },
+    onError: () => toast.error('Save failed'),
+  });
+
+  if (isLoading) return <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>;
+
+  const cfg = { ...DEFAULT_WEBSITE_CONFIG, ...(data?.data?.websiteConfig ?? {}) };
+  const save = (patch: Partial<typeof DEFAULT_WEBSITE_CONFIG>) => saveMut.mutate({ websiteConfig: { ...cfg, ...patch } });
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Site Title (Tamil)</label>
+          <input defaultValue={cfg.siteTitleTa} onBlur={(e) => save({ siteTitleTa: e.target.value })} className="input-field h-9 text-sm" />
+        </div>
+        <div>
+          <label className="label">Site Title (English)</label>
+          <input defaultValue={cfg.siteTitleEn} onBlur={(e) => save({ siteTitleEn: e.target.value })} className="input-field h-9 text-sm" />
+        </div>
+      </div>
+
+      <div>
+        <label className="label">Meta Description</label>
+        <textarea defaultValue={cfg.metaDescription} rows={2} onBlur={(e) => save({ metaDescription: e.target.value })} className="input-field resize-none text-sm" />
+        <p className="text-2xs text-text-muted mt-1">Used for SEO and social share previews on the homepage.</p>
+      </div>
+
+      <div>
+        <label className="label">Contact Email</label>
+        <input defaultValue={cfg.contactEmail} onBlur={(e) => save({ contactEmail: e.target.value })} className="input-field h-9 text-sm" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Facebook URL</label>
+          <input defaultValue={cfg.socialFacebook} onBlur={(e) => save({ socialFacebook: e.target.value })} className="input-field h-9 text-xs" placeholder="https://facebook.com/..." />
+        </div>
+        <div>
+          <label className="label">Instagram URL</label>
+          <input defaultValue={cfg.socialInstagram} onBlur={(e) => save({ socialInstagram: e.target.value })} className="input-field h-9 text-xs" placeholder="https://instagram.com/..." />
+        </div>
+        <div>
+          <label className="label">X (Twitter) URL</label>
+          <input defaultValue={cfg.socialTwitter} onBlur={(e) => save({ socialTwitter: e.target.value })} className="input-field h-9 text-xs" placeholder="https://x.com/..." />
+        </div>
+        <div>
+          <label className="label">YouTube URL</label>
+          <input defaultValue={cfg.socialYoutube} onBlur={(e) => save({ socialYoutube: e.target.value })} className="input-field h-9 text-xs" placeholder="https://youtube.com/..." />
+        </div>
+      </div>
+
+      <div>
+        <label className="label">Homepage Category Sections</label>
+        <div className="relative mt-1 max-w-[180px]">
+          <input type="number" min={1} max={10} defaultValue={cfg.homepageSectionCount}
+            onBlur={(e) => save({ homepageSectionCount: Math.max(1, Math.min(10, Number(e.target.value) || 5)) })}
+            className="input-field pr-20" />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-muted">sections</span>
+        </div>
+        <p className="text-xs text-text-muted mt-1.5">How many category sections (அரசியல், சினிமா, ...) appear below the lead story on the homepage.</p>
+      </div>
     </div>
   );
 }
@@ -1747,7 +1964,9 @@ const SECTION_RESET_KEYS: Record<string, string[]> = {
   reader_navigation: ['navTabs', 'navShowLabels'],
   reader_menu: SIDE_MENU_TOGGLES.map((t) => t.key),
   reader_news_sections: ['pinnedCategorySlugs', 'newsShowSeeAll'],
-  reader_ads: ['adInFeedFrequency', 'localAdsEnable'],
+  reader_ads: ['adInFeedFrequency', 'localAdsEnable', 'admobEnable', 'admobBannerUnitId', 'admobInterstitialUnitId', 'admobNativeUnitId'],
+  website_ads: ['websiteAds'],
+  website_general: ['websiteConfig'],
   reader_notifications: ['breakingAlerts'],
   reader_splash: ['splashBgColor', 'splashDurationMs', 'splashAnimation', 'splashShowTagline', 'splashTaglineTa', 'splashTaglineEn', 'splashLogoUrl'],
   reader_rate_ticker: ['rateTickerEnabled', 'rateTickerSponsorName', 'rateTickerGoldRate', 'rateTickerSilverRate', 'rateTickerSensexValue'],
@@ -1811,7 +2030,7 @@ function SectionDetail({ section, onClose }: { section: ConfigSection; onClose: 
     'reader_navigation', 'reader_menu', 'reader_news_sections',
     'reader_ads', 'reader_notifications', 'reader_splash', 'reader_onboarding', 'reader_rate_ticker',
     'reader_notif_permission', 'reader_location_permission', 'reader_terms', 'reader_about', 'reader_language_district',
-    'reader_district_list',
+    'reader_district_list', 'website_ads', 'website_general',
   ];
   const isLive = LIVE_SECTION_IDS.includes(section.id);
   return (
@@ -1973,6 +2192,18 @@ function SectionDetail({ section, onClose }: { section: ConfigSection; onClose: 
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Districts</p>
               <LiveDistrictList />
+            </div>
+          )}
+          {section.id === 'website_ads' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LiveWebsiteAds />
+            </div>
+          )}
+          {section.id === 'website_general' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">Live Configuration</p>
+              <LiveWebsiteGeneral />
             </div>
           )}
           </div>
