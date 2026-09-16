@@ -55,8 +55,16 @@ async function bootstrap() {
   app.use(compression());
 
   // CORS
+  // CORS_ORIGIN accepts a comma-separated list (e.g. multiple admin-panel
+  // domains during a cutover, or the reader-app web build + website). A
+  // bare "*" keeps the old wildcard behavior for local dev.
+  const corsOriginRaw = configService.get<string>('CORS_ORIGIN', '*');
+  const corsOrigin =
+    corsOriginRaw === '*'
+      ? '*'
+      : corsOriginRaw.split(',').map((o) => o.trim()).filter(Boolean);
   app.enableCors({
-    origin: configService.get<string>('CORS_ORIGIN', '*'),
+    origin: corsOrigin,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
