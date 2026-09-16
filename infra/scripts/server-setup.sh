@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-DOMAIN="api.agnisiragu.in"
+DOMAIN="api.agnisiragu.com"
 APP_USER="agnisiragu"
 APP_DIR="/opt/agnisiragu"
 
@@ -16,7 +16,8 @@ apt-get update -qq && apt-get upgrade -y -qq
 apt-get install -y -qq \
   curl wget git ufw fail2ban \
   ca-certificates gnupg lsb-release \
-  htop ncdu unzip jq
+  htop ncdu unzip jq \
+  postgresql-client awscli   # pg_dump + s3 upload for backup.sh (DB lives on Neon, not this VPS)
 
 # ── 2. Create app user ────────────────────────────────────────────────────
 if ! id "$APP_USER" &>/dev/null; then
@@ -73,7 +74,7 @@ if ! command -v certbot &>/dev/null; then
   apt-get install -y -qq certbot
 fi
 # First-time SSL — run after nginx is up:
-# certbot certonly --webroot -w /var/www/certbot -d $DOMAIN --email admin@agnisiragu.in --agree-tos --no-eff-email
+# certbot certonly --webroot -w /var/www/certbot -d $DOMAIN --email admin@agnisiragu.com --agree-tos --no-eff-email
 
 # ── 8. Swap (prevent OOM on small VPS) ───────────────────────────────────
 if [ ! -f /swapfile ]; then
@@ -101,5 +102,5 @@ echo "Next steps:"
 echo "1. Copy your .env file to $APP_DIR/.env"
 echo "2. Copy infra/ to $APP_DIR/infra/"
 echo "3. Run: cd $APP_DIR && docker compose -f infra/docker-compose.prod.yml up -d"
-echo "4. Get SSL: certbot certonly --webroot -w /var/www/certbot -d $DOMAIN --email admin@agnisiragu.in --agree-tos"
+echo "4. Get SSL: certbot certonly --webroot -w /var/www/certbot -d $DOMAIN --email admin@agnisiragu.com --agree-tos"
 echo "5. Reload nginx: docker exec agnisiragu_nginx nginx -s reload"

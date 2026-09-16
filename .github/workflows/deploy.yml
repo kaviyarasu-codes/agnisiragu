@@ -126,7 +126,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment:
       name: production
-      url: https://api.agnisiragu.in
+      url: https://api.agnisiragu.com
 
     steps:
       - name: Checkout

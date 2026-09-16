@@ -3,8 +3,9 @@
 ## UptimeRobot (Free — 5min intervals)
 Sign up: https://uptimerobot.com
 Add monitors:
-- API Health:  GET https://api.agnisiragu.in/api/v1/health   → expect 200 + "status":"ok"
-- Admin Panel: GET https://agnisiragu-admin-panel.vercel.app  → expect 200
+- API Health:  GET https://api.agnisiragu.com/api/v1/health   → expect 200 + "status":"ok"
+- Admin Panel: GET https://admin.agnisiragu.com                → expect 200 (falls back to https://agnisiragu-admin-panel.vercel.app if DNS is down)
+- Website:     GET https://agnisiragu.com                     → expect 200
 
 Alert contacts: kaviyarasukanthavel@gmail.com
 

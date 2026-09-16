@@ -1,6 +1,12 @@
 #!/bin/bash
 # infra/scripts/backup.sh
-# Daily PostgreSQL backup to AWS S3
+# Daily PostgreSQL backup to AWS S3 — an EXTRA safety net on top of Neon's
+# own built-in point-in-time recovery, not a replacement for it. Dumps
+# directly from the Neon DATABASE_URL (no local postgres container to
+# exec into since the DB isn't run on this VPS).
+# Requires: `apt install postgresql-client` on the VPS (for pg_dump) and
+# DATABASE_URL exported in this shell (source /opt/agnisiragu/.env first,
+# or add `set -a; source /opt/agnisiragu/.env; set +a` to the crontab line).
 # Add to crontab: 0 2 * * * /opt/agnisiragu/infra/scripts/backup.sh >> /var/log/agnisiragu-backup.log 2>&1
 
 set -euo pipefail
@@ -16,10 +22,8 @@ mkdir -p "$BACKUP_DIR"
 
 echo "[$TIMESTAMP] Starting backup..."
 
-# Dump from running postgres container
-docker exec agnisiragu_postgres pg_dump \
-  -U "${POSTGRES_USER}" \
-  -d "${POSTGRES_DB}" \
+# Dump directly from Neon over the network
+pg_dump "${DATABASE_URL}" \
   --no-owner --no-acl \
   | gzip > "$BACKUP_DIR/$BACKUP_FILE"
 
