@@ -135,6 +135,7 @@ model Admin {
   isActive     Boolean   @default(true)
   phone        String?
   teamType     String?
+  avatarUrl    String?
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
 
@@ -199,6 +200,7 @@ model Article {
   searchText   String?       @db.Text
 
   reads        ArticleRead[]
+  comments     Comment[]
 }
 
 model ArticleRead {
@@ -322,7 +324,6 @@ model News {
   publishedAt DateTime?
   createdAt   DateTime     @default(now())
 
-  comments    Comment[]
   rewards     Reward[]
 }
 
@@ -340,13 +341,21 @@ model Reward {
   createdAt  DateTime @default(now())
 }
 
+// Comments on live Article records (Phase 1). Originally modeled against
+// the legacy News table — repointed to Article since News/Reporter are
+// unused by any Phase 1 API and this model had zero prior usage anywhere
+// in the codebase (safe rename, not a breaking change to anything live).
+// Reading comments is public; posting requires a logged-in User (phone OTP
+// or Google — see auth.controller.ts) enforced in comments.controller.ts.
 model Comment {
   id        String   @id @default(uuid())
-  newsId    String
-  news      News     @relation(fields: [newsId], references: [id])
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id])
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   body      String
   isToxic   Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  @@index([articleId, createdAt])
 }

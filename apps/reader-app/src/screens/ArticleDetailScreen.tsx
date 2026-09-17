@@ -5,9 +5,9 @@
 // comment, whatsapp/more/share) instead of its own separate button set,
 // for visual consistency between the feed and the full-story read. The
 // "Related" section has been removed per product decision. Comments are
-// UI-only for now (no `/articles/:id/comments` endpoint exists yet on the
-// backend) — same pattern ArticleCard.tsx already uses for its like
-// counter.
+// backed by /news/:id/comments (backend/src/comments): reading is public,
+// posting requires login — a signed-out reader who taps the composer gets
+// routed to the same /login (phone OTP) flow the article-limit gate uses.
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -19,6 +19,7 @@ import { useArticle } from '@/hooks/useArticles';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
 import { useReactionsStore } from '@/store/reactions.store';
+import { useComments, usePostComment } from '@/hooks/useComments';
 import { useTheme } from '@/hooks/useTheme';
 import { patch } from '@/lib/api';
 import { FREE_ARTICLE_LIMIT, FONT_FAMILIES } from '@/constants';
@@ -39,8 +40,6 @@ function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString('ta-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-interface LocalComment { id: string; name: string; text: string }
-
 export default function ArticleDetailScreen() {
   const { id, focus } = useLocalSearchParams<{ id: string; focus?: string }>();
   const { data: article, isLoading, isError } = useArticle(id);
@@ -48,11 +47,13 @@ export default function ArticleDetailScreen() {
   const { language, remoteConfig } = useAppStore();
   const addToHistory = useHistoryStore((s) => s.addToHistory);
   const { hydrate: hydrateReactions, getReaction, react } = useReactionsStore();
+  const { data: commentsPage } = useComments(article?.id);
+  const postCommentMutation = usePostComment(article?.id);
   const t = useTheme();
   const [showLoginGate, setShowLoginGate] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showMore, setShowMore] = useState(false);
-  const [comments, setComments] = useState<LocalComment[]>([]);
+  const comments = commentsPage?.data ?? [];
   const [draft, setDraft] = useState('');
   const [following, setFollowing] = useState(false);
   const [countDelta, setCountDelta] = useState({ like: 0, dislike: 0 });
@@ -155,8 +156,16 @@ export default function ArticleDetailScreen() {
 
   function postComment() {
     if (!draft.trim()) return;
-    setComments((prev) => [{ id: String(Date.now()), name: 'நீங்கள்', text: draft.trim() }, ...prev]);
+    if (!isAuthenticated) {
+      // Reuse the same login flow the article-limit gate uses — commenting
+      // needs a real account (phone OTP / Google) since it's public and
+      // attributed, unlike the anonymous on-device like/dislike reaction.
+      router.push('/login');
+      return;
+    }
+    const body = draft.trim();
     setDraft('');
+    postCommentMutation.mutate(body);
   }
 
   const reaction = getReaction(article.id);
@@ -217,7 +226,7 @@ export default function ArticleDetailScreen() {
                 disliked={reaction === 'DISLIKE'}
                 likeCount={Math.max(0, (article.likeCount ?? 0) + countDelta.like)}
                 dislikeCount={Math.max(0, (article.dislikeCount ?? 0) + countDelta.dislike)}
-                commentCount={article.commentCount ?? comments.length}
+                commentCount={commentsPage?.meta.total ?? article.commentCount ?? 0}
                 onLike={() => applyReaction('LIKE')}
                 onDislike={() => applyReaction('DISLIKE')}
                 onComment={scrollToComments}
@@ -230,16 +239,16 @@ export default function ArticleDetailScreen() {
             <AdBanner />
 
             <View ref={commentsRef} style={styles.commentsSection}>
-              <Text style={[styles.sectionHeading, { color: t.ink }]}>கருத்துகள் · {comments.length}</Text>
+              <Text style={[styles.sectionHeading, { color: t.ink }]}>கருத்துகள் · {commentsPage?.meta.total ?? comments.length}</Text>
               {comments.length === 0 ? (
                 <Text style={[styles.noComments, { color: t.inkMuted }]}>முதலில் கருத்து தெரிவியுங்கள்</Text>
               ) : (
                 comments.map((c) => (
                   <View key={c.id} style={styles.commentRow}>
-                    <Avatar name={c.name} size={24} />
+                    <Avatar name={c.user?.name || 'பயனர்'} size={24} />
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.commentName, { color: t.ink }]}>{c.name}</Text>
-                      <Text style={[styles.commentText, { color: t.inkSub }]}>{c.text}</Text>
+                      <Text style={[styles.commentName, { color: t.ink }]}>{c.user?.name || 'பயனர்'}</Text>
+                      <Text style={[styles.commentText, { color: t.inkSub }]}>{c.body}</Text>
                     </View>
                   </View>
                 ))
@@ -253,13 +262,14 @@ export default function ArticleDetailScreen() {
         <View style={[styles.composerBar, { backgroundColor: t.surface, borderTopColor: t.border }]}>
           <TextInput
             style={[styles.composerInput, { backgroundColor: t.bg, color: t.ink }]}
-            placeholder="கருத்து எழுதுங்கள்…"
+            placeholder={isAuthenticated ? 'கருத்து எழுதுங்கள்…' : 'கருத்து தெரிவிக்க உள்நுழையவும்…'}
             placeholderTextColor={t.inkMuted}
             value={draft}
             onChangeText={setDraft}
+            onFocus={() => { if (!isAuthenticated) router.push('/login'); }}
             onSubmitEditing={postComment}
           />
-          <TouchableOpacity onPress={postComment} hitSlop={10}>
+          <TouchableOpacity onPress={postComment} hitSlop={10} disabled={postCommentMutation.isPending}>
             <Icon name="share" size={19} color={t.ink} strokeWidth={1.7} />
           </TouchableOpacity>
         </View>

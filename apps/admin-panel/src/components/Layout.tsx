@@ -74,11 +74,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2.5 px-3 py-1.5 rounded border border-border bg-page">
-                <div className="w-6 h-6 rounded-full bg-red flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-xs font-bold leading-none">
-                    {admin?.name?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
+                {admin?.avatarUrl ? (
+                  <img src={admin.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-red flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-xs font-bold leading-none">
+                      {admin?.name?.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
                 <div className="hidden sm:block">
                   <p className="text-xs font-semibold text-text-primary leading-none">{admin?.name}</p>
                   <p className="text-2xs text-text-muted mt-0.5">{admin?.adminRole?.replace('_', ' ')}</p>

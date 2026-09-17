@@ -17,6 +17,26 @@ import { useAuthStore } from '../store/auth.store';
 import type { Admin, AdminRole, TeamType } from '../types';
 import { format } from 'date-fns';
 
+// Same direct-to-Cloudinary unsigned upload used for article thumbnails
+// (see ArticleFormPage.tsx) — kept consistent rather than going through the
+// backend's /media/upload endpoint.
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
+const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
+
+async function uploadAvatar(file: File): Promise<string> {
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+    throw new Error('Cloudinary not configured');
+  }
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  fd.append('folder', 'agnisiragu/avatars');
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: 'POST', body: fd });
+  if (!res.ok) throw new Error('Upload failed');
+  const data = await res.json() as { secure_url: string };
+  return data.secure_url;
+}
+
 // ─── Team Config ────────────────────────────────────────────────────────────
 
 interface TeamDef {
@@ -145,6 +165,7 @@ const createSchema = z.object({
   password:  z.string().min(8, 'Min 8 characters'),
   adminRole: z.string().min(1, 'Select a role') as z.ZodType<AdminRole>,
   team:      z.string().optional() as z.ZodType<TeamType | undefined>,
+  avatarUrl: z.string().optional(),
 });
 
 const editSchema = z.object({
@@ -153,6 +174,7 @@ const editSchema = z.object({
   adminRole: z.string().min(1) as z.ZodType<AdminRole>,
   password: z.string().optional(),
   isActive: z.boolean().optional(),
+  avatarUrl: z.string().optional(),
 });
 
 type CreateForm = z.infer<typeof createSchema>;
@@ -160,11 +182,63 @@ type EditForm   = z.infer<typeof editSchema>;
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
+function Avatar({ name, avatarUrl, size = 'md' }: { name: string; avatarUrl?: string | null; size?: 'sm' | 'md' }) {
   const sz = size === 'sm' ? 'w-7 h-7 text-2xs' : 'w-9 h-9 text-xs';
+  if (avatarUrl) {
+    return <img src={avatarUrl} alt={name} className={`${sz} rounded-full object-cover flex-shrink-0`} />;
+  }
   return (
     <div className={`${sz} rounded-full bg-red flex items-center justify-center flex-shrink-0`}>
       <span className="text-white font-bold">{name.charAt(0).toUpperCase()}</span>
+    </div>
+  );
+}
+
+// Small file-picker used in both create and edit forms — shows a live
+// preview, uploads to Cloudinary on selection, and reports the resulting
+// URL back via onChange. Falls back to a letter-avatar preview until a
+// picture is chosen.
+function AvatarPicker({ name, value, onChange }: { name: string; value?: string; onChange: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const inputId = `avatar-picker-${name.replace(/\s+/g, '-')}`;
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadAvatar(file);
+      onChange(url);
+      toast.success('Photo uploaded');
+    } catch {
+      toast.error('Upload failed — Cloudinary not configured, or try again');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="relative">
+        <Avatar name={name || '?'} avatarUrl={value} />
+        {uploading && (
+          <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+            <Loader2 size={14} className="animate-spin text-white" />
+          </div>
+        )}
+      </div>
+      <div>
+        <label htmlFor={inputId} className="btn-secondary text-xs px-3 py-1.5 cursor-pointer inline-flex">
+          {value ? 'Change Photo' : 'Upload Photo'}
+        </label>
+        <input id={inputId} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+        {value && (
+          <button type="button" onClick={() => onChange('')} className="ml-2 text-2xs text-text-muted hover:text-status-red">
+            Remove
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -181,7 +255,7 @@ function MemberRow({ member, team, currentAdminId, onEdit, onDelete, onToggleAct
   return (
     <div className="flex items-center gap-3 px-4 py-3 hover:bg-page transition-colors group">
       <div className="relative">
-        <Avatar name={member.name} />
+        <Avatar name={member.name} avatarUrl={member.avatarUrl} />
         {isManager && (
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
             <Star size={8} className="text-yellow-800 fill-yellow-800" />
@@ -331,7 +405,7 @@ function TeamCard({ team, members, currentAdminId, onAddMember, onEdit, onDelete
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function AccountsPage() {
-  const { admin: currentAdmin } = useAuthStore();
+  const { admin: currentAdmin, setAdmin } = useAuthStore();
   const qc = useQueryClient();
   const [createTeam, setCreateTeam] = useState<TeamDef | null>(null);
   const [createRole, setCreateRole] = useState<'manager' | 'member'>('member');
@@ -369,9 +443,19 @@ export default function AccountsPage() {
       // Strip empty password so the backend doesn't try to validate/hash it
       const { password, ...rest } = payload;
       const data = password && password.trim() !== '' ? { ...rest, password } : rest;
-      return apiPatch(`/admin/accounts/${id}`, data);
+      return apiPatch<{ data: Admin }>(`/admin/accounts/${id}`, data);
     },
-    onSuccess: () => { toast.success('Account updated'); qc.invalidateQueries({ queryKey: ['admins'] }); setEditing(null); },
+    onSuccess: (res, { id }) => {
+      toast.success('Account updated');
+      qc.invalidateQueries({ queryKey: ['admins'] });
+      // Editing your own account (e.g. changing your own photo) — refresh
+      // the logged-in profile in the auth store too, so the header badge
+      // updates immediately instead of waiting for next login.
+      if (id === currentAdmin?.id && res?.data) {
+        setAdmin({ ...currentAdmin, ...res.data });
+      }
+      setEditing(null);
+    },
     onError: () => toast.error('Failed to update'),
   });
 
@@ -395,7 +479,7 @@ export default function AccountsPage() {
 
   function openEdit(a: Admin) {
     setEditing(a);
-    editForm.reset({ name: a.name, phone: a.phone ?? '', adminRole: a.adminRole, password: '', isActive: a.isActive !== false });
+    editForm.reset({ name: a.name, phone: a.phone ?? '', adminRole: a.adminRole, password: '', isActive: a.isActive !== false, avatarUrl: a.avatarUrl ?? '' });
   }
 
   if (currentAdmin?.adminRole !== 'SUPER_ADMIN') {
@@ -448,7 +532,7 @@ export default function AccountsPage() {
           <div className="divide-y divide-border">
             {sysAdmins.map(a => (
               <div key={a.id} className="flex items-center gap-3 px-4 py-3 hover:bg-page group transition-colors">
-                <Avatar name={a.name} />
+                <Avatar name={a.name} avatarUrl={a.avatarUrl} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-medium text-text-primary">
@@ -463,12 +547,16 @@ export default function AccountsPage() {
                 <p className="text-2xs text-text-muted hidden sm:block whitespace-nowrap">
                   {a.lastLoginAt ? format(new Date(a.lastLoginAt), 'dd MMM HH:mm') : 'Never'}
                 </p>
-                {a.id !== currentAdmin?.id && (
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => openEdit(a)} className="btn-ghost p-1.5 rounded"><Edit2 size={14} /></button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Editing yourself is allowed (e.g. to change your own photo) — only
+                      deleting your own account is blocked, to avoid self-lockout. */}
+                  <button onClick={() => openEdit(a)} className="btn-ghost p-1.5 rounded" title={a.id === currentAdmin?.id ? 'Edit your profile' : 'Edit'}>
+                    <Edit2 size={14} />
+                  </button>
+                  {a.id !== currentAdmin?.id && (
                     <button onClick={() => setDeleteId(a.id)} className="btn-ghost p-1.5 rounded text-status-red hover:bg-red/5"><Trash2 size={14} /></button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -540,6 +628,10 @@ export default function AccountsPage() {
       {editing && (
         <Modal title="Edit Account" onClose={() => setEditing(null)}>
           <form onSubmit={editForm.handleSubmit((v) => editMutation.mutate({ id: editing.id, payload: v }))} className="space-y-4">
+            <div>
+              <label className="label">Profile Photo</label>
+              <AvatarPicker name={editForm.watch('name') || editing.name} value={editForm.watch('avatarUrl')} onChange={(url) => editForm.setValue('avatarUrl', url)} />
+            </div>
             <div>
               <label className="label">Full Name</label>
               <input {...editForm.register('name')} className="input-field" />
@@ -620,6 +712,10 @@ function CreateAccountFields({ form, showPass, setShowPass, onSubmit, isPending,
 }) {
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <label className="label">Profile Photo <span className="text-text-muted font-normal">(optional)</span></label>
+        <AvatarPicker name={form.watch('name') || ''} value={form.watch('avatarUrl')} onChange={(url) => form.setValue('avatarUrl', url)} />
+      </div>
       <div>
         <label className="label">Full Name</label>
         <input {...form.register('name')} className="input-field" placeholder="e.g. Ravi Kumar" />

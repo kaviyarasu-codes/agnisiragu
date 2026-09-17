@@ -281,7 +281,7 @@ export class AdminService {
   async getAdminAccounts() {
     const admins = await this.prisma.admin.findMany({
       select: { id: true, name: true, email: true, adminRole: true,
-        isActive: true, phone: true, teamType: true, lastLoginAt: true, createdAt: true },
+        isActive: true, phone: true, teamType: true, avatarUrl: true, lastLoginAt: true, createdAt: true },
       orderBy: { name: 'asc' },
     });
     return { data: admins };
@@ -290,7 +290,7 @@ export class AdminService {
   // ─── Create admin account ─────────────────────────────────────────────────
 
   async createAdminAccount(dto: {
-    name: string; email: string; password: string; adminRole: string; team?: string; phone?: string;
+    name: string; email: string; password: string; adminRole: string; team?: string; phone?: string; avatarUrl?: string;
   }) {
     const existing = await this.prisma.admin.findUnique({ where: { email: dto.email } });
     if (existing) throw new ConflictException('Email already registered');
@@ -299,9 +299,9 @@ export class AdminService {
       data: {
         name: dto.name, email: dto.email, passwordHash,
         adminRole: dto.adminRole as any, teamType: dto.team ?? null,
-        phone: dto.phone ?? null, isActive: true,
+        phone: dto.phone ?? null, avatarUrl: dto.avatarUrl ?? null, isActive: true,
       },
-      select: { id: true, name: true, email: true, adminRole: true, isActive: true, teamType: true, createdAt: true },
+      select: { id: true, name: true, email: true, adminRole: true, isActive: true, teamType: true, avatarUrl: true, createdAt: true },
     });
     await this.prisma.auditLog.create({
       data: { action: 'ADMIN_CREATE', entityType: 'admin', entityId: admin.id,
@@ -313,7 +313,7 @@ export class AdminService {
   // ─── Update admin account ─────────────────────────────────────────────────
 
   async updateAdminAccount(id: string, dto: {
-    name?: string; adminRole?: string; password?: string; phone?: string; isActive?: boolean;
+    name?: string; adminRole?: string; password?: string; phone?: string; avatarUrl?: string; isActive?: boolean;
   }) {
     const existing = await this.prisma.admin.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Admin not found');
@@ -321,12 +321,13 @@ export class AdminService {
     if (dto.name      !== undefined) updateData.name      = dto.name;
     if (dto.adminRole !== undefined) updateData.adminRole = dto.adminRole;
     if (dto.phone     !== undefined) updateData.phone     = dto.phone || null;
+    if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl || null;
     if (dto.isActive  !== undefined) updateData.isActive  = dto.isActive;
     if (dto.password && dto.password.trim() !== '') updateData.passwordHash = await bcrypt.hash(dto.password, 10);
     const updated = await this.prisma.admin.update({
       where: { id }, data: updateData,
       select: { id: true, name: true, email: true, adminRole: true,
-        isActive: true, teamType: true, lastLoginAt: true },
+        isActive: true, teamType: true, avatarUrl: true, lastLoginAt: true },
     });
     await this.prisma.auditLog.create({
       data: { action: 'ADMIN_UPDATE', entityType: 'admin', entityId: id,

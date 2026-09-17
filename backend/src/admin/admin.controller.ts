@@ -22,12 +22,14 @@ class CreateAdminDto {
   @IsString()               adminRole: string;
   @IsOptional() @IsString() team?: string;
   @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() avatarUrl?: string;
 }
 
 class UpdateAdminDto {
   @IsOptional() @IsString() @MinLength(2) name?: string;
   @IsOptional() @IsString()               adminRole?: string;
   @IsOptional() @IsString()               phone?: string;
+  @IsOptional() @IsString()               avatarUrl?: string;
   // Only validate password when it's a non-empty string — empty string means "keep current"
   @ValidateIf((o) => o.password !== undefined && o.password !== '')
   @IsString() @MinLength(8) password?: string;

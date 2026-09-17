@@ -45,6 +45,7 @@ export interface Admin {
   phone?: string;
   adminRole: AdminRole;
   teamType?: TeamType | string;
+  avatarUrl?: string | null;
   isActive?: boolean;
   lastLoginAt?: string;
   createdAt: string;

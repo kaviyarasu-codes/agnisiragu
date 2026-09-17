@@ -8,6 +8,7 @@ import AdSlot from '@/components/AdSlot';
 import AuthorCard from '@/components/AuthorCard';
 import ArticleActions from '@/components/ArticleActions';
 import ImageWatermark from '@/components/ImageWatermark';
+import CommentsSection from '@/components/CommentsSection';
 
 export const revalidate = 60;
 
@@ -122,6 +123,8 @@ export default async function ArticlePage({ params }: { params: { id: string } }
       <div className="mt-8">
         <AdSlot type="rectangle" ads={ads} />
       </div>
+
+      <CommentsSection articleId={article.id} />
 
       <ArticleNav prev={prev} next={next} />
       <RelatedNews articles={related} />

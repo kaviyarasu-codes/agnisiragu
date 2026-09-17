@@ -13,6 +13,7 @@ import { AdminModule } from './admin/admin.module';
 import { HealthModule } from './health/health.module';
 import { LocalAdsModule } from './local-ads/local-ads.module';
 import { TeamsModule } from './teams/teams.module';
+import { CommentsModule } from './comments/comments.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { TeamsModule } from './teams/teams.module';
     HealthModule,
     LocalAdsModule,
     TeamsModule,
+    CommentsModule,
   ],
 })
 export class AppModule {}
