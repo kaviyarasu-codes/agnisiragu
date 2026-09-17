@@ -276,6 +276,21 @@ export class AdminService {
     return { data, meta: { total, page, limit, hasMore: skip + limit < total } };
   }
 
+  // ─── Current admin's own fresh profile ────────────────────────────────────
+  // Used by the admin panel to resync its auth store on every page load —
+  // login only captures a snapshot, so an avatarUrl (or role/name) changed
+  // since then would otherwise stay stale in localStorage until next login.
+
+  async getMe(id: string) {
+    const admin = await this.prisma.admin.findUnique({
+      where: { id },
+      select: { id: true, name: true, email: true, adminRole: true,
+        isActive: true, phone: true, teamType: true, avatarUrl: true, lastLoginAt: true, createdAt: true },
+    });
+    if (!admin) throw new NotFoundException('Admin not found');
+    return { data: admin };
+  }
+
   // ─── Admin accounts list ──────────────────────────────────────────────────
 
   async getAdminAccounts() {

@@ -1,10 +1,12 @@
 // src/components/Layout.tsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu, LogOut, ChevronRight } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useAuthStore } from '../store/auth.store';
 import { clearToken } from '../lib/auth';
+import { apiGet } from '../lib/api';
+import type { Admin } from '../types';
 
 const BREADCRUMBS: Record<string, string[]> = {
   '/':              ['Dashboard'],
@@ -30,7 +32,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { admin, logout } = useAuthStore();
+  const { admin, setAdmin, logout } = useAuthStore();
+
+  // Login only captures a snapshot of the admin record — if the avatar (or
+  // name/role) was changed from another session/device, or was set after
+  // this browser's last login, the persisted store would otherwise stay
+  // stale indefinitely. Resync once per app load so the header (and
+  // anywhere else reading the store) always reflects the current DB row.
+  useEffect(() => {
+    apiGet<{ data: Admin }>('/admin/me')
+      .then((res) => setAdmin(res.data))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogout = () => {
     logout();

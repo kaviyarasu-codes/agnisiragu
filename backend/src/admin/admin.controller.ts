@@ -104,6 +104,10 @@ export class AdminController {
     return this.adminService.getAdReport(dateFrom, dateTo);
   }
 
+  @Get('me')
+  @ApiOperation({ summary: "Current admin's own fresh profile (resync avatar/name/role)" })
+  getMe(@CurrentUser('id') id: string) { return this.adminService.getMe(id); }
+
   @Get('accounts')
   @ApiOperation({ summary: 'List all admin accounts' })
   getAdminAccounts() { return this.adminService.getAdminAccounts(); }
