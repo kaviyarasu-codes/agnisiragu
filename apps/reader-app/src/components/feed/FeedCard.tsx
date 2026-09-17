@@ -105,7 +105,7 @@ export function ArticleFeedCard({ article, language, index, total, width, action
         nestedScrollEnabled
       >
         <View style={styles.bylineRow}>
-          <Avatar name={byline} size={22} />
+          <Avatar uri={article.admin?.avatarUrl} name={byline} size={22} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.bylineText, { color: t.ink }]} numberOfLines={1}>{byline}</Text>
             <Text style={[styles.bylineTag, { color: t.inkMuted }]}>உள்ளூர் நிருபர்</Text>

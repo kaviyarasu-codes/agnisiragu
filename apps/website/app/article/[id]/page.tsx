@@ -95,7 +95,7 @@ export default async function ArticlePage({ params }: { params: { id: string } }
       <h1 className="mt-2 font-tamil text-3xl font-extrabold leading-tight text-black">
         {article.titleTa}
       </h1>
-      <AuthorCard byline={article.byline} publishedAt={article.publishedAt} />
+      <AuthorCard byline={article.byline} publishedAt={article.publishedAt} avatarUrl={article.admin?.avatarUrl} />
 
       <ArticleActions
         articleId={article.id}

@@ -109,7 +109,7 @@ export class NewsService {
   async findOne(id: string, userId?: string) {
     const article = await this.prisma.article.findUnique({
       where: { id },
-      include: { category: true, admin: { select: { id: true, name: true } } },
+      include: { category: true, admin: { select: { id: true, name: true, avatarUrl: true } } },
     });
     if (!article || article.status === 'DELETED') {
       throw new NotFoundException('Article not found');
@@ -430,7 +430,7 @@ export class NewsService {
         take: limit,
         skip,
         orderBy: { createdAt: 'desc' },
-        include: { category: true, admin: { select: { id: true, name: true } } },
+        include: { category: true, admin: { select: { id: true, name: true, avatarUrl: true } } },
       }),
       this.prisma.article.count({ where }),
     ]);

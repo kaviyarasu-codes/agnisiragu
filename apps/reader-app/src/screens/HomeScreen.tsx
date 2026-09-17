@@ -1,16 +1,22 @@
 // src/screens/HomeScreen.tsx
 // The swipe-feed home shell (design 1a/1d/1e): header with menu / logo /
-// search / district chip, over the SwipeFeed card deck.
+// search / district chip, over an admin-configurable stack of sections
+// (breaking / categories / feed — App Config → Home Layout / Widgets)
+// above the SwipeFeed card deck.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Image, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
+import { useCategories } from '@/hooks/useCategories';
+import { useBreakingNews } from '@/hooks/useArticles';
 import { FONT_FAMILIES } from '@/constants';
 import Icon from '@/components/icons/Icon';
 import SwipeFeed from '@/components/feed/SwipeFeed';
+import CategoryTab from '@/components/CategoryTab';
+import BreakingNewsCarousel from '@/components/BreakingNewsCarousel';
 
 export default function HomeScreen() {
   const params = useLocalSearchParams<{ categoryId?: string }>();
@@ -18,6 +24,8 @@ export default function HomeScreen() {
   const { setSideMenuOpen, district, language, remoteConfig } = useAppStore();
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const { data: categories = [] } = useCategories();
+  const { data: breakingArticles = [] } = useBreakingNews();
 
   useEffect(() => {
     if (params.categoryId) setSelectedCategoryId(params.categoryId);
@@ -27,6 +35,42 @@ export default function HomeScreen() {
   const districtLabel = districtMeta
     ? (language === 'ta' ? districtMeta.nameTa : districtMeta.nameEn).toUpperCase()
     : null;
+
+  // App Config → Home Layout: pinned categories (in the order chosen in the
+  // admin panel) come first, then the rest keep their normal displayOrder.
+  const orderedCategories = useMemo(() => {
+    const pinned = remoteConfig.pinnedCategorySlugs;
+    if (!pinned.length) return categories;
+    const bySlug = new Map(categories.map((c) => [c.slug, c]));
+    const pinnedCats = pinned.map((slug) => bySlug.get(slug)).filter((c): c is (typeof categories)[number] => !!c);
+    const pinnedIds = new Set(pinnedCats.map((c) => c.id));
+    return [...pinnedCats, ...categories.filter((c) => !pinnedIds.has(c.id))];
+  }, [categories, remoteConfig.pinnedCategorySlugs]);
+
+  // Both "Home Layout → Breaking News Bar" and "Widgets → Breaking News
+  // Banner" toggle the same carousel — either one off hides it.
+  const showBreaking = remoteConfig.homeShowBreakingBar && remoteConfig.widgetBreakingBanner && breakingArticles.length > 0;
+  const showCategoryTabs = remoteConfig.widgetCategoryTabs;
+
+  const sections: Record<string, React.ReactNode> = {
+    breaking: showBreaking ? (
+      <BreakingNewsCarousel key="breaking" articles={breakingArticles} language={language} mode={remoteConfig.homeHeroStyle} />
+    ) : null,
+    categories: showCategoryTabs ? (
+      <CategoryTab
+        key="categories"
+        categories={orderedCategories}
+        selectedId={selectedCategoryId}
+        onSelect={setSelectedCategoryId}
+        language={language}
+        showSeeAll={remoteConfig.newsShowSeeAll}
+      />
+    ) : null,
+    // The feed itself isn't independently toggleable — it's the screen's
+    // reason for being — but its position in the stack still follows
+    // homeSectionOrder same as the other two.
+    feed: <SwipeFeed key="feed" categoryId={selectedCategoryId ?? undefined} />,
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: t.bg }]}>
@@ -55,7 +99,7 @@ export default function HomeScreen() {
         ) : null}
       </View>
 
-      <SwipeFeed categoryId={selectedCategoryId ?? undefined} />
+      {remoteConfig.homeSectionOrder.map((key) => sections[key] ?? null)}
     </View>
   );
 }

@@ -43,6 +43,9 @@ export default function ReporterProfileScreen() {
     () => (data?.pages.flatMap((p) => p.data) ?? []).filter((a) => a.byline === byline),
     [data, byline],
   );
+  // Same admin account may publish several matching-byline articles — any
+  // one of them carries the same author photo, so the most recent suffices.
+  const avatarUrl = articles.find((a) => a.admin?.avatarUrl)?.admin?.avatarUrl ?? null;
 
   function handlePress(article: Article) {
     router.push(`/article/${article.id}`);
@@ -68,7 +71,7 @@ export default function ReporterProfileScreen() {
       onEndReachedThreshold={0.4}
       ListHeaderComponent={
         <View style={[styles.headerCard, { backgroundColor: t.surface, borderColor: t.border }]}>
-          <Avatar name={byline} size={72} />
+          <Avatar uri={avatarUrl} name={byline} size={72} />
           <Text style={[styles.name, { color: t.ink }]}>{byline}</Text>
           <Text style={[styles.role, { color: t.inkMuted }]}>
             {language === 'ta' ? 'குடிமக்கள் நிருபர்' : 'CITIZEN REPORTER'}

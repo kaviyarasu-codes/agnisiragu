@@ -25,6 +25,7 @@ export interface Article {
   thumbnailUrl?: string | null;
   mediaUrls: string[];
   byline?: string | null;
+  admin?: { id: string; name: string; avatarUrl?: string | null } | null;
   categoryId: string;
   category: Category;
   isBreaking: boolean;

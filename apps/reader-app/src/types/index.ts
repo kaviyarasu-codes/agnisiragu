@@ -29,6 +29,7 @@ export interface Article {
   thumbnailUrl?: string;
   mediaUrls?: string[];
   byline?: string;
+  admin?: { id: string; name: string; avatarUrl?: string | null } | null;
   category: Category;
   isBreaking: boolean;
   cardStyle?: 'STANDARD' | 'FULL_BLEED' | 'NEWSPRINT';

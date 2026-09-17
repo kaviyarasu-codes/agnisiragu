@@ -1,7 +1,7 @@
 // src/components/AuthorCard.tsx
-// Byline block under the article headline — avatar-initial circle (no
-// reporter photo exists yet, see note below) + name + published time-ago.
-// Replaces the old plain "{article.byline}" text line.
+// Byline block under the article headline — the publishing admin's
+// avatarUrl (Admin Accounts → profile picture) when set, else an
+// initial circle + name + published time-ago.
 //
 // There's no "Follow this reporter" button here on purpose: the backend's
 // live Article model only stores byline as a plain string (see
@@ -25,16 +25,29 @@ function timeAgo(iso: string | null): string {
   return new Date(iso).toLocaleDateString('ta-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-export default function AuthorCard({ byline, publishedAt }: { byline?: string | null; publishedAt: string | null }) {
+export default function AuthorCard({
+  byline,
+  publishedAt,
+  avatarUrl,
+}: {
+  byline?: string | null;
+  publishedAt: string | null;
+  avatarUrl?: string | null;
+}) {
   if (!byline && !publishedAt) return null;
 
   const initial = (byline?.trim()?.[0] ?? 'அ').toUpperCase();
 
   return (
     <div className="mt-4 flex items-center gap-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-red/10 font-tamil text-base font-extrabold text-brand-red">
-        {initial}
-      </div>
+      {avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={avatarUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+      ) : (
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-red/10 font-tamil text-base font-extrabold text-brand-red">
+          {initial}
+        </div>
+      )}
       <div className="min-w-0">
         {byline && <p className="truncate text-sm font-semibold text-black/80">{byline}</p>}
         <p className="text-xs text-black/45">

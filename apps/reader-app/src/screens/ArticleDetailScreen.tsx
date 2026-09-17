@@ -187,7 +187,7 @@ export default function ArticleDetailScreen() {
           <Text style={[styles.title, { color: t.ink }]}>{title}</Text>
 
           <View style={[styles.reporterRow, { borderTopColor: t.border, borderBottomColor: t.border }]}>
-            <Avatar name={article.byline || 'Agnisiragu'} size={26} />
+            <Avatar uri={article.admin?.avatarUrl} name={article.byline || 'Agnisiragu'} size={26} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.reporterName, { color: t.ink }]}>
                 {article.byline?.trim() ? article.byline : 'அக்னிசிறகு டெஸ்க்'}
