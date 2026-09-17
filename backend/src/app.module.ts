@@ -1,7 +1,8 @@
 // src/app.module.ts
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -36,6 +37,7 @@ import { CommentsModule } from './comments/comments.module';
     }),
     ThrottlerModule.forRoot([
       {
+        name: 'default',
         ttl: 60000,
         limit: 100,
       },
@@ -52,6 +54,15 @@ import { CommentsModule } from './comments/comments.module';
     LocalAdsModule,
     TeamsModule,
     CommentsModule,
+  ],
+  providers: [
+    // ThrottlerModule.forRoot above only registers the storage/config — it
+    // was never actually enforced anywhere (no guard applied), so every
+    // route, including login and OTP send, had no rate limiting at all.
+    // Applying it globally here gives every route a 100 req/min baseline;
+    // auth.controller.ts layers tighter per-route limits on top via
+    // @Throttle for the endpoints that matter most (OTP, admin login).
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

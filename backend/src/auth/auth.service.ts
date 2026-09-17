@@ -117,7 +117,16 @@ export class AuthService implements OnModuleInit {
     const senderId = this.config.get<string>('MSG91_SENDER_ID', 'AGNSRG');
 
     if (!authKey || !templateId) {
-      this.logger.warn(`MSG91 not configured — OTP for ${phone}: ${otp}`);
+      // Only echo the raw OTP to logs outside production — this is a dev
+      // convenience for testing without real SMS credits. In production, an
+      // unconfigured MSG91 should be loud (so it gets fixed) but must never
+      // put a live OTP into logs, which anyone with log access could use to
+      // authenticate as the phone number being onboarded.
+      if (this.config.get<string>('NODE_ENV') === 'production') {
+        this.logger.error(`MSG91 not configured — OTP send skipped for ${phone}`);
+      } else {
+        this.logger.warn(`MSG91 not configured — OTP for ${phone}: ${otp}`);
+      }
       return;
     }
 

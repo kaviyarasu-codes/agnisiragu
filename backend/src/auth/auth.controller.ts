@@ -1,6 +1,7 @@
 // src/auth/auth.controller.ts
 import { Controller, Post, Body, HttpCode, HttpStatus, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { SendOtpDto, VerifyOtpDto, RefreshTokenDto, AdminLoginDto } from './auth.dto';
@@ -20,6 +21,10 @@ function extractDevice(req: Request): string {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  // In-memory limit, independent of the Redis-backed per-phone counter in
+  // AuthService (which fails open — allows unlimited attempts — if Redis is
+  // unreachable). This is the backstop that still holds when that happens.
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send OTP to phone number via MSG91' })
@@ -27,6 +32,7 @@ export class AuthController {
     return this.authService.sendOtp(dto.phone);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify OTP and receive JWT tokens' })
@@ -48,6 +54,7 @@ export class AuthController {
     return this.authService.logout(dto.refreshToken, undefined, extractIp(req), extractDevice(req));
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('admin/login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Admin login with email and password' })

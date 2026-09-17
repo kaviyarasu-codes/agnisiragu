@@ -1,11 +1,18 @@
 // src/constants/index.ts
 
+// EXPO_PUBLIC_API_BASE_URL overrides both branches below when set (inlined
+// at build time by Expo, same convention as VITE_*/NEXT_PUBLIC_* in the
+// admin-panel/website) — lets a build point at a different API without
+// editing source. Falls back to the previous hardcoded values so nothing
+// changes for anyone who hasn't set it.
 // DEV: Replace YOUR_LAPTOP_IP with your laptop's hotspot IP (run `ipconfig` → Wireless LAN adapter → IPv4)
 // Example: 'http://192.168.137.1:3000/api/v1'
 // PROD: 'https://api.agnisiragu.com/api/v1'
-export const API_BASE_URL = __DEV__
-  ? 'http://10.65.105.253:3000/api/v1'   // ← replace with your laptop IP for local dev
-  : 'https://api.agnisiragu.com/api/v1'; // migrated off Railway → Hostinger VPS (Sep 2026)
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
+  (__DEV__
+    ? 'http://10.65.105.253:3000/api/v1'   // ← replace with your laptop IP for local dev
+    : 'https://api.agnisiragu.com/api/v1'); // migrated off Railway → Hostinger VPS (Sep 2026)
 
 // Fallback used only if the remote config hasn't loaded yet.
 // Actual gating now follows remoteConfig.loginGate (see app.store.ts) —

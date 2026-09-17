@@ -9,6 +9,7 @@ import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { PrismaService } from './prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 
 async function autoSeed(prisma: PrismaService) {
   const adminCount = await prisma.admin.count();
@@ -16,7 +17,13 @@ async function autoSeed(prisma: PrismaService) {
 
   console.log('🌱 Auto-seeding production database...');
 
-  const passwordHash = await bcrypt.hash('Admin@123456', 12);
+  // A fixed, hardcoded first-run password (e.g. "Admin@123456") would be
+  // identical — and publicly known, since this file is open source — across
+  // every deployment of this codebase until someone manually changes it.
+  // Generating a random one per deployment and printing it once to the boot
+  // log (operator-only access) closes that off without adding a setup step.
+  const tempPassword = crypto.randomBytes(9).toString('base64url'); // 12 chars
+  const passwordHash = await bcrypt.hash(tempPassword, 12);
   await prisma.admin.create({
     data: { email: 'admin@agnisiragu.com', passwordHash, name: 'Super Admin', adminRole: 'SUPER_ADMIN' },
   });
@@ -40,7 +47,8 @@ async function autoSeed(prisma: PrismaService) {
     await prisma.category.upsert({ where: { slug: cat.slug }, update: {}, create: { ...cat, isActive: true } });
   }
 
-  console.log('✅ Auto-seed complete. Admin: admin@agnisiragu.com / Admin@123456');
+  console.log(`✅ Auto-seed complete. Admin: admin@agnisiragu.com / ${tempPassword}`);
+  console.log('   ⚠️  Log in once and change this password — it will not be shown again.');
 }
 
 async function bootstrap() {
@@ -56,13 +64,25 @@ async function bootstrap() {
 
   // CORS
   // CORS_ORIGIN accepts a comma-separated list (e.g. multiple admin-panel
-  // domains during a cutover, or the reader-app web build + website). A
-  // bare "*" keeps the old wildcard behavior for local dev.
-  const corsOriginRaw = configService.get<string>('CORS_ORIGIN', '*');
-  const corsOrigin =
-    corsOriginRaw === '*'
-      ? '*'
-      : corsOriginRaw.split(',').map((o) => o.trim()).filter(Boolean);
+  // domains during a cutover, or the reader-app web build + website).
+  // Wildcard "*" is only ever used as a local-dev convenience when the var
+  // is unset — in production an unset CORS_ORIGIN now fails CLOSED (no
+  // cross-origin requests allowed) rather than falling open to "*", since
+  // "*" combined with credentials:true is the canonical insecure CORS
+  // misconfiguration (and every real production deployment already sets
+  // this var explicitly — see infra/.env.production).
+  const corsOriginRaw = configService.get<string>('CORS_ORIGIN', '');
+  let corsOrigin: string | string[];
+  if (!corsOriginRaw) {
+    if (nodeEnv === 'production') {
+      console.warn('⚠️  CORS_ORIGIN is not set — refusing all cross-origin requests until it is configured.');
+      corsOrigin = [];
+    } else {
+      corsOrigin = '*';
+    }
+  } else {
+    corsOrigin = corsOriginRaw.split(',').map((o) => o.trim()).filter(Boolean);
+  }
   app.enableCors({
     origin: corsOrigin,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],

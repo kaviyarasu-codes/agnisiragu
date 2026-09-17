@@ -10,16 +10,26 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Reflector } from '@nestjs/core';
-import { IsEmail, IsString, MinLength, IsOptional, IsBoolean, ValidateIf } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsBoolean, IsIn, ValidateIf } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 const reflector = new Reflector();
+
+// Mirrors backend/prisma/schema.prisma's AdminRole enum. Kept as a literal
+// list (rather than importing the Prisma enum) so this DTO has no runtime
+// dependency on @prisma/client — but it means the two must be kept in sync
+// by hand when a role is added/removed.
+const ADMIN_ROLES = [
+  'SUPER_ADMIN', 'ADMIN', 'EDITOR', 'EDITOR_MANAGER', 'EDITOR_MEMBER',
+  'VERIFICATION_MANAGER', 'VERIFICATION_MEMBER', 'REPORTER_APP_MANAGER', 'REPORTER_APP_MEMBER',
+  'REPORTERS_MANAGER', 'REPORTERS_MEMBER', 'ADVERTISEMENT_MANAGER', 'LOCAL_ADS_MANAGER', 'ADMOB_MANAGER',
+] as const;
 
 class CreateAdminDto {
   @IsString() @MinLength(2) name: string;
   @IsEmail()                email: string;
   @IsString() @MinLength(8) password: string;
-  @IsString()               adminRole: string;
+  @IsIn(ADMIN_ROLES)        adminRole: string;
   @IsOptional() @IsString() team?: string;
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() avatarUrl?: string;
@@ -27,7 +37,7 @@ class CreateAdminDto {
 
 class UpdateAdminDto {
   @IsOptional() @IsString() @MinLength(2) name?: string;
-  @IsOptional() @IsString()               adminRole?: string;
+  @IsOptional() @IsIn(ADMIN_ROLES)        adminRole?: string;
   @IsOptional() @IsString()               phone?: string;
   @IsOptional() @IsString()               avatarUrl?: string;
   // Only validate password when it's a non-empty string — empty string means "keep current"
@@ -109,7 +119,8 @@ export class AdminController {
   getMe(@CurrentUser('id') id: string) { return this.adminService.getMe(id); }
 
   @Get('accounts')
-  @ApiOperation({ summary: 'List all admin accounts' })
+  @Roles('SUPER_ADMIN')
+  @ApiOperation({ summary: 'List all admin accounts (super admin only)' })
   getAdminAccounts() { return this.adminService.getAdminAccounts(); }
 
   @Post('accounts')
