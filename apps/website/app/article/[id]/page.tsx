@@ -8,6 +8,8 @@ import AdSlot from '@/components/AdSlot';
 
 export const revalidate = 60;
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://agnisiragu.com';
+
 async function loadArticle(id: string) {
   const result = await getArticle(id);
   if (!result?.data) return null;
@@ -62,8 +64,27 @@ export default async function ArticlePage({ params }: { params: { id: string } }
 
   const related = categoryArticles.filter((a) => a.id !== article.id).slice(0, 6);
 
+  // NewsArticle structured data — Google News/Discover eligibility and
+  // rich-result headline/image/date treatment in search.
+  const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: article.titleTa,
+    image: article.thumbnailUrl ? [article.thumbnailUrl] : undefined,
+    datePublished: article.publishedAt ?? undefined,
+    dateModified: article.publishedAt ?? undefined,
+    author: article.byline ? [{ '@type': 'Person', name: article.byline }] : undefined,
+    publisher: {
+      '@type': 'Organization',
+      name: 'அக்னிசிறகு',
+      logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
+    },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE_URL}/article/${article.id}` },
+  };
+
   return (
     <article className="mx-auto max-w-3xl px-4 py-8">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       <span className="text-xs font-semibold uppercase tracking-wide text-brand-red">
         {article.category.nameTa}
       </span>

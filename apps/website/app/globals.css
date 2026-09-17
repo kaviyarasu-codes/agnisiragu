@@ -11,6 +11,16 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Safety net: nothing on the site should ever force horizontal scroll on
+   mobile. Individual overflow bugs should still be fixed at the source
+   (see TopBar.tsx), but this stops a stray wide element from blowing out
+   the whole page width. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }

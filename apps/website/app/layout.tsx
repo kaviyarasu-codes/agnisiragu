@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Noto_Sans_Tamil, Inter } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
@@ -24,22 +24,43 @@ const inter = Inter({
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://agnisiragu.com';
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#CC1F2D',
+};
+
 export async function generateMetadata(): Promise<Metadata> {
   const { site } = await getSiteConfig();
+  const title = `${site.siteTitleTa} — ${site.siteTitleEn} Tamil News`;
+
   return {
     metadataBase: new URL(SITE_URL),
     title: {
-      default: `${site.siteTitleTa} — ${site.siteTitleEn} Tamil News`,
+      default: title,
       template: `%s — ${site.siteTitleTa}`,
     },
     description: site.metaDescription,
+    keywords: ['தமிழ் செய்திகள்', 'Tamil news', site.siteTitleTa, site.siteTitleEn, 'Agnisiragu', 'அக்னிசிறகு'],
+    applicationName: site.siteTitleEn,
+    alternates: { canonical: '/' },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true },
+    },
     openGraph: {
+      title,
+      description: site.metaDescription,
       siteName: `${site.siteTitleTa} — ${site.siteTitleEn}`,
+      url: '/',
       locale: 'ta_IN',
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
+      title,
+      description: site.metaDescription,
     },
   };
 }
@@ -53,9 +74,22 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   const adsenseReady = ads.enabled && Boolean(ads.adsensePublisherId);
 
+  // Site-wide NewsMediaOrganization structured data — helps Google surface
+  // the right publisher name/logo in News/Discover results. Per-article
+  // NewsArticle schema lives in app/article/[id]/page.tsx.
+  const orgSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsMediaOrganization',
+    name: `${site.siteTitleTa} — ${site.siteTitleEn}`,
+    url: SITE_URL,
+    logo: `${SITE_URL}/logo.png`,
+    sameAs: [site.socialFacebook, site.socialInstagram, site.socialTwitter, site.socialYoutube].filter(Boolean),
+  };
+
   return (
     <html lang="ta" className={`${notoTamil.variable} ${inter.variable}`}>
       <head>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }} />
         {/* Google AdSense loader — only injected once ads are enabled and a
             publisher ID is saved in App Config → Website Ad Placements.
             Individual <AdSlot> components (in page.tsx / Sidebar.tsx) push
