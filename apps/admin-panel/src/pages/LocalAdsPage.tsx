@@ -36,9 +36,9 @@ const CTA_OPTIONS: { value: CtaType; label: string; labelTa: string; icon: React
 ];
 
 const PLACEMENTS: { value: AdPlacement; label: string; icon: React.ReactNode; desc: string; color: string }[] = [
-  { value: 'LOCAL',  label: 'Local Ad Only', icon: <Smartphone size={15} />, desc: 'Your custom ad shown inside the app', color: 'text-teal-600 bg-teal-50 border-teal-200' },
-  { value: 'ADMOB',  label: 'AdMob Only',    icon: <Monitor size={15} />,    desc: 'Google AdMob ads (revenue sharing)',  color: 'text-blue-600 bg-blue-50 border-blue-200' },
-  { value: 'BOTH',   label: 'Both',          icon: <RefreshCw size={15} />,  desc: 'Local ad + AdMob together',           color: 'text-purple-600 bg-purple-50 border-purple-200' },
+  { value: 'LOCAL',  label: 'Local Ad Only', icon: <Smartphone size={15} />, desc: 'Your custom ad — shown in the reader app AND on agnisiragu.com', color: 'text-teal-600 bg-teal-50 border-teal-200' },
+  { value: 'ADMOB',  label: 'AdMob Only',    icon: <Monitor size={15} />,    desc: 'Google AdMob ads (revenue sharing) — reader app only',  color: 'text-blue-600 bg-blue-50 border-blue-200' },
+  { value: 'BOTH',   label: 'Both',          icon: <RefreshCw size={15} />,  desc: 'Local ad everywhere it can show, AdMob too once wired into the app', color: 'text-purple-600 bg-purple-50 border-purple-200' },
 ];
 
 const STATUS_BADGE: Record<AdStatus, string> = {
@@ -545,7 +545,7 @@ export default function LocalAdsPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="page-title flex items-center gap-2"><Megaphone size={20} className="text-red" /> Local Ads Department</h1>
-          <p className="text-sm text-text-muted mt-0.5">Manage local business advertisements — separate from Google AdMob</p>
+          <p className="text-sm text-text-muted mt-0.5">Manage local business advertisements — shown in the reader app and on agnisiragu.com, separate from Google AdMob/AdSense</p>
         </div>
         <button onClick={() => { setShowCreate(true); createForm.reset(defaultForm as AdForm); }}
           className="btn-primary flex-shrink-0">

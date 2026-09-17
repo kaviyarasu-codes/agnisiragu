@@ -278,12 +278,13 @@ const SECTIONS: ConfigSection[] = [
     id: 'website_ads',
     label: 'Website Ad Placements',
     labelTa: 'இணையதள விளம்பர இடங்கள்',
-    description: 'Where ads appear on agnisiragu.com — leaderboard banner, sidebar rectangle, and in-feed native slots — and the Google AdSense IDs that serve them',
+    description: 'Where ads appear on agnisiragu.com — leaderboard banner, sidebar rectangle, and in-feed native slots — shows Local Ads when active, otherwise Google AdSense',
     icon: <Megaphone size={16} />,
     status: 'live',
     app: 'website',
     plannedFields: [
       'Enable/Disable Website Ads',
+      'Local Ads Enable (falls back to AdSense)',
       'AdSense Publisher ID',
       'Leaderboard Slot ID — top of homepage, under category nav (728×90)',
       'Rectangle Slot ID — sidebar right rail (300×250)',
@@ -929,6 +930,7 @@ const DEFAULT_WEBSITE_ADS = {
   rectangleSlotId: '',
   infeedSlotId: '',
   inFeedFrequency: 6,
+  localAdsEnable: true,
 };
 
 function LiveWebsiteAds() {
@@ -956,6 +958,16 @@ function LiveWebsiteAds() {
           <p className="text-xs text-text-muted">Master switch — off shows the dashed placeholder box on agnisiragu.com instead of real ads</p>
         </div>
         <ToggleRow label="Website Ads Enable" on={cfg.enabled} onToggle={() => save({ enabled: !cfg.enabled })} />
+      </div>
+
+      <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+        <div>
+          <p className="text-sm font-medium text-text-primary">Local Ads Enable</p>
+          <p className="text-xs text-text-muted">
+            Show ads from Local Ads (same self-hosted ads used in the reader app) in these slots when one's active — falls back to Google AdSense below when off, or when no local ad is active
+          </p>
+        </div>
+        <ToggleRow label="Local Ads Enable" on={cfg.localAdsEnable} onToggle={() => save({ localAdsEnable: !cfg.localAdsEnable })} />
       </div>
 
       <div>

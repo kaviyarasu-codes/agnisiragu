@@ -46,6 +46,9 @@ export interface WebsiteAdsConfig {
   rectangleSlotId: string;
   infeedSlotId: string;
   inFeedFrequency: number;
+  // Local Ads (self-hosted, Admin Panel -> Local Ads) shown alongside
+  // AdSense — see AdSlot.tsx for the fallback order.
+  localAdsEnable: boolean;
 }
 
 export interface WebsiteGeneralConfig {
@@ -67,6 +70,7 @@ const DEFAULT_WEBSITE_ADS: WebsiteAdsConfig = {
   rectangleSlotId: '',
   infeedSlotId: '',
   inFeedFrequency: 6,
+  localAdsEnable: true,
 };
 
 const DEFAULT_WEBSITE_CONFIG: WebsiteGeneralConfig = {
