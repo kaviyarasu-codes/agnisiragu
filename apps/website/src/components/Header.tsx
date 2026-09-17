@@ -1,10 +1,12 @@
 // src/components/Header.tsx
-// Site header — real logo on the left, a "Get App" Play Store CTA on the
-// right. Admin/staff sign-in now lives in the TopBar next to Contact,
-// since this site itself is public-only and has no auth of its own.
+// Site header — real logo on the left, reader account menu + a "Get App"
+// Play Store CTA on the right. Admin/staff sign-in lives separately in the
+// TopBar next to Contact — AccountMenu here is for readers (phone-OTP),
+// same session used to gate posting comments.
 
 import Link from 'next/link';
 import Logo from './Logo';
+import AccountMenu from './AccountMenu';
 
 const PLAY_STORE_URL =
   process.env.NEXT_PUBLIC_PLAY_STORE_URL ??
@@ -19,6 +21,7 @@ export default function Header() {
         </Link>
 
         <div className="flex items-center gap-3">
+          <AccountMenu />
           <a
             href={PLAY_STORE_URL}
             target="_blank"
