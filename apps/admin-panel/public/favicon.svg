@@ -1,0 +1,23 @@
+<!-- public/favicon.svg
+     index.html already references /favicon.svg — that file just never
+     existed, so the admin panel's browser tab icon was blank. Crops the
+     same wing/feather mark used for the website's favicon out of the real
+     logo.png (hosted on agnisiragu.com), via an SVG clip + external image
+     ref, so it stays pixel-identical to the actual artwork without
+     needing a separate raster asset checked into this app. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Agnisiragu">
+  <rect width="32" height="32" rx="7" fill="#ffffff"/>
+  <clipPath id="wing-clip">
+    <rect width="32" height="32" rx="7"/>
+  </clipPath>
+  <g clip-path="url(#wing-clip)">
+    <image
+      href="https://www.agnisiragu.com/logo.png"
+      x="-44.71"
+      y="0"
+      width="69.40"
+      height="32"
+      preserveAspectRatio="none"
+    />
+  </g>
+</svg>
