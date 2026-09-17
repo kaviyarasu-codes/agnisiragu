@@ -123,11 +123,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Admin badge */}
         <div className="px-4 py-4 border-t border-ink-700">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-full bg-red flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">
-                {admin?.name?.charAt(0).toUpperCase()}
-              </span>
-            </div>
+            {admin?.avatarUrl ? (
+              <img src={admin.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-red flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-xs font-bold">
+                  {admin?.name?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
             <div className="min-w-0">
               <p className="text-xs font-medium text-white truncate">{admin?.name}</p>
               <p className="text-2xs text-ink-500 truncate">{admin?.adminRole?.replace(/_/g, ' ')}</p>

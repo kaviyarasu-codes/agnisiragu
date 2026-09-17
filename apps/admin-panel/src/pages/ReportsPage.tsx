@@ -487,9 +487,13 @@ function MemberReport({ from, to }: { from: string; to: string }) {
                       className={`cursor-pointer transition-colors ${selected === m.id ? 'bg-red/5' : 'hover:bg-page'}`}>
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-red flex items-center justify-center flex-shrink-0">
-                            <span className="text-white text-2xs font-bold">{m.name.charAt(0)}</span>
-                          </div>
+                          {m.avatarUrl ? (
+                            <img src={m.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-red flex items-center justify-center flex-shrink-0">
+                              <span className="text-white text-2xs font-bold">{m.name.charAt(0)}</span>
+                            </div>
+                          )}
                           <div>
                             <p className="font-medium text-text-primary">{m.name}</p>
                             <p className="text-text-muted">{m.email}</p>
@@ -525,9 +529,13 @@ function MemberReport({ from, to }: { from: string; to: string }) {
             <div>
               <div className="p-4 border-b border-border">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-red flex items-center justify-center flex-shrink-0">
-                    <span className="text-white font-bold">{detail.admin.name.charAt(0)}</span>
-                  </div>
+                  {detail.admin.avatarUrl ? (
+                    <img src={detail.admin.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-red flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-bold">{detail.admin.name.charAt(0)}</span>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm font-semibold text-text-primary">{detail.admin.name}</p>
                     <p className="text-xs text-text-muted">{detail.admin.email}</p>

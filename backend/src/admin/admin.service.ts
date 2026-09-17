@@ -413,7 +413,7 @@ export class AdminService {
     // All admins (non-system)
     const admins = await this.prisma.admin.findMany({
       where: { adminRole: { notIn: ['SUPER_ADMIN', 'ADMIN'] as any } },
-      select: { id: true, name: true, email: true, adminRole: true, teamType: true, lastLoginAt: true, isActive: true, createdAt: true },
+      select: { id: true, name: true, email: true, adminRole: true, teamType: true, avatarUrl: true, lastLoginAt: true, isActive: true, createdAt: true },
       orderBy: { name: 'asc' },
     });
 
@@ -508,7 +508,7 @@ export class AdminService {
 
     const admin = await this.prisma.admin.findUnique({
       where: { id: adminId },
-      select: { id: true, name: true, email: true, adminRole: true, teamType: true, lastLoginAt: true, createdAt: true, isActive: true },
+      select: { id: true, name: true, email: true, adminRole: true, teamType: true, avatarUrl: true, lastLoginAt: true, createdAt: true, isActive: true },
     });
     if (!admin) throw new Error('Admin not found');
 
