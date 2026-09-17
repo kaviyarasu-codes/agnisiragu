@@ -5,6 +5,8 @@ import { getArticle, getCategoryArticles, getSiteConfig } from '@/lib/api';
 import RelatedNews from '@/components/RelatedNews';
 import ArticleNav from '@/components/ArticleNav';
 import AdSlot from '@/components/AdSlot';
+import AuthorCard from '@/components/AuthorCard';
+import ArticleActions from '@/components/ArticleActions';
 
 export const revalidate = 60;
 
@@ -91,7 +93,15 @@ export default async function ArticlePage({ params }: { params: { id: string } }
       <h1 className="mt-2 font-tamil text-3xl font-extrabold leading-tight text-black">
         {article.titleTa}
       </h1>
-      {article.byline && <p className="mt-3 text-sm text-black/50">{article.byline}</p>}
+      <AuthorCard byline={article.byline} publishedAt={article.publishedAt} />
+
+      <ArticleActions
+        articleId={article.id}
+        title={article.titleTa}
+        likeCount={article.likeCount}
+        dislikeCount={article.dislikeCount}
+        commentCount={article.commentCount}
+      />
 
       {article.thumbnailUrl && (
         <div className="relative mt-6 aspect-video w-full overflow-hidden rounded-xl bg-black/5">
