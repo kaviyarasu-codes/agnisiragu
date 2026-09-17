@@ -19,6 +19,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { CAT_COLORS } from '@/theme';
 import { FONT_FAMILIES } from '@/constants';
 import type { Article, Language } from '@/types';
+import ImageWatermark from '@/components/feed/ImageWatermark';
 
 interface ArticleCardProps {
   article: Article;
@@ -43,7 +44,10 @@ export default function ArticleCard({ article, onPress, language }: ArticleCardP
       activeOpacity={0.9}
     >
       {article.thumbnailUrl ? (
-        <Image source={{ uri: article.thumbnailUrl }} style={styles.img} contentFit="cover" transition={250} />
+        <View style={styles.imgWrap}>
+          <Image source={{ uri: article.thumbnailUrl }} style={styles.img} contentFit="cover" transition={250} />
+          <ImageWatermark size="xs" />
+        </View>
       ) : (
         <View style={[styles.img, { backgroundColor: t.bgAlt }]} />
       )}
@@ -70,6 +74,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderBottomWidth: 1,
   },
+  imgWrap: { width: 110, height: 88, position: 'relative' },
   img: { width: 110, height: 88 },
   body: { flex: 1, padding: 12, gap: 7, justifyContent: 'center' },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

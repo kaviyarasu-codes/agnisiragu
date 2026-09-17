@@ -7,19 +7,23 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Article } from '@/lib/api';
+import ImageWatermark from './ImageWatermark';
 
 export default function SecondaryStory({ article }: { article: Article }) {
   return (
     <Link href={`/article/${article.id}`} className="group flex gap-3">
       <div className="relative aspect-[4/3] w-24 shrink-0 overflow-hidden rounded-lg bg-black/5 sm:w-28">
         {article.thumbnailUrl ? (
-          <Image
-            src={article.thumbnailUrl}
-            alt={article.titleTa}
-            fill
-            className="object-cover transition duration-300 group-hover:scale-105"
-            sizes="112px"
-          />
+          <>
+            <Image
+              src={article.thumbnailUrl}
+              alt={article.titleTa}
+              fill
+              className="object-cover transition duration-300 group-hover:scale-105"
+              sizes="112px"
+            />
+            <ImageWatermark size="xs" />
+          </>
         ) : (
           <div className="flex h-full items-center justify-center text-[10px] text-black/20">அக்னிசிறகு</div>
         )}

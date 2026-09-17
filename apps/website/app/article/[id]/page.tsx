@@ -7,6 +7,7 @@ import ArticleNav from '@/components/ArticleNav';
 import AdSlot from '@/components/AdSlot';
 import AuthorCard from '@/components/AuthorCard';
 import ArticleActions from '@/components/ArticleActions';
+import ImageWatermark from '@/components/ImageWatermark';
 
 export const revalidate = 60;
 
@@ -106,6 +107,7 @@ export default async function ArticlePage({ params }: { params: { id: string } }
       {article.thumbnailUrl && (
         <div className="relative mt-6 aspect-video w-full overflow-hidden rounded-xl bg-black/5">
           <Image src={article.thumbnailUrl} alt={article.titleTa} fill className="object-cover" priority />
+          <ImageWatermark size="lg" />
         </div>
       )}
 

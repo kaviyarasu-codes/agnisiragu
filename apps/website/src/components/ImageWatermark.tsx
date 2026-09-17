@@ -1,0 +1,38 @@
+// src/components/ImageWatermark.tsx
+// Small brand watermark overlaid on article photos — mirrors the reader
+// app's ImageWatermark.tsx (apps/reader-app/src/components/feed/
+// ImageWatermark.tsx): same logo, same bottom-right-by-default placement,
+// same "sits directly on the photo, drop-shadow instead of a pill chip"
+// look, so a screenshot of either platform reads as the same brand.
+// Purely decorative — pointer-events-none so it never blocks the card's
+// own link/click area.
+//
+// Parent element must be `relative` (every card component below already
+// wraps its <Image> in a `relative` div).
+
+import Image from 'next/image';
+
+const SIZES = {
+  xs: { width: 28, height: 13 }, // tiny thumbnails — ArticleRow, SecondaryStory
+  md: { width: 50, height: 22 }, // card-sized images — ArticleCard
+  lg: { width: 68, height: 30 }, // hero / lead images — LeadStory, article detail
+} as const;
+
+export default function ImageWatermark({
+  size = 'md',
+  corner = 'bottom-right',
+}: {
+  size?: keyof typeof SIZES;
+  corner?: 'bottom-right' | 'top-right';
+}) {
+  const { width, height } = SIZES[size];
+  return (
+    <div
+      className={`pointer-events-none absolute z-10 opacity-90 [filter:drop-shadow(0_1px_2px_rgba(0,0,0,0.6))] ${
+        corner === 'top-right' ? 'right-1.5 top-1.5' : 'bottom-1.5 right-1.5'
+      }`}
+    >
+      <Image src="/logo.png" alt="" width={width} height={height} className="h-auto w-auto" />
+    </div>
+  );
+}

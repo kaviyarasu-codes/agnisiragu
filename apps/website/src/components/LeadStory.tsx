@@ -6,6 +6,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Article } from '@/lib/api';
+import ImageWatermark from './ImageWatermark';
 
 function timeAgo(iso: string | null): string {
   if (!iso) return '';
@@ -40,6 +41,7 @@ export default function LeadStory({ article }: { article: Article }) {
             Breaking
           </span>
         )}
+        {article.thumbnailUrl && <ImageWatermark size="lg" />}
       </div>
       <div className="mt-4">
         <span className="text-xs font-semibold uppercase tracking-wide text-brand-red">

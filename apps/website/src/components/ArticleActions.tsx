@@ -131,8 +131,13 @@ export default function ArticleActions({
 
     writeReactions(stored);
     setReaction(stored[articleId]);
-    setLikes((n) => n + likeDelta);
-    setDislikes((n) => n + dislikeDelta);
+    // Clamp at 0 client-side too (mirrors the server's Math.max(0, ...) in
+    // news.service.ts) — protects against stale localStorage state (e.g. a
+    // device that "reacted" during an earlier broken deploy) implying a
+    // dislike/like that was never actually recorded server-side, which
+    // would otherwise show a negative count here.
+    setLikes((n) => Math.max(0, n + likeDelta));
+    setDislikes((n) => Math.max(0, n + dislikeDelta));
 
     if (likeDelta !== 0) sendReact(articleId, 'LIKE', likeDelta);
     if (dislikeDelta !== 0) sendReact(articleId, 'DISLIKE', dislikeDelta);
