@@ -414,7 +414,7 @@ export default function AccountsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showPass, setShowPass] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['admins'],
     queryFn: () => apiGet<{ data: Admin[] }>('/admin/accounts'),
   });
@@ -488,6 +488,25 @@ export default function AccountsPage() {
         <Shield size={48} className="mb-3" />
         <p className="text-lg font-medium text-gray-600">Access Restricted</p>
         <p className="text-sm mt-1">Only Super Admins can manage accounts.</p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 size={24} className="animate-spin text-text-muted" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+        <p className="text-sm text-status-red">Failed to load accounts.</p>
+        <button onClick={() => refetch()} className="mt-2 text-xs font-semibold text-red hover:underline">
+          Retry
+        </button>
       </div>
     );
   }
@@ -571,12 +590,6 @@ export default function AccountsPage() {
           onEdit={openEdit} onDelete={setDeleteId}
           onToggleActive={(id, isActive) => toggleActiveMutation.mutate({ id, isActive })} />
       ))}
-
-      {isLoading && (
-        <div className="flex items-center justify-center h-32">
-          <Loader2 size={24} className="animate-spin text-text-muted" />
-        </div>
-      )}
 
       {/* ── Create Modal (Team) ──────────────────────────────────────────── */}
       {createTeam && (

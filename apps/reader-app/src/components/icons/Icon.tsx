@@ -17,7 +17,7 @@ export type IconName =
   | 'jobsBriefcase' | 'archiveBox' | 'postPlus' | 'reportFlag'
   | 'downloadImage' | 'downloadVideo' | 'check' | 'play'
   | 'home' | 'grid' | 'live' | 'thumbUp' | 'thumbDown' | 'whatsapp' | 'forward' | 'user'
-  | 'pause' | 'volumeOn' | 'volumeOff' | 'fullscreen';
+  | 'pause' | 'volumeOn' | 'volumeOff' | 'fullscreen' | 'refresh';
 
 interface IconProps {
   name: IconName;
@@ -314,6 +314,17 @@ export default function Icon({ name, size = 18, color = '#1C1917', strokeWidth, 
           <Polyline points="12,1 17,1 17,6" {...common} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
           <Polyline points="6,17 1,17 1,12" {...common} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
           <Polyline points="12,17 17,17 17,12" {...common} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'refresh':
+      // Header "reload feed" button (HomeScreen) — a circular-arrow reload
+      // glyph, since there wasn't previously any explicit, always-visible
+      // way to pull new articles (only a hidden swipe-down gesture on the
+      // feed's image zone).
+      return (
+        <Svg width={size} height={size} viewBox="0 0 18 18">
+          <Path d="M15.5 9a6.5 6.5 0 1 1-2-4.7" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" />
+          <Polyline points="15.8,2.5 15.5,6.5 11.5,6" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
       );
     default:

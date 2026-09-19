@@ -10,6 +10,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useWebsiteAuth } from '@/hooks/useWebsiteAuth';
 import { authFetch } from '@/lib/authFetch';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import LoginModal from './LoginModal';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.agnisiragu.com/api/v1';
@@ -37,17 +38,22 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
   const [comments, setComments] = useState<ArticleComment[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [draft, setDraft] = useState('');
   const [posting, setPosting] = useState(false);
+  const [postError, setPostError] = useState('');
   const [showLogin, setShowLogin] = useState(false);
 
   const load = useCallback(async () => {
+    setLoadError(false);
     try {
-      const res = await fetch(`${API_URL}/news/${articleId}/comments?limit=50`);
-      if (!res.ok) return;
+      const res = await fetchWithTimeout(`${API_URL}/news/${articleId}/comments?limit=50`);
+      if (!res.ok) throw new Error();
       const json = await res.json();
       setComments(json.data ?? []);
       setTotal(json.meta?.total ?? json.data?.length ?? 0);
+    } catch {
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -65,13 +71,17 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
       return;
     }
     setPosting(true);
-    setDraft('');
+    setPostError('');
     try {
       const res = await authFetch(`/news/${articleId}/comments`, {
         method: 'POST',
         body: JSON.stringify({ body }),
       });
-      if (res.ok) await load();
+      if (!res.ok) throw new Error();
+      setDraft('');
+      await load();
+    } catch {
+      setPostError('கருத்தை அனுப்ப முடியவில்லை. மீண்டும் முயற்சிக்கவும்.');
     } finally {
       setPosting(false);
     }
@@ -91,6 +101,7 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
           onFocus={() => { if (hydrated && !isAuthenticated) setShowLogin(true); }}
           onKeyDown={(e) => e.key === 'Enter' && postComment()}
           placeholder={isAuthenticated ? 'கருத்து எழுதுங்கள்…' : 'கருத்து தெரிவிக்க உள்நுழையவும்…'}
+          aria-label="கருத்து"
           className="flex-1 rounded-xl border border-black/15 px-3.5 py-2.5 font-tamil text-sm outline-none focus:border-brand-red/40"
         />
         <button
@@ -103,9 +114,18 @@ export default function CommentsSection({ articleId }: { articleId: string }) {
         </button>
       </div>
 
+      {postError && <p className="mt-2 text-xs text-brand-red">{postError}</p>}
+
       <div className="mt-5 space-y-4">
         {loading ? (
           <p className="font-tamil text-sm text-black/40">ஏற்றுகிறது…</p>
+        ) : loadError ? (
+          <div className="flex items-center gap-2">
+            <p className="font-tamil text-sm text-black/40">கருத்துகளை ஏற்ற முடியவில்லை</p>
+            <button type="button" onClick={load} className="text-xs font-semibold text-brand-red">
+              மீண்டும் முயற்சிக்க
+            </button>
+          </div>
         ) : comments.length === 0 ? (
           <p className="font-tamil text-sm text-black/40">முதலில் கருத்து தெரிவியுங்கள்</p>
         ) : (

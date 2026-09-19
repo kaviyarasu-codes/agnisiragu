@@ -4,10 +4,11 @@
 // (breaking / categories / feed — App Config → Home Layout / Widgets)
 // above the SwipeFeed card deck.
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Image, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Image, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '@/store/app.store';
 import { useTheme } from '@/hooks/useTheme';
 import { useCategories } from '@/hooks/useCategories';
@@ -26,6 +27,45 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { data: categories = [] } = useCategories();
   const { data: breakingArticles = [] } = useBreakingNews();
+
+  // Explicit, always-visible "reload feed" button — the swipe-down gesture
+  // on SwipeFeed's image zone already refetches, but it's easy to miss
+  // (readers reported no obvious way to pull new articles). Invalidating
+  // by key prefix hits every mounted `useArticles` variant (all categories)
+  // plus breaking news, so SwipeFeed's own existing refetch/loading UI
+  // takes over from here once the query is marked stale.
+  const qc = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+  const spinValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!refreshing) {
+      spinValue.stopAnimation();
+      spinValue.setValue(0);
+      return;
+    }
+    spinValue.setValue(0);
+    const anim = Animated.loop(
+      Animated.timing(spinValue, { toValue: 1, duration: 700, easing: Easing.linear, useNativeDriver: true }),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [refreshing, spinValue]);
+
+  async function handleRefresh() {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['articles'] }),
+        qc.invalidateQueries({ queryKey: ['breaking-news'] }),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  const spin = spinValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   useEffect(() => {
     if (params.categoryId) setSelectedCategoryId(params.categoryId);
@@ -87,6 +127,11 @@ export default function HomeScreen() {
         <View style={{ flex: 1 }} />
         <TouchableOpacity onPress={() => router.push('/search')} hitSlop={10} style={styles.iconBtn}>
           <Icon name="search" size={16} color={t.inkSub} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleRefresh} disabled={refreshing} hitSlop={10} style={styles.iconBtn}>
+          <Animated.View style={{ transform: [{ rotate: spin }] }}>
+            <Icon name="refresh" size={16} color={t.inkSub} />
+          </Animated.View>
         </TouchableOpacity>
         {districtLabel ? (
           <TouchableOpacity

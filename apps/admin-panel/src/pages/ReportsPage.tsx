@@ -144,6 +144,20 @@ function MetricCard({ label, value, sub, icon, color }: { label: string; value: 
   );
 }
 
+function ErrorState({ message = 'Failed to load report data.', onRetry, className = 'h-40' }: {
+  message?: string; onRetry?: () => void; className?: string;
+}) {
+  return (
+    <div className={`flex flex-col items-center justify-center text-text-muted ${className}`}>
+      <AlertCircle size={28} className="mb-2 text-status-red opacity-70" />
+      <p className="text-sm text-status-red">{message}</p>
+      {onRetry && (
+        <button onClick={onRetry} className="mt-2 text-xs font-semibold text-red hover:underline">Retry</button>
+      )}
+    </div>
+  );
+}
+
 function ExportBar({ onCSV, onExcel, onPDF, loading }: {
   onCSV: () => void; onExcel: () => void; onPDF: () => void; loading?: boolean;
 }) {
@@ -191,11 +205,11 @@ function OverallReport({ from, to }: { from: string; to: string }) {
   const [period, setPeriod] = useState<Period>('monthly');
   const [chartType, setChartType] = useState<'bar' | 'line'>('bar');
 
-  const { data: statsData, isLoading } = useQuery({
+  const { data: statsData, isLoading, isError, refetch } = useQuery({
     queryKey: ['reports-overall', period],
     queryFn: () => apiGet<{ data: any }>(`/admin/reports?period=${period}`),
   });
-  const { data: catData } = useQuery({
+  const { data: catData, isError: catIsError } = useQuery({
     queryKey: ['reports-categories'],
     queryFn: () => apiGet<{ data: any[] }>('/admin/reports/categories'),
   });
@@ -242,7 +256,9 @@ function OverallReport({ from, to }: { from: string; to: string }) {
             </div>
           </div>
           <div className="p-4">
-            {isLoading ? <div className="h-52 flex items-center justify-center"><Loader2 size={22} className="animate-spin text-text-muted" /></div> : (
+            {isLoading ? <div className="h-52 flex items-center justify-center"><Loader2 size={22} className="animate-spin text-text-muted" /></div> : isError ? (
+              <ErrorState className="h-52" onRetry={() => refetch()} />
+            ) : (
               <ResponsiveContainer width="100%" height={220}>
                 {chartType === 'bar' ? (
                   <BarChart data={trend} margin={{ left: -20 }}>
@@ -273,7 +289,9 @@ function OverallReport({ from, to }: { from: string; to: string }) {
         <div className="card">
           <div className="card-header"><span className="section-title">By Category</span></div>
           <div className="p-4">
-            {cats.length === 0 ? (
+            {catIsError ? (
+              <ErrorState className="h-40" message="Failed to load category data." />
+            ) : cats.length === 0 ? (
               <div className="h-40 flex flex-col items-center justify-center text-text-muted">
                 <PieIcon size={28} className="mb-2 opacity-30" /><p className="text-xs">No data</p>
               </div>
@@ -312,7 +330,7 @@ function OverallReport({ from, to }: { from: string; to: string }) {
 function TeamReport({ from, to }: { from: string; to: string }) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['reports-teams', from, to],
     queryFn: () => apiGet<{ data: any[] }>(`/admin/reports/teams?dateFrom=${from}&dateTo=${to}`),
   });
@@ -336,6 +354,8 @@ function TeamReport({ from, to }: { from: string; to: string }) {
 
       {isLoading ? (
         <div className="flex items-center justify-center h-40"><Loader2 size={24} className="animate-spin text-text-muted" /></div>
+      ) : isError ? (
+        <div className="card card-body"><ErrorState onRetry={() => refetch()} /></div>
       ) : teams.length === 0 ? (
         <div className="card card-body flex flex-col items-center justify-center h-40 text-text-muted">
           <UsersRound size={36} className="mb-3 opacity-20" /><p className="text-sm">No team data in this period</p>
@@ -430,13 +450,13 @@ function TeamReport({ from, to }: { from: string; to: string }) {
 function MemberReport({ from, to }: { from: string; to: string }) {
   const [selected, setSelected] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['reports-members', from, to],
     queryFn: () => apiGet<{ data: any[] }>(`/admin/reports/members?dateFrom=${from}&dateTo=${to}`),
   });
   const members = data?.data ?? [];
 
-  const { data: detailData, isLoading: detailLoading } = useQuery({
+  const { data: detailData, isLoading: detailLoading, isError: detailIsError, refetch: refetchDetail } = useQuery({
     queryKey: ['reports-member-detail', selected, from, to],
     queryFn: () => apiGet<{ data: any }>(`/admin/reports/member/${selected}?dateFrom=${from}&dateTo=${to}`),
     enabled: !!selected,
@@ -469,6 +489,8 @@ function MemberReport({ from, to }: { from: string; to: string }) {
           <div className="card-header"><span className="section-title">All Members</span></div>
           {isLoading ? (
             <div className="flex items-center justify-center h-40"><Loader2 size={22} className="animate-spin text-text-muted" /></div>
+          ) : isError ? (
+            <ErrorState onRetry={() => refetch()} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -525,6 +547,8 @@ function MemberReport({ from, to }: { from: string; to: string }) {
             </div>
           ) : detailLoading ? (
             <div className="flex items-center justify-center h-64"><Loader2 size={22} className="animate-spin text-text-muted" /></div>
+          ) : detailIsError ? (
+            <ErrorState className="h-64" onRetry={() => refetchDetail()} />
           ) : detail ? (
             <div>
               <div className="p-4 border-b border-border">
@@ -650,7 +674,7 @@ function ReporterReport({ from, to }: { from: string; to: string }) {
 // ─── Ads Report ───────────────────────────────────────────────────────────────
 
 function AdsReport({ from, to }: { from: string; to: string }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['reports-ads', from, to],
     queryFn: () => apiGet<{ data: any }>(`/admin/reports/ads?dateFrom=${from}&dateTo=${to}`),
   });
@@ -689,6 +713,8 @@ function AdsReport({ from, to }: { from: string; to: string }) {
         <div className="card-header"><span className="section-title">Ad Performance Table</span></div>
         {isLoading ? (
           <div className="flex items-center justify-center h-40"><Loader2 size={22} className="animate-spin text-text-muted" /></div>
+        ) : isError ? (
+          <ErrorState onRetry={() => refetch()} />
         ) : ads.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-text-muted">
             <Megaphone size={28} className="mb-2 opacity-20" /><p className="text-sm">No ads in this period</p>

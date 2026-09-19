@@ -90,7 +90,7 @@ interface SwipeFeedProps {
 // module mid-way through a fragile EAS build history.
 function CurlOverlay({ opacity }: { opacity: Animated.Value }) {
   return (
-    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, styles.curl, { opacity }]}>
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.curl, { opacity }]}>
       <Svg width="100%" height="100%">
         <Defs>
           <LinearGradient id="curl" x1="0" y1="0" x2="1" y2="0">

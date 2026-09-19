@@ -83,7 +83,7 @@ export default function ArticleFormPage({ mode }: Props) {
   const [thumbnailPreview, setThumbnailPreview] = useState('');
   const [bylineMode, setBylineMode] = useState<'select' | 'custom'>('select');
 
-  const { data: articleData, isLoading: articleLoading } = useArticle(id ?? '');
+  const { data: articleData, isLoading: articleLoading, isError: articleError, refetch: refetchArticle } = useArticle(id ?? '');
   const { data: catData } = useCategories();
   const { data: adminData } = useAdminAccounts();
   const categories = catData?.data ?? [];
@@ -232,6 +232,20 @@ export default function ArticleFormPage({ mode }: Props) {
 
   if (mode === 'edit' && articleLoading) {
     return <div className="flex items-center justify-center h-64"><Loader2 size={28} className="animate-spin text-red" /></div>;
+  }
+
+  // Don't fall through to a blank form on a failed edit-mode load — that
+  // looks identical to "create new" and risks the save overwriting the
+  // existing article with empty fields.
+  if (mode === 'edit' && (articleError || !articleData?.data)) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+        <p className="text-sm text-status-red">Failed to load this article.</p>
+        <button onClick={() => refetchArticle()} className="mt-2 text-xs font-semibold text-red hover:underline">
+          Retry
+        </button>
+      </div>
+    );
   }
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;

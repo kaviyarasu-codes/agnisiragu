@@ -65,7 +65,6 @@ function VideoTile({ uri, style }: { uri: string; style: object }) {
         player={player}
         nativeControls={false}
         contentFit="cover"
-        allowsFullscreen
       />
       <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={togglePlay} />
       {/* Play lives ONLY here, center-screen — tap the video anywhere (or

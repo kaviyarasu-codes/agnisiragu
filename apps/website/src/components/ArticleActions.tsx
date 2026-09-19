@@ -182,6 +182,8 @@ export default function ArticleActions({
         <button
           type="button"
           onClick={() => react('LIKE')}
+          aria-pressed={reaction === 'LIKE'}
+          aria-label="Like"
           className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
             reaction === 'LIKE'
               ? 'border-brand-red bg-brand-red/10 text-brand-red'
@@ -193,6 +195,8 @@ export default function ArticleActions({
         <button
           type="button"
           onClick={() => react('DISLIKE')}
+          aria-pressed={reaction === 'DISLIKE'}
+          aria-label="Dislike"
           className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
             reaction === 'DISLIKE'
               ? 'border-black/40 bg-black/5 text-black/70'

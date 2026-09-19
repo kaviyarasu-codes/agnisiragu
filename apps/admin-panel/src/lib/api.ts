@@ -6,6 +6,12 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 export const api = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  // Without this, a hung request (dead backend, bad network) leaves the
+  // caller's loading state spinning forever — mirrors the reader-app's
+  // axios timeout (apps/reader-app/src/lib/api.ts) and the website's
+  // fetchWithTimeout. Reports endpoints can be slower than simple CRUD,
+  // so this is a bit more generous than the 15s used elsewhere.
+  timeout: 20000,
 });
 
 // Request interceptor: attach Bearer token

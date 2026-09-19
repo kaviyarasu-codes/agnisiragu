@@ -13,6 +13,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
@@ -105,11 +106,16 @@ export function ArticleFeedCard({ article, language, index, total, width, action
         nestedScrollEnabled
       >
         <View style={styles.bylineRow}>
-          <Avatar uri={article.admin?.avatarUrl} name={byline} size={22} />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.bylineText, { color: t.ink }]} numberOfLines={1}>{byline}</Text>
-            <Text style={[styles.bylineTag, { color: t.inkMuted }]}>உள்ளூர் நிருபர்</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.bylineTouchable}
+            onPress={() => router.push(`/reporter/${encodeURIComponent(byline)}`)}
+          >
+            <Avatar uri={article.admin?.avatarUrl} name={byline} size={22} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.bylineText, { color: t.ink }]} numberOfLines={1}>{byline}</Text>
+              <Text style={[styles.bylineTag, { color: t.inkMuted }]}>உள்ளூர் நிருபர்</Text>
+            </View>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={toggleFollow}
             hitSlop={6}
@@ -170,6 +176,7 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   bodyContent: { padding: 15, paddingTop: 13, paddingBottom: 28 },
   bylineRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  bylineTouchable: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   bylineText: { fontFamily: FONT_FAMILIES.displaySemiBold, fontSize: 12.5 },
   bylineTag: { fontFamily: FONT_FAMILIES.uiRegular, fontSize: 10, marginTop: 1 },
   followBtn: { borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },

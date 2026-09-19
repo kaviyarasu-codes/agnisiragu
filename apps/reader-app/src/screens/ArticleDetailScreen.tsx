@@ -11,7 +11,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ScrollView, View, Text, TouchableOpacity, Share, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Linking,
+  ScrollView, View, Text, TouchableOpacity, Share, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Linking, Alert,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -120,6 +120,11 @@ export default function ArticleDetailScreen() {
   const title = language === 'ta' ? article.titleTa : article.titleEn;
   const body = language === 'ta' ? article.bodyTa : article.bodyEn;
   const categoryName = language === 'ta' ? article.category.nameTa : article.category.nameEn;
+  // TS doesn't retain the `!article` narrowing above inside nested function
+  // declarations (handleWhatsapp/applyReaction below) — this const carries
+  // its own non-optional type instead of relying on that control-flow
+  // narrowing persisting across the closure boundary.
+  const safeArticle = article;
 
   function handleShare() {
     setShowShare(true);
@@ -134,7 +139,7 @@ export default function ArticleDetailScreen() {
   }
 
   async function handleWhatsapp() {
-    const url = `https://agnisiragu.com/a/${article.id}`;
+    const url = `https://agnisiragu.com/a/${safeArticle.id}`;
     const text = `${title}\n${url}`;
     const waUrl = `whatsapp://send?text=${encodeURIComponent(text)}`;
     try {
@@ -150,7 +155,7 @@ export default function ArticleDetailScreen() {
   }
 
   async function applyReaction(type: 'LIKE' | 'DISLIKE') {
-    const { likeDelta, dislikeDelta } = await react(article.id, type);
+    const { likeDelta, dislikeDelta } = await react(safeArticle.id, type);
     setCountDelta((prev) => ({ like: prev.like + likeDelta, dislike: prev.dislike + dislikeDelta }));
   }
 
@@ -165,7 +170,12 @@ export default function ArticleDetailScreen() {
     }
     const body = draft.trim();
     setDraft('');
-    postCommentMutation.mutate(body);
+    postCommentMutation.mutate(body, {
+      onError: () => {
+        setDraft(body);
+        Alert.alert('கருத்தை அனுப்ப முடியவில்லை', 'மீண்டும் முயற்சிக்கவும்.');
+      },
+    });
   }
 
   const reaction = getReaction(article.id);
@@ -187,13 +197,18 @@ export default function ArticleDetailScreen() {
           <Text style={[styles.title, { color: t.ink }]}>{title}</Text>
 
           <View style={[styles.reporterRow, { borderTopColor: t.border, borderBottomColor: t.border }]}>
-            <Avatar uri={article.admin?.avatarUrl} name={article.byline || 'Agnisiragu'} size={26} />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.reporterName, { color: t.ink }]}>
-                {article.byline?.trim() ? article.byline : 'அக்னிசிறகு டெஸ்க்'}
-              </Text>
-              <Text style={[styles.reporterTag, { color: t.inkMuted }]}>CITIZEN REPORTER</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.reporterTouchable}
+              onPress={() => router.push(`/reporter/${encodeURIComponent(article.byline?.trim() ? article.byline : 'அக்னிசிறகு டெஸ்க்')}`)}
+            >
+              <Avatar uri={article.admin?.avatarUrl} name={article.byline || 'Agnisiragu'} size={26} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.reporterName, { color: t.ink }]}>
+                  {article.byline?.trim() ? article.byline : 'அக்னிசிறகு டெஸ்க்'}
+                </Text>
+                <Text style={[styles.reporterTag, { color: t.inkMuted }]}>CITIZEN REPORTER</Text>
+              </View>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={toggleFollow}
               style={[styles.followBtn, { borderColor: t.red, backgroundColor: following ? t.red : 'transparent' }]}
@@ -296,6 +311,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 9,
     marginTop: 13, paddingVertical: 9, borderTopWidth: 1, borderBottomWidth: 1,
   },
+  reporterTouchable: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 9 },
   reporterName: { fontFamily: FONT_FAMILIES.displaySemiBold, fontSize: 13 },
   reporterTag: { fontFamily: FONT_FAMILIES.uiSemiBold, fontSize: 9.5, letterSpacing: 0.7, marginTop: 1 },
   followBtn: { borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },

@@ -60,7 +60,12 @@ export default function DownloadAppPopup() {
       />
 
       {/* Centered card */}
-      <div className="relative w-full max-w-sm animate-[popin_0.25s_ease-out] overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Download the Agnisiragu app"
+        className="relative w-full max-w-sm animate-[popin_0.25s_ease-out] overflow-hidden rounded-2xl bg-white shadow-2xl"
+      >
         <button
           onClick={() => setVisible(false)}
           aria-label="Close"
