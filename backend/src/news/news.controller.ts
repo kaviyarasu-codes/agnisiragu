@@ -67,6 +67,12 @@ export class NewsController {
     return this.newsService.react(id, dto.type, dto.delta);
   }
 
+  @Patch(':id/view')
+  @ApiOperation({ summary: 'Record a view (public — guests included, deduped on-device before calling this)' })
+  recordView(@Param('id') id: string) {
+    return this.newsService.incrementView(id);
+  }
+
   @Post()
   @ApiBearerAuth()
   @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))

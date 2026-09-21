@@ -7,6 +7,7 @@ import ArticleNav from '@/components/ArticleNav';
 import AdSlot from '@/components/AdSlot';
 import AuthorCard from '@/components/AuthorCard';
 import ArticleActions from '@/components/ArticleActions';
+import ViewTracker from '@/components/ViewTracker';
 import ImageWatermark from '@/components/ImageWatermark';
 import CommentsSection from '@/components/CommentsSection';
 
@@ -89,6 +90,7 @@ export default async function ArticlePage({ params }: { params: { id: string } }
   return (
     <article className="mx-auto max-w-3xl px-4 py-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
+      <ViewTracker articleId={article.id} />
       <span className="text-xs font-semibold uppercase tracking-wide text-brand-red">
         {article.category.nameTa}
       </span>

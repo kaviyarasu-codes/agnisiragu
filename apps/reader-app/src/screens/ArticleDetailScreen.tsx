@@ -19,6 +19,7 @@ import { useArticle } from '@/hooks/useArticles';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
 import { useReactionsStore } from '@/store/reactions.store';
+import { useViewsStore } from '@/store/views.store';
 import { useComments, usePostComment } from '@/hooks/useComments';
 import { useTheme } from '@/hooks/useTheme';
 import { patch } from '@/lib/api';
@@ -47,6 +48,7 @@ export default function ArticleDetailScreen() {
   const { language, remoteConfig } = useAppStore();
   const addToHistory = useHistoryStore((s) => s.addToHistory);
   const { hydrate: hydrateReactions, getReaction, react } = useReactionsStore();
+  const { hydrate: hydrateViews, recordView } = useViewsStore();
   const { data: commentsPage } = useComments(article?.id);
   const postCommentMutation = usePostComment(article?.id);
   const t = useTheme();
@@ -66,6 +68,7 @@ export default function ArticleDetailScreen() {
   const shouldGate = !isAuthenticated && articleReadCount >= freeArticleLimit;
 
   useEffect(() => { hydrateReactions(); }, [hydrateReactions]);
+  useEffect(() => { hydrateViews(); }, [hydrateViews]);
 
   useEffect(() => {
     if (article && isAuthenticated) {
@@ -74,7 +77,10 @@ export default function ArticleDetailScreen() {
     } else if (article && !isAuthenticated) {
       incrementReadCount();
     }
-    if (article) addToHistory(article);
+    if (article) {
+      addToHistory(article);
+      recordView(article.id);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [article?.id]);
 

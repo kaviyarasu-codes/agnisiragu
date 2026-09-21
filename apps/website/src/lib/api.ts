@@ -33,6 +33,7 @@ export interface Article {
   likeCount: number;
   dislikeCount: number;
   commentCount: number;
+  viewCount?: number;
 }
 
 interface ListResponse<T> {

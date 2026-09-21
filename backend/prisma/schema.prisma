@@ -221,6 +221,12 @@ model Article {
   dislikeCount Int           @default(0)
   commentCount Int           @default(0)
 
+  // Total view counter — same increment-only, deduped-on-device model as
+  // the reaction counters above (see PATCH /news/:id/view). Admin-panel-
+  // only metric: not shown to readers on the website/app, just to admins
+  // tracking article performance.
+  viewCount    Int           @default(0)
+
   // Precomputed at create/update time (see news.service.ts's buildSearchText)
   // — a normalized blob combining a phonetic Tamil->Latin transliteration of
   // titleTa/bodyTa with titleEn/excerpt/byline, so a reader typing in plain

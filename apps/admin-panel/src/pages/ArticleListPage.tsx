@@ -1,7 +1,7 @@
 // src/pages/ArticleListPage.tsx
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Loader2, Newspaper, Edit2, Trash2, CheckCircle, EyeOff, Zap } from 'lucide-react';
+import { Plus, Search, Loader2, Newspaper, Edit2, Trash2, CheckCircle, Eye, EyeOff, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import ArticleStatusBadge from '../components/ArticleStatusBadge';
@@ -222,6 +222,7 @@ export default function ArticleListPage() {
                   <th className="th">Category</th>
                   <th className="th">Status</th>
                   <th className="th">Breaking</th>
+                  <th className="th">Views</th>
                   <th className="th">Published</th>
                   <th className="th text-right">Actions</th>
                 </tr>
@@ -270,6 +271,12 @@ export default function ArticleListPage() {
                       ) : (
                         <span className="text-text-muted text-xs">—</span>
                       )}
+                    </td>
+                    <td className="td">
+                      <span className="flex items-center gap-1 text-xs text-text-muted whitespace-nowrap" title="Total views">
+                        <Eye size={12} />
+                        {(article.viewCount ?? 0).toLocaleString()}
+                      </span>
                     </td>
                     <td className="td text-text-muted text-xs whitespace-nowrap">
                       {article.publishedAt ? format(new Date(article.publishedAt), 'dd MMM yyyy') : '—'}

@@ -98,6 +98,7 @@ export interface Article {
   likeCount?: number;
   dislikeCount?: number;
   commentCount?: number;
+  viewCount?: number;
   scheduledAt?: string;
   publishedAt?: string;
   createdAt: string;

@@ -206,6 +206,20 @@ export class NewsService {
     return { data: names };
   }
 
+  // Total-views counter — same increment-only, deduped-on-device model as
+  // the reactions below (no auth, no per-server dedup: the caller — website
+  // localStorage / app AsyncStorage — only calls this once per device per
+  // article, ever). Admin-facing metric only; not shown to readers.
+  async incrementView(id: string) {
+    const article = await this.prisma.article.update({
+      where: { id },
+      data: { viewCount: { increment: 1 } },
+      select: { id: true, viewCount: true },
+    }).catch(() => null);
+    if (!article) throw new NotFoundException('Article not found');
+    return { data: article };
+  }
+
   // ─── Public: like / dislike ───────────────────────────────────────────────
   // No auth required — guests react too. `delta` is 1 (add) or -1 (undo);
   // the reader-app decides which to send based on its own on-device

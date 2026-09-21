@@ -55,6 +55,7 @@ import { useArticles } from '@/hooks/useArticles';
 import { useAuthStore } from '@/store/auth.store';
 import { useAppStore } from '@/store/app.store';
 import { useReactionsStore } from '@/store/reactions.store';
+import { useViewsStore } from '@/store/views.store';
 import { FREE_ARTICLE_LIMIT, STORAGE_KEYS, FONT_FAMILIES } from '@/constants';
 import { useTheme } from '@/hooks/useTheme';
 import { ArticleFeedCard, AdFeedCard, FEED_IMAGE_HEIGHT_FRACTION } from './FeedCard';
@@ -179,6 +180,19 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
   const [countDeltas, setCountDeltas] = useState<Record<string, { like: number; dislike: number }>>({});
 
   useEffect(() => { hydrateReactions(); }, [hydrateReactions]);
+
+  // Records a total-view (admin-facing metric, see views.store.ts) the
+  // moment an article becomes the current page — this IS the reading
+  // moment for the feed (see the file-header note: "a card IS the full
+  // story, read via scrolling right here"), not a separate "open article"
+  // tap. Deduped on-device, so re-swiping back to an already-viewed page
+  // doesn't inflate the count.
+  const { hydrate: hydrateViews, recordView } = useViewsStore();
+  useEffect(() => { hydrateViews(); }, [hydrateViews]);
+  useEffect(() => {
+    const current = listData[idx];
+    if (current?.type === 'article') recordView(current.article.id);
+  }, [idx, listData, recordView]);
 
   // Per-page Animated.Values, keyed by the page's stable listData key and
   // kept alive in refs (not state) for the whole feed's lifetime — so a
