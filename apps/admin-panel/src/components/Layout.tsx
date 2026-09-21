@@ -10,6 +10,7 @@ import type { Admin } from '../types';
 
 const BREADCRUMBS: Record<string, string[]> = {
   '/':              ['Dashboard'],
+  '/profile':       ['My Profile'],
   '/articles':      ['Content', 'Articles'],
   '/articles/new':  ['Content', 'Articles', 'New Article'],
   '/categories':    ['Content', 'Categories'],
@@ -87,7 +88,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2.5 px-3 py-1.5 rounded border border-border bg-page">
+              <button
+                onClick={() => navigate('/profile')}
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded border border-border bg-page hover:bg-ink-50 transition-colors"
+                title="My Profile"
+              >
                 {admin?.avatarUrl ? (
                   <img src={admin.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
                 ) : (
@@ -101,7 +106,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <p className="text-xs font-semibold text-text-primary leading-none">{admin?.name}</p>
                   <p className="text-2xs text-text-muted mt-0.5">{admin?.adminRole?.replace('_', ' ')}</p>
                 </div>
-              </div>
+              </button>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-1.5 px-3 py-2 text-sm text-text-secondary hover:text-red hover:bg-red/5 rounded border border-transparent hover:border-red/20 transition-all duration-150"

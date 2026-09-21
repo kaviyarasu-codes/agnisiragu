@@ -104,6 +104,12 @@ enum AdPlacement {
   BOTH
 }
 
+enum TaskStatus {
+  NEW
+  IN_PROGRESS
+  DONE
+}
+
 // ─── Phase 1 Models ──────────────────────────────────────────────────────────
 
 model User {
@@ -143,6 +149,12 @@ model Admin {
   auditLogs    AuditLog[]
   mediaFiles   MediaFile[]
   localAds     LocalAd[]
+
+  // Task-assignment system (My Profile page): tasks this admin was given,
+  // and tasks this admin handed out to others. See Task model below for the
+  // assignment-hierarchy rule enforced in tasks.service.ts.
+  tasksAssignedToMe Task[] @relation("TaskAssignedTo")
+  tasksICreated     Task[] @relation("TaskAssignedBy")
 }
 
 model Category {
@@ -288,6 +300,30 @@ model Team {
   color       String   @default("#CC1F2D")
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
+}
+
+// Task-assignment system, part of the "My Profile" feature. Assignment
+// hierarchy (enforced in tasks.service.ts, not by the schema):
+//   - SUPER_ADMIN / ADMIN -> any Manager or Member, any team
+//   - *_MANAGER            -> *_MEMBER on their own team only (teamType match)
+//   - *_MEMBER / EDITOR     -> cannot assign, can only update their own
+//                              task's status
+model Task {
+  id           String     @id @default(uuid())
+  title        String
+  description  String?
+  status       TaskStatus @default(NEW)
+  assignedToId String
+  assignedTo   Admin      @relation("TaskAssignedTo", fields: [assignedToId], references: [id])
+  assignedById String
+  assignedBy   Admin      @relation("TaskAssignedBy", fields: [assignedById], references: [id])
+  dueDate      DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([assignedToId, status])
+  @@index([assignedById])
 }
 
 // ─── Legacy / Phase 2 Models (kept, not used in Phase 1 APIs) ────────────────

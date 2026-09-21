@@ -15,6 +15,7 @@ import { HealthModule } from './health/health.module';
 import { LocalAdsModule } from './local-ads/local-ads.module';
 import { TeamsModule } from './teams/teams.module';
 import { CommentsModule } from './comments/comments.module';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { CommentsModule } from './comments/comments.module';
     LocalAdsModule,
     TeamsModule,
     CommentsModule,
+    TasksModule,
   ],
   providers: [
     // ThrottlerModule.forRoot above only registers the storage/config — it

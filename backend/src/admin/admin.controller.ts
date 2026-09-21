@@ -35,6 +35,14 @@ class CreateAdminDto {
   @IsOptional() @IsString() avatarUrl?: string;
 }
 
+class UpdateMyProfileDto {
+  @IsOptional() @IsString() @MinLength(2) name?: string;
+  @IsOptional() @IsString()               phone?: string;
+  @IsOptional() @IsString()               avatarUrl?: string;
+  @ValidateIf((o) => o.password !== undefined && o.password !== '')
+  @IsString() @MinLength(8) password?: string;
+}
+
 class UpdateAdminDto {
   @IsOptional() @IsString() @MinLength(2) name?: string;
   @IsOptional() @IsIn(ADMIN_ROLES)        adminRole?: string;
@@ -121,6 +129,12 @@ export class AdminController {
   @Get('directory')
   @ApiOperation({ summary: 'Minimal active-admin roster (id/name/role) — any authenticated admin, used by the byline picker' })
   getAdminDirectory() { return this.adminService.getAdminDirectory(); }
+
+  @Patch('me')
+  @ApiOperation({ summary: "Update own profile (name/phone/password/avatar) — any authenticated admin, cannot change own role/isActive" })
+  updateMe(@CurrentUser('id') id: string, @Body() dto: UpdateMyProfileDto) {
+    return this.adminService.updateMyProfile(id, dto);
+  }
 
   @Get('accounts')
   @Roles('SUPER_ADMIN')

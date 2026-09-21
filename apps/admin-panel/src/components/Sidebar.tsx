@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Newspaper, Tag, Users, Image, Bell,
   ClipboardList, Settings, X, ChevronRight, UserCog,
-  BarChart2, Smartphone, Megaphone, UsersRound,
+  BarChart2, Smartphone, Megaphone, UsersRound, User,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 import logo from '../assets/logo.png';
@@ -15,6 +15,7 @@ const navGroups = [
     label: 'Main',
     items: [
       { to: '/',            label: 'Dashboard',    icon: LayoutDashboard, end: true },
+      { to: '/profile',     label: 'My Profile',   icon: User },
       { to: '/articles',    label: 'Articles',     icon: Newspaper },
       { to: '/categories',  label: 'Categories',   icon: Tag },
     ],

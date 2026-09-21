@@ -291,6 +291,33 @@ export class AdminService {
     return { data: admin };
   }
 
+  // ─── Self-service profile update (My Profile page) ───────────────────────
+  // Deliberately separate from updateAdminAccount below: any authenticated
+  // admin may change their own name/phone/password/avatar, but NOT their
+  // own adminRole or isActive — those stay SUPER_ADMIN-only via
+  // PATCH /admin/accounts/:id, so nobody can self-promote or self-reactivate.
+  async updateMyProfile(id: string, dto: {
+    name?: string; phone?: string; avatarUrl?: string; password?: string;
+  }) {
+    const existing = await this.prisma.admin.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Admin not found');
+    const updateData: any = {};
+    if (dto.name      !== undefined && dto.name.trim() !== '') updateData.name = dto.name.trim();
+    if (dto.phone     !== undefined) updateData.phone     = dto.phone || null;
+    if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl || null;
+    if (dto.password && dto.password.trim() !== '') updateData.passwordHash = await bcrypt.hash(dto.password, 10);
+    const updated = await this.prisma.admin.update({
+      where: { id }, data: updateData,
+      select: { id: true, name: true, email: true, adminRole: true,
+        isActive: true, phone: true, teamType: true, avatarUrl: true, lastLoginAt: true, createdAt: true },
+    });
+    await this.prisma.auditLog.create({
+      data: { adminId: id, action: 'ADMIN_SELF_UPDATE', entityType: 'admin', entityId: id,
+        metadata: { changes: Object.keys(updateData) } },
+    }).catch(() => {});
+    return { data: updated };
+  }
+
   // Minimal, non-sensitive admin roster (id/name/role only, active accounts
   // only) — any authenticated admin can call this, unlike getAdminAccounts
   // below (SUPER_ADMIN-only, full record incl. email/phone/lastLoginAt).
@@ -531,7 +558,8 @@ export class AdminService {
     const [articles, auditLogs] = await Promise.all([
       this.prisma.article.findMany({
         where: { adminId, createdAt: { gte: from, lte: to } },
-        select: { id: true, titleEn: true, status: true, publishedAt: true, createdAt: true, updatedAt: true },
+        select: { id: true, titleEn: true, status: true, publishedAt: true, createdAt: true, updatedAt: true,
+          likeCount: true, dislikeCount: true, commentCount: true },
         orderBy: { createdAt: 'desc' },
         take: 50,
       }),
@@ -548,6 +576,18 @@ export class AdminService {
     const edits     = auditLogs.filter(l => l.action === 'ARTICLE_UPDATE').length;
     const logins    = auditLogs.filter(l => l.action === 'ADMIN_LOGIN').length;
     const score     = Math.min(100, Math.round(published * 4 + edits * 1.5 + logins * 0.5));
+    const totalLikes    = articles.reduce((s, a) => s + a.likeCount, 0);
+    const totalDislikes = articles.reduce((s, a) => s + a.dislikeCount, 0);
+    const totalComments = articles.reduce((s, a) => s + a.commentCount, 0);
+
+    // Task counters (My Profile page) — not date-ranged, always reflects
+    // current live state so the profile card's "pending"/"done" counts stay
+    // accurate regardless of the report's date filter.
+    const [tasksNew, tasksInProgress, tasksDone] = await Promise.all([
+      this.prisma.task.count({ where: { assignedToId: adminId, status: 'NEW' } }),
+      this.prisma.task.count({ where: { assignedToId: adminId, status: 'IN_PROGRESS' } }),
+      this.prisma.task.count({ where: { assignedToId: adminId, status: 'DONE' } }),
+    ]);
 
     // Daily activity (logins per day)
     const loginDays = new Map<string, number>();
@@ -559,7 +599,18 @@ export class AdminService {
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([date, count]) => ({ date, count }));
 
-    return { data: { admin, metrics: { published, drafts, edits, logins, score }, articles, loginActivity } };
+    return {
+      data: {
+        admin,
+        metrics: {
+          published, drafts, edits, logins, score,
+          totalLikes, totalDislikes, totalComments,
+          tasksPending: tasksNew + tasksInProgress, tasksNew, tasksInProgress, tasksDone,
+        },
+        articles,
+        loginActivity,
+      },
+    };
   }
 
   // ─── Reports: reporter app users summary ─────────────────────────────────

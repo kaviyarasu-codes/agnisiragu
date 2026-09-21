@@ -207,6 +207,37 @@ export interface LocalAd {
   updatedAt: string;
 }
 
+export type TaskStatus = 'NEW' | 'IN_PROGRESS' | 'DONE';
+
+export interface TaskPerson {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+  adminRole?: string;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string | null;
+  status: TaskStatus;
+  assignedTo: TaskPerson;
+  assignedBy: TaskPerson;
+  dueDate?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Roster entry for the "Assign Task" picker — who the current admin is
+// allowed to hand a task to (empty for anyone without assignment rights).
+export interface AssignableAdmin {
+  id: string;
+  name: string;
+  adminRole: string;
+  teamType?: string | null;
+}
+
 export interface Team {
   id: string;
   name: string;
