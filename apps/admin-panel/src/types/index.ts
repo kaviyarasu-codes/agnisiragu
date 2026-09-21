@@ -71,6 +71,15 @@ export interface AdminAccount {
   isActive?: boolean;
 }
 
+// Minimal roster entry from GET /admin/directory — id/name/role only, no
+// email/phone/etc. Used by the byline picker, which any admin can call
+// (unlike AdminAccount's full record, which is SUPER_ADMIN-only).
+export interface AdminDirectoryEntry {
+  id: string;
+  name: string;
+  adminRole: string;
+}
+
 export interface Article {
   id: string;
   titleTa: string;

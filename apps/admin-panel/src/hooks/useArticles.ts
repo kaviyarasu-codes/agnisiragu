@@ -1,7 +1,7 @@
 // src/hooks/useArticles.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost, apiPatch, apiDelete } from '../lib/api';
-import type { Article, AdminAccount, PaginatedResponse, ArticleStatus } from '../types';
+import type { Article, AdminDirectoryEntry, PaginatedResponse, ArticleStatus } from '../types';
 
 interface ArticleFilters {
   status?: ArticleStatus;
@@ -26,10 +26,13 @@ interface CreateArticlePayload {
   scheduledAt?: string;
 }
 
+// Byline picker on the article form — uses the minimal, any-admin-accessible
+// /admin/directory endpoint (id/name/role only), not the SUPER_ADMIN-only
+// /admin/accounts used by the Accounts management page.
 export function useAdminAccounts() {
   return useQuery({
-    queryKey: ['admin-accounts'],
-    queryFn: () => apiGet<{ data: AdminAccount[] }>('/admin/accounts'),
+    queryKey: ['admin-directory'],
+    queryFn: () => apiGet<{ data: AdminDirectoryEntry[] }>('/admin/directory'),
     staleTime: 5 * 60 * 1000,
   });
 }

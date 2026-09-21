@@ -118,6 +118,10 @@ export class AdminController {
   @ApiOperation({ summary: "Current admin's own fresh profile (resync avatar/name/role)" })
   getMe(@CurrentUser('id') id: string) { return this.adminService.getMe(id); }
 
+  @Get('directory')
+  @ApiOperation({ summary: 'Minimal active-admin roster (id/name/role) — any authenticated admin, used by the byline picker' })
+  getAdminDirectory() { return this.adminService.getAdminDirectory(); }
+
   @Get('accounts')
   @Roles('SUPER_ADMIN')
   @ApiOperation({ summary: 'List all admin accounts (super admin only)' })

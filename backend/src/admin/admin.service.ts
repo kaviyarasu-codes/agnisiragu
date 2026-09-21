@@ -291,6 +291,22 @@ export class AdminService {
     return { data: admin };
   }
 
+  // Minimal, non-sensitive admin roster (id/name/role only, active accounts
+  // only) — any authenticated admin can call this, unlike getAdminAccounts
+  // below (SUPER_ADMIN-only, full record incl. email/phone/lastLoginAt).
+  // Added because locking getAdminAccounts down to SUPER_ADMIN broke the
+  // "Select from team" byline picker on the article form for every other
+  // role — that picker only ever needed a name to attribute the article to,
+  // never the full account record.
+  async getAdminDirectory() {
+    const admins = await this.prisma.admin.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, adminRole: true },
+      orderBy: { name: 'asc' },
+    });
+    return { data: admins };
+  }
+
   // ─── Admin accounts list ──────────────────────────────────────────────────
 
   async getAdminAccounts() {
