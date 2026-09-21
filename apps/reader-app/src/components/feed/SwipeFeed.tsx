@@ -342,6 +342,29 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
   const [refreshHintOpacity] = useState(() => new Animated.Value(0));
   const gestureAxisRef = useRef<'none' | 'horizontal' | 'vertical'>('none');
 
+  // Explicit pull-to-refresh ONLY — jumps the reader to the newest article
+  // (idx 0) once the refetch lands, matching Twitter/Instagram's "pull down
+  // for new posts" convention. Deliberately separate from `refetch` itself:
+  // useArticles also refetches automatically (a 3-min background interval
+  // and an app-foreground refetch — see useArticles.ts / app/_layout.tsx),
+  // and those must NOT yank a reader off whatever article they're mid-read
+  // on. Only this gesture-triggered path resets idx.
+  //
+  // Also snaps every page's flip/curl Animated.Value back to its resting
+  // state (no animation, just .setValue(0)) before dropping idx to 0 —
+  // otherwise a page the reader had already swiped past keeps its "flipped
+  // away" rotateY(-178deg) value forever (rotateValuesRef persists for the
+  // component's whole lifetime), so landing back on it after a refresh
+  // would render it as a barely-visible edge-on sliver instead of resting
+  // flat like a freshly opened feed.
+  const handlePullRefresh = useCallback(() => {
+    refetch().then(() => {
+      rotateValuesRef.current.forEach((v) => v.setValue(0));
+      curlValuesRef.current.forEach((v) => v.setValue(0));
+      setIdx(0);
+    });
+  }, [refetch]);
+
   const panResponder = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponderCapture: (_evt, gesture) => {
       if (gestureAxisRef.current !== 'none') return false;
@@ -374,7 +397,7 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
         else if (gesture.dx >= SWIPE_THRESHOLD) go(-1);
       } else if (gestureAxisRef.current === 'vertical') {
         Animated.timing(refreshHintOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-        if (gesture.dy > 70 && !isRefetching) refetch();
+        if (gesture.dy > 70 && !isRefetching) handlePullRefresh();
       }
       gestureAxisRef.current = 'none';
     },
@@ -382,7 +405,7 @@ export default function SwipeFeed({ categoryId }: SwipeFeedProps) {
       Animated.timing(refreshHintOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start();
       gestureAxisRef.current = 'none';
     },
-  }), [go, refetch, isRefetching, refreshHintOpacity]);
+  }), [go, handlePullRefresh, isRefetching, refreshHintOpacity]);
 
   const renderPageContent = useCallback((item: ListItem) => {
     if (item.type === 'ad') return <AdFeedCard width={SCREEN_W} />;
