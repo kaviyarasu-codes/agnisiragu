@@ -354,6 +354,10 @@ model Ticket {
   description    String
   priority       TicketPriority @default(MEDIUM)
   status         TicketStatus   @default(OPEN)
+  // Screenshots/photos the raiser attaches to illustrate the issue —
+  // uploaded client-side to Cloudinary same as avatars/thumbnails, URLs
+  // only stored here.
+  attachmentUrls String[]       @default([])
   resolutionNote String?
   raisedById     String
   raisedBy       Admin          @relation("TicketRaisedBy", fields: [raisedById], references: [id])

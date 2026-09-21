@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { Reflector } from '@nestjs/core';
-import { IsString, IsOptional, MinLength, IsIn } from 'class-validator';
+import { IsString, IsOptional, MinLength, IsIn, IsArray } from 'class-validator';
 import { TicketsService } from './tickets.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -18,6 +18,7 @@ class CreateTicketDto {
   @IsString() @MinLength(2)  title: string;
   @IsString() @MinLength(2)  description: string;
   @IsOptional() @IsIn(['LOW', 'MEDIUM', 'HIGH']) priority?: 'LOW' | 'MEDIUM' | 'HIGH';
+  @IsOptional() @IsArray() @IsString({ each: true }) attachmentUrls?: string[];
 }
 
 class UpdateTicketDto {

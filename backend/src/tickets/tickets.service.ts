@@ -19,7 +19,7 @@ export class TicketsService {
 
   async createTicket(
     requesterId: string, requesterRole: string,
-    dto: { title: string; description: string; priority?: 'LOW' | 'MEDIUM' | 'HIGH' },
+    dto: { title: string; description: string; priority?: 'LOW' | 'MEDIUM' | 'HIGH'; attachmentUrls?: string[] },
   ) {
     if (TOP_ROLES.includes(requesterRole)) {
       throw new ForbiddenException('Admins resolve tickets — they are raised by managers and team members');
@@ -29,6 +29,7 @@ export class TicketsService {
         title: dto.title,
         description: dto.description,
         priority: dto.priority ?? 'MEDIUM',
+        attachmentUrls: dto.attachmentUrls ?? [],
         raisedById: requesterId,
       },
       include: ticketInclude,

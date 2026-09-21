@@ -9,7 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
-import { Loader2, LifeBuoy, Shield, Clock, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { Loader2, LifeBuoy, Shield, Clock, CheckCircle2, AlertCircle, X, Paperclip } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 import { useAllTickets, useUpdateTicket } from '../hooks/useTickets';
 import type { Ticket, TicketPriority, TicketStatusValue } from '../types';
@@ -50,7 +50,10 @@ function TicketCard({ ticket, onOpen }: { ticket: Ticket; onOpen: (t: Ticket) =>
         <div className="flex items-center gap-2.5 min-w-0">
           <Avatar name={ticket.raisedBy.name} avatarUrl={ticket.raisedBy.avatarUrl} />
           <div className="min-w-0">
-            <p className="text-sm font-medium text-text-primary truncate">{ticket.title}</p>
+            <p className="text-sm font-medium text-text-primary truncate flex items-center gap-1.5">
+              {ticket.title}
+              {ticket.attachmentUrls?.length > 0 && <Paperclip size={11} className="text-text-muted flex-shrink-0" />}
+            </p>
             <p className="text-2xs text-text-muted mt-0.5">
               {ticket.raisedBy.name} · {ticket.raisedBy.adminRole?.replace(/_/g, ' ')} · {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
             </p>
@@ -148,6 +151,15 @@ export default function TicketsPage() {
                 Raised by {active.raisedBy.name} ({active.raisedBy.adminRole?.replace(/_/g, ' ')}) · {formatDistanceToNow(new Date(active.createdAt), { addSuffix: true })}
               </div>
               <p className="text-sm text-text-primary">{active.description}</p>
+              {active.attachmentUrls?.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {active.attachmentUrls.map((url) => (
+                    <a key={url} href={url} target="_blank" rel="noreferrer">
+                      <img src={url} alt="Attachment" className="w-16 h-16 rounded object-cover border border-border hover:opacity-80 transition-opacity" />
+                    </a>
+                  ))}
+                </div>
+              )}
               <form onSubmit={form.handleSubmit(submit)} className="space-y-4 pt-2 border-t border-border">
                 <div>
                   <label className="label">Status</label>

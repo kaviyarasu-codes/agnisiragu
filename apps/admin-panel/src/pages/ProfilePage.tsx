@@ -33,16 +33,20 @@ const TOP_ROLES = ['SUPER_ADMIN', 'ADMIN'];
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
 
-async function uploadAvatar(file: File): Promise<string> {
+async function uploadImage(file: File, folder: string): Promise<string> {
   if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) throw new Error('Cloudinary not configured');
   const fd = new FormData();
   fd.append('file', file);
   fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-  fd.append('folder', 'agnisiragu/avatars');
+  fd.append('folder', folder);
   const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: 'POST', body: fd });
   if (!res.ok) throw new Error('Upload failed');
   const data = await res.json() as { secure_url: string };
   return data.secure_url;
+}
+
+async function uploadAvatar(file: File): Promise<string> {
+  return uploadImage(file, 'agnisiragu/avatars');
 }
 
 function Avatar({ name, avatarUrl, size = 'md' }: { name: string; avatarUrl?: string | null; size?: 'sm' | 'md' | 'lg' }) {
@@ -531,6 +535,15 @@ function TicketRow({ ticket }: { ticket: Ticket }) {
           <TicketStatusBadge status={ticket.status} />
         </div>
       </div>
+      {ticket.attachmentUrls?.length > 0 && (
+        <div className="flex gap-2 mt-2 flex-wrap">
+          {ticket.attachmentUrls.map((url) => (
+            <a key={url} href={url} target="_blank" rel="noreferrer">
+              <img src={url} alt="Attachment" className="w-14 h-14 rounded object-cover border border-border" />
+            </a>
+          ))}
+        </div>
+      )}
       {ticket.resolutionNote && (
         <div className="mt-2 text-xs text-text-secondary bg-page border border-border rounded px-3 py-2">
           <span className="font-semibold text-text-primary">Resolution: </span>{ticket.resolutionNote}
@@ -551,11 +564,35 @@ function SupportTab() {
   const myTickets = useMyTickets();
   const createTicket = useCreateTicket();
   const [showRaise, setShowRaise] = useState(false);
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const [uploadingCount, setUploadingCount] = useState(0);
   const form = useForm<TicketForm>({ resolver: zodResolver(ticketSchema), defaultValues: { priority: 'MEDIUM' } });
 
+  async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setUploadingCount((n) => n + files.length);
+    for (const file of files) {
+      try {
+        const url = await uploadImage(file, 'agnisiragu/tickets');
+        setAttachments((prev) => [...prev, url]);
+      } catch {
+        toast.error(`Failed to upload ${file.name}`);
+      } finally {
+        setUploadingCount((n) => n - 1);
+      }
+    }
+    e.target.value = '';
+  }
+
   function submit(v: TicketForm) {
-    createTicket.mutate(v, {
-      onSuccess: () => { toast.success('Ticket raised'); setShowRaise(false); form.reset({ priority: 'MEDIUM', title: '', description: '' }); },
+    createTicket.mutate({ ...v, attachmentUrls: attachments }, {
+      onSuccess: () => {
+        toast.success('Ticket raised');
+        setShowRaise(false);
+        form.reset({ priority: 'MEDIUM', title: '', description: '' });
+        setAttachments([]);
+      },
       onError: () => toast.error('Failed to raise ticket'),
     });
   }
@@ -592,7 +629,7 @@ function SupportTab() {
           <div className="bg-surface rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-surface">
               <h2 className="text-base font-semibold">Raise a Support Ticket</h2>
-              <button onClick={() => setShowRaise(false)} className="btn-ghost p-1.5 rounded"><X size={16} /></button>
+              <button onClick={() => { setShowRaise(false); setAttachments([]); }} className="btn-ghost p-1.5 rounded"><X size={16} /></button>
             </div>
             <form onSubmit={form.handleSubmit(submit)} className="p-6 space-y-4">
               <div>
@@ -618,9 +655,32 @@ function SupportTab() {
                   ))}
                 </div>
               </div>
+              <div>
+                <label className="label">Photos <span className="text-text-muted font-normal">(optional — screenshots of the issue)</span></label>
+                <div className="flex flex-wrap gap-2">
+                  {attachments.map((url) => (
+                    <div key={url} className="relative">
+                      <img src={url} alt="Attachment" className="w-14 h-14 rounded object-cover border border-border" />
+                      <button type="button" onClick={() => setAttachments((prev) => prev.filter((u) => u !== url))}
+                        className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-status-red text-white flex items-center justify-center">
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                  {uploadingCount > 0 && (
+                    <div className="w-14 h-14 rounded border border-dashed border-border flex items-center justify-center">
+                      <Loader2 size={14} className="animate-spin text-text-muted" />
+                    </div>
+                  )}
+                  <label htmlFor="ticket-photo-picker" className="w-14 h-14 rounded border-2 border-dashed border-border flex items-center justify-center text-text-muted hover:border-red/40 hover:text-red cursor-pointer transition-colors">
+                    <Plus size={16} />
+                  </label>
+                  <input id="ticket-photo-picker" type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} />
+                </div>
+              </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowRaise(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" disabled={createTicket.isPending} className="btn-primary flex-1">
+                <button type="button" onClick={() => { setShowRaise(false); setAttachments([]); }} className="btn-secondary flex-1">Cancel</button>
+                <button type="submit" disabled={createTicket.isPending || uploadingCount > 0} className="btn-primary flex-1">
                   {createTicket.isPending && <Loader2 size={14} className="animate-spin" />} Raise Ticket
                 </button>
               </div>

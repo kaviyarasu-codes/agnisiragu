@@ -23,6 +23,7 @@ interface CreateTicketPayload {
   title: string;
   description: string;
   priority?: TicketPriority;
+  attachmentUrls?: string[];
 }
 
 export function useCreateTicket() {

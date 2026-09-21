@@ -247,6 +247,7 @@ export interface Ticket {
   description: string;
   priority: TicketPriority;
   status: TicketStatusValue;
+  attachmentUrls: string[];
   resolutionNote?: string | null;
   raisedBy: TaskPerson;
   resolvedBy?: TaskPerson | null;

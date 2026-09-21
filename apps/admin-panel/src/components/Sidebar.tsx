@@ -136,8 +136,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           )}
         </nav>
 
-        {/* Admin badge */}
-        <div className="px-4 py-4 border-t border-ink-700">
+        {/* Admin badge — clicking jumps straight to My Profile */}
+        <NavLink to="/profile" onClick={onClose} className="px-4 py-4 border-t border-ink-700 hover:bg-ink-900 transition-colors block">
           <div className="flex items-center gap-3">
             {admin?.avatarUrl ? (
               <img src={admin.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
@@ -153,7 +153,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               <p className="text-2xs text-ink-500 truncate">{admin?.adminRole?.replace(/_/g, ' ')}</p>
             </div>
           </div>
-        </div>
+        </NavLink>
       </aside>
     </>
   );
