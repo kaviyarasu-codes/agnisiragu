@@ -82,7 +82,7 @@ export class NewsService {
       take: limit + 1,
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
       orderBy: { publishedAt: 'desc' },
-      include: { category: true },
+      include: { category: true, admin: { select: { id: true, name: true, avatarUrl: true } } },
     });
 
     const hasMore = articles.length > limit;
@@ -99,7 +99,7 @@ export class NewsService {
       where: { status: 'PUBLISHED', isBreaking: true },
       take: 5,
       orderBy: { publishedAt: 'desc' },
-      include: { category: true },
+      include: { category: true, admin: { select: { id: true, name: true, avatarUrl: true } } },
     });
     return { data: articles };
   }
@@ -163,7 +163,7 @@ export class NewsService {
       take: limit + 1,
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
       orderBy: { publishedAt: 'desc' },
-      include: { category: true },
+      include: { category: true, admin: { select: { id: true, name: true, avatarUrl: true } } },
     });
 
     const hasMore = articles.length > limit;
