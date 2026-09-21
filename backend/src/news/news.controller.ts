@@ -49,6 +49,12 @@ export class NewsController {
     return this.newsService.search(query);
   }
 
+  @Get('authors')
+  @ApiOperation({ summary: 'List distinct reporter/byline names (public)' })
+  listAuthors() {
+    return this.newsService.listAuthors();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get single article. Tracks read if bearer token provided.' })
   async findOne(@Param('id') id: string, @Req() req: any) {

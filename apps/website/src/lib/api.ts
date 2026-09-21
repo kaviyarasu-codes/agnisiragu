@@ -149,3 +149,42 @@ export async function getCategoryArticles(categoryId: string): Promise<Article[]
     return [];
   }
 }
+
+// ─── Search (client-side — /search is interactive, not ISR-cached) ─────────
+// Backed by GET /news/search: `q` matches titleTa/titleEn/bodyTa/bodyEn
+// directly plus a precomputed Thanglish/phonetic blob (searchText), so one
+// query box covers Tamil, English and Thanglish-typed-Tamil without any
+// language switch in the UI. See backend/src/common/utils/tamil-transliterate.ts.
+export interface SearchParams {
+  q?: string;
+  categoryId?: string;
+  byline?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  cursor?: string;
+  limit?: number;
+}
+
+export async function searchArticles(params: SearchParams): Promise<ListResponse<Article>> {
+  const qs = new URLSearchParams();
+  if (params.q) qs.set('q', params.q);
+  if (params.categoryId) qs.set('categoryId', params.categoryId);
+  if (params.byline) qs.set('byline', params.byline);
+  if (params.dateFrom) qs.set('dateFrom', params.dateFrom);
+  if (params.dateTo) qs.set('dateTo', params.dateTo);
+  if (params.cursor) qs.set('cursor', params.cursor);
+  qs.set('limit', String(params.limit ?? 20));
+
+  const res = await fetch(`${API_URL}/news/search?${qs.toString()}`);
+  if (!res.ok) throw new Error(`Search failed: ${res.status}`);
+  return res.json();
+}
+
+// Distinct reporter/byline names for the search page's reporter dropdown.
+export async function getAuthors(): Promise<{ data: string[] }> {
+  try {
+    return await apiGet<{ data: string[] }>('/news/authors');
+  } catch {
+    return { data: [] };
+  }
+}

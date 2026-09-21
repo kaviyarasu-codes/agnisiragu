@@ -136,6 +136,22 @@ export class NewsService {
     const where: any = { status: 'PUBLISHED' };
 
     if (query.categoryId) where.categoryId = query.categoryId;
+
+    if (query.byline) where.byline = { contains: query.byline, mode: 'insensitive' };
+
+    if (query.dateFrom || query.dateTo) {
+      where.publishedAt = {};
+      if (query.dateFrom) where.publishedAt.gte = new Date(query.dateFrom);
+      if (query.dateTo) {
+        // dateTo is a plain date (no time) — treat it as inclusive of the
+        // whole day rather than midnight-exact, which would silently
+        // exclude every article published that day.
+        const end = new Date(query.dateTo);
+        end.setHours(23, 59, 59, 999);
+        where.publishedAt.lte = end;
+      }
+    }
+
     if (query.q) {
       where.OR = [
         { titleTa: { contains: query.q, mode: 'insensitive' } },
@@ -171,6 +187,23 @@ export class NewsService {
     const nextCursor = hasMore ? data[data.length - 1].id : null;
 
     return { data, meta: { hasMore, nextCursor } };
+  }
+
+  // Distinct reporter/byline names across published articles, for the
+  // website's search-by-reporter dropdown. byline is the only public-facing
+  // author name (see AuthorCard.tsx) — there's no normalized reporter
+  // table backing published Articles, so this is just a distinct scan.
+  async listAuthors() {
+    const rows = await this.prisma.article.findMany({
+      where: { status: 'PUBLISHED', byline: { not: null } },
+      select: { byline: true },
+      distinct: ['byline'],
+    });
+    const names = rows
+      .map((r) => r.byline?.trim())
+      .filter((b): b is string => !!b)
+      .sort((a, b) => a.localeCompare(b, 'ta'));
+    return { data: names };
   }
 
   // ─── Public: like / dislike ───────────────────────────────────────────────

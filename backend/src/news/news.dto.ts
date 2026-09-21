@@ -193,6 +193,26 @@ export class SearchArticleDto {
   @IsUUID()
   categoryId?: string;
 
+  // Reporter/byline filter — matches Article.byline (the only public-facing
+  // author name; see AuthorCard.tsx on the website), contains + case-
+  // insensitive so "Keerthana" matches a byline of "Keerthana - நிருபர்".
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  byline?: string;
+
+  // Date range filters on publishedAt, "YYYY-MM-DD". dateTo is inclusive
+  // of the whole day (see NewsService.search).
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  dateFrom?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  dateTo?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Number)
