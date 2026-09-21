@@ -17,12 +17,18 @@ import { format, formatDistanceToNow } from 'date-fns';
 import {
   Loader2, User, Newspaper, ThumbsUp, MessageSquare, FileEdit,
   LogIn, Gauge, Eye, EyeOff, ListTodo, Plus, X, Trash2,
-  CheckCircle2, Circle, Clock, ChevronDown,
+  CheckCircle2, Circle, Clock, ChevronDown, LifeBuoy, AlertCircle,
 } from 'lucide-react';
 import { apiGet, apiPatch } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
 import { useMyTasks, useAssignedByMe, useAssignableUsers, useCreateTask, useUpdateTaskStatus, useDeleteTask } from '../hooks/useTasks';
-import type { Admin, Task, TaskStatus } from '../types';
+import { useMyTickets, useCreateTicket } from '../hooks/useTickets';
+import type { Admin, Task, TaskStatus, Ticket, TicketPriority, TicketStatusValue } from '../types';
+
+// Support tickets are raised BY managers/members TO an admin — admins and
+// super admins resolve them (see TicketsPage.tsx) rather than raising them,
+// so the "Support" tab only appears for everyone else.
+const TOP_ROLES = ['SUPER_ADMIN', 'ADMIN'];
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
@@ -49,18 +55,22 @@ function Avatar({ name, avatarUrl, size = 'md' }: { name: string; avatarUrl?: st
   );
 }
 
-const TABS = [
+const ALL_TABS = [
   { id: 'overview', label: 'Overview', icon: Gauge },
   { id: 'tasks',     label: 'Tasks',    icon: ListTodo },
+  { id: 'support',   label: 'Support',  icon: LifeBuoy, hideForTopRoles: true },
   { id: 'settings',  label: 'Settings', icon: User },
 ] as const;
-type TabId = typeof TABS[number]['id'];
+type TabId = typeof ALL_TABS[number]['id'];
 
 export default function ProfilePage() {
   const { admin, setAdmin } = useAuthStore();
   const [tab, setTab] = useState<TabId>('overview');
 
   if (!admin) return null;
+
+  const isTopRole = TOP_ROLES.includes(admin.adminRole);
+  const tabs = ALL_TABS.filter((t) => !(t.hideForTopRoles && isTopRole));
 
   return (
     <div className="space-y-5">
@@ -78,7 +88,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="flex gap-1 border-b border-border">
-        {TABS.map(({ id, label, icon: Icon }) => (
+        {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -93,6 +103,7 @@ export default function ProfilePage() {
 
       {tab === 'overview' && <OverviewTab adminId={admin.id} />}
       {tab === 'tasks'    && <TasksTab />}
+      {tab === 'support'  && !isTopRole && <SupportTab />}
       {tab === 'settings' && <SettingsTab admin={admin} onSaved={(updated) => setAdmin({ ...admin, ...updated })} />}
     </div>
   );
@@ -469,6 +480,148 @@ function TasksTab() {
                 <button type="button" onClick={() => setShowAssign(false)} className="btn-secondary flex-1">Cancel</button>
                 <button type="submit" disabled={createTask.isPending} className="btn-primary flex-1">
                   {createTask.isPending && <Loader2 size={14} className="animate-spin" />} Assign
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Support (raise a ticket) ─────────────────────────────────────────────────
+
+const PRIORITY_META: Record<TicketPriority, string> = {
+  LOW:    'bg-gray-100 text-gray-600',
+  MEDIUM: 'bg-amber-50 text-amber-700',
+  HIGH:   'bg-red/10 text-red',
+};
+
+const TICKET_STATUS_META: Record<TicketStatusValue, { label: string; icon: any; cls: string }> = {
+  OPEN:        { label: 'Open',        icon: AlertCircle,  cls: 'bg-amber-50 text-amber-700' },
+  IN_PROGRESS: { label: 'In Progress', icon: Clock,        cls: 'bg-blue-50 text-blue-700' },
+  RESOLVED:    { label: 'Resolved',    icon: CheckCircle2, cls: 'bg-green-50 text-green-700' },
+};
+
+function TicketStatusBadge({ status }: { status: TicketStatusValue }) {
+  const m = TICKET_STATUS_META[status];
+  const Icon = m.icon;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-semibold ${m.cls}`}>
+      <Icon size={10} /> {m.label}
+    </span>
+  );
+}
+
+function TicketRow({ ticket }: { ticket: Ticket }) {
+  return (
+    <div className="px-4 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-text-primary">{ticket.title}</p>
+          <p className="text-xs text-text-muted mt-0.5">{ticket.description}</p>
+          <p className="text-2xs text-text-muted mt-1">
+            Raised {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
+            {ticket.resolvedBy && <> · Resolved by {ticket.resolvedBy.name}</>}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+          <span className={`text-2xs font-semibold px-1.5 py-0.5 rounded ${PRIORITY_META[ticket.priority]}`}>{ticket.priority}</span>
+          <TicketStatusBadge status={ticket.status} />
+        </div>
+      </div>
+      {ticket.resolutionNote && (
+        <div className="mt-2 text-xs text-text-secondary bg-page border border-border rounded px-3 py-2">
+          <span className="font-semibold text-text-primary">Resolution: </span>{ticket.resolutionNote}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const ticketSchema = z.object({
+  title: z.string().min(2, 'At least 2 characters'),
+  description: z.string().min(5, 'At least 5 characters'),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH']),
+});
+type TicketForm = z.infer<typeof ticketSchema>;
+
+function SupportTab() {
+  const myTickets = useMyTickets();
+  const createTicket = useCreateTicket();
+  const [showRaise, setShowRaise] = useState(false);
+  const form = useForm<TicketForm>({ resolver: zodResolver(ticketSchema), defaultValues: { priority: 'MEDIUM' } });
+
+  function submit(v: TicketForm) {
+    createTicket.mutate(v, {
+      onSuccess: () => { toast.success('Ticket raised'); setShowRaise(false); form.reset({ priority: 'MEDIUM', title: '', description: '' }); },
+      onError: () => toast.error('Failed to raise ticket'),
+    });
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="card">
+        <div className="card-header">
+          <span className="section-title">My Support Tickets</span>
+          <button onClick={() => setShowRaise(true)} className="btn-primary text-xs px-3 py-1.5">
+            <Plus size={13} /> Raise a Ticket
+          </button>
+        </div>
+        {myTickets.isLoading ? (
+          <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>
+        ) : myTickets.isError ? (
+          <div className="flex flex-col items-center justify-center h-24 text-text-muted">
+            <p className="text-xs text-status-red">Failed to load tickets.</p>
+            <button onClick={() => myTickets.refetch()} className="mt-1 text-xs font-semibold text-red hover:underline">Retry</button>
+          </div>
+        ) : (myTickets.data?.data?.length ?? 0) === 0 ? (
+          <div className="flex flex-col items-center justify-center h-24 text-text-muted">
+            <LifeBuoy size={20} className="mb-1" /><p className="text-xs">You haven't raised any tickets</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {myTickets.data!.data.map((t) => <TicketRow key={t.id} ticket={t} />)}
+          </div>
+        )}
+      </div>
+
+      {showRaise && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-surface">
+              <h2 className="text-base font-semibold">Raise a Support Ticket</h2>
+              <button onClick={() => setShowRaise(false)} className="btn-ghost p-1.5 rounded"><X size={16} /></button>
+            </div>
+            <form onSubmit={form.handleSubmit(submit)} className="p-6 space-y-4">
+              <div>
+                <label className="label">Title</label>
+                <input {...form.register('title')} className="input-field" placeholder="e.g. Can't upload media files" />
+                {form.formState.errors.title && <p className="mt-1 text-xs text-status-red">{form.formState.errors.title.message}</p>}
+              </div>
+              <div>
+                <label className="label">Description</label>
+                <textarea {...form.register('description')} rows={4} className="input-field resize-none" placeholder="Describe the issue…" />
+                {form.formState.errors.description && <p className="mt-1 text-xs text-status-red">{form.formState.errors.description.message}</p>}
+              </div>
+              <div>
+                <label className="label">Priority</label>
+                <div className="flex gap-2">
+                  {(['LOW', 'MEDIUM', 'HIGH'] as TicketPriority[]).map((p) => (
+                    <button key={p} type="button" onClick={() => form.setValue('priority', p)}
+                      className={`flex-1 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
+                        form.watch('priority') === p ? 'bg-red/10 border-red/30 text-red' : 'border-border text-text-secondary hover:bg-page'
+                      }`}>
+                      {p.charAt(0) + p.slice(1).toLowerCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowRaise(false)} className="btn-secondary flex-1">Cancel</button>
+                <button type="submit" disabled={createTicket.isPending} className="btn-primary flex-1">
+                  {createTicket.isPending && <Loader2 size={14} className="animate-spin" />} Raise Ticket
                 </button>
               </div>
             </form>

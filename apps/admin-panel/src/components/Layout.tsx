@@ -11,6 +11,7 @@ import type { Admin } from '../types';
 const BREADCRUMBS: Record<string, string[]> = {
   '/':              ['Dashboard'],
   '/profile':       ['My Profile'],
+  '/tickets':       ['Admin', 'Support Tickets'],
   '/articles':      ['Content', 'Articles'],
   '/articles/new':  ['Content', 'Articles', 'New Article'],
   '/categories':    ['Content', 'Categories'],

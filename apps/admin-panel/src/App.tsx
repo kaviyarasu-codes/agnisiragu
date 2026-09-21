@@ -16,6 +16,7 @@ import AppConfigPage from './pages/AppConfigPage';
 import LocalAdsPage from './pages/LocalAdsPage';
 import TeamManagementPage from './pages/TeamManagementPage';
 import ProfilePage from './pages/ProfilePage';
+import TicketsPage from './pages/TicketsPage';
 import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
 
@@ -31,6 +32,7 @@ export default function App() {
               <Routes>
                 <Route path="/"                   element={<DashboardPage />} />
                 <Route path="/profile"            element={<ProfilePage />} />
+                <Route path="/tickets"            element={<TicketsPage />} />
                 <Route path="/articles"           element={<ArticleListPage />} />
                 <Route path="/articles/new"       element={<ArticleFormPage mode="create" />} />
                 <Route path="/articles/:id/edit"  element={<ArticleFormPage mode="edit" />} />

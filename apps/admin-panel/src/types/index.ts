@@ -238,6 +238,23 @@ export interface AssignableAdmin {
   teamType?: string | null;
 }
 
+export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH';
+export type TicketStatusValue = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
+
+export interface Ticket {
+  id: string;
+  title: string;
+  description: string;
+  priority: TicketPriority;
+  status: TicketStatusValue;
+  resolutionNote?: string | null;
+  raisedBy: TaskPerson;
+  resolvedBy?: TaskPerson | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Team {
   id: string;
   name: string;

@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Newspaper, Tag, Users, Image, Bell,
   ClipboardList, Settings, X, ChevronRight, UserCog,
-  BarChart2, Smartphone, Megaphone, UsersRound, User,
+  BarChart2, Smartphone, Megaphone, UsersRound, User, LifeBuoy,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 import logo from '../assets/logo.png';
@@ -38,12 +38,18 @@ const navGroups = [
   },
 ];
 
+const TOP_ROLES = ['SUPER_ADMIN', 'ADMIN'];
+
 const adminOnlyItems = [
   { to: '/accounts',   label: 'Admin Accounts', icon: UserCog },
   { to: '/teams',      label: 'Team Management',icon: UsersRound },
   { to: '/app-config', label: 'App Config',     icon: Smartphone },
   { to: '/settings',   label: 'Settings',       icon: Settings },
 ];
+
+// Visible to ADMIN as well as SUPER_ADMIN — resolving support tickets isn't
+// a super-admin-exclusive action the way account/team management is.
+const ticketItem = { to: '/tickets', label: 'Support Tickets', icon: LifeBuoy };
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { admin } = useAuthStore();
@@ -99,13 +105,22 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
           ))}
 
-          {admin?.adminRole === 'SUPER_ADMIN' && (
+          {admin?.adminRole && TOP_ROLES.includes(admin.adminRole) && (
             <div>
               <p className="text-2xs font-semibold uppercase tracking-widest text-ink-500 px-3 mb-2">
                 Admin
               </p>
               <div className="space-y-0.5">
-                {adminOnlyItems.map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  to={ticketItem.to}
+                  onClick={onClose}
+                  className={({ isActive }) => linkClass(isActive)}
+                >
+                  <ticketItem.icon size={16} className="flex-shrink-0" />
+                  <span className="flex-1">{ticketItem.label}</span>
+                  <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+                </NavLink>
+                {admin.adminRole === 'SUPER_ADMIN' && adminOnlyItems.map(({ to, label, icon: Icon }) => (
                   <NavLink
                     key={to} to={to}
                     onClick={onClose}

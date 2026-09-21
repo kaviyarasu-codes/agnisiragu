@@ -110,6 +110,18 @@ enum TaskStatus {
   DONE
 }
 
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
 // ─── Phase 1 Models ──────────────────────────────────────────────────────────
 
 model User {
@@ -155,6 +167,11 @@ model Admin {
   // assignment-hierarchy rule enforced in tasks.service.ts.
   tasksAssignedToMe Task[] @relation("TaskAssignedTo")
   tasksICreated     Task[] @relation("TaskAssignedBy")
+
+  // Support tickets (My Profile "Support" tab): issues a Manager/Member
+  // raises for an Admin/Super Admin to resolve. See Ticket model below.
+  ticketsRaised   Ticket[] @relation("TicketRaisedBy")
+  ticketsResolved Ticket[] @relation("TicketResolvedBy")
 }
 
 model Category {
@@ -324,6 +341,30 @@ model Task {
 
   @@index([assignedToId, status])
   @@index([assignedById])
+}
+
+// Support tickets, part of the "My Profile" feature. Any Manager or Member
+// (any non-SUPER_ADMIN/ADMIN role) can raise one; any SUPER_ADMIN/ADMIN can
+// see the shared pool and resolve it (enforced in tickets.service.ts, same
+// pattern as Task above — not modeled here since it's a fixed two-tier
+// split, unlike Task's team-scoped manager rule).
+model Ticket {
+  id             String         @id @default(uuid())
+  title          String
+  description    String
+  priority       TicketPriority @default(MEDIUM)
+  status         TicketStatus   @default(OPEN)
+  resolutionNote String?
+  raisedById     String
+  raisedBy       Admin          @relation("TicketRaisedBy", fields: [raisedById], references: [id])
+  resolvedById   String?
+  resolvedBy     Admin?         @relation("TicketResolvedBy", fields: [resolvedById], references: [id])
+  resolvedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([status])
+  @@index([raisedById])
 }
 
 // ─── Legacy / Phase 2 Models (kept, not used in Phase 1 APIs) ────────────────
