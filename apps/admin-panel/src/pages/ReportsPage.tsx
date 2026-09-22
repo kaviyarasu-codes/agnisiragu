@@ -52,6 +52,7 @@ const TEAM_LABELS: Record<string, string> = {
 };
 
 const ROLE_LABELS: Record<string, string> = {
+  ADMIN:                 'Admin',
   EDITOR_MANAGER:        'Editor Manager',
   EDITOR_MEMBER:         'Editor Member',
   VERIFICATION_MANAGER:  'Verification Manager',

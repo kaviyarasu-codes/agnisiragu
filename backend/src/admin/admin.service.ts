@@ -453,9 +453,13 @@ export class AdminService {
     const from = dateFrom ? new Date(dateFrom) : new Date('2020-01-01');
     const to   = dateTo   ? new Date(dateTo)   : new Date();
 
-    // All admins (non-system)
+    // All admins except SUPER_ADMIN itself — ADMIN accounts ARE included
+    // (a Super Admin watching "other admins' work status, performance and
+    // reports" should see ADMIN-role accounts too, not just Managers/
+    // Members) — SUPER_ADMIN is excluded since it's the one doing the
+    // watching and isn't part of this performance-scoring model.
     const admins = await this.prisma.admin.findMany({
-      where: { adminRole: { notIn: ['SUPER_ADMIN', 'ADMIN'] as any } },
+      where: { adminRole: { notIn: ['SUPER_ADMIN'] as any } },
       select: { id: true, name: true, email: true, adminRole: true, teamType: true, avatarUrl: true, lastLoginAt: true, isActive: true, createdAt: true },
       orderBy: { name: 'asc' },
     });
