@@ -11,7 +11,7 @@ import { useState, Fragment } from 'react';
 import {
   Loader2, Shield, Clock, CalendarCheck, Wallet, Lock,
   Users, CheckCircle2, XCircle, ChevronDown, ChevronRight, Save,
-  Globe, Server, Receipt, Plus, Trash2, AlertTriangle,
+  Globe, Server, Receipt, Plus, Trash2, AlertTriangle, Radio,
 } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
 import {
@@ -53,6 +53,17 @@ const MONTH_NAMES = ['January','February','March','April','May','June','July','A
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+// Heartbeats land roughly every 60s while someone actually has the panel
+// open and in-focus (see useAttendanceHeartbeat.ts) — 2 minutes gives some
+// buffer for network jitter/a missed tick while still meaning "right now",
+// distinct from merely "logged in at some point today" (Present).
+const ACTIVE_THRESHOLD_MS = 2 * 60_000;
+
+function isActiveNow(lastSeenAt: string | null): boolean {
+  if (!lastSeenAt) return false;
+  return Date.now() - new Date(lastSeenAt).getTime() < ACTIVE_THRESHOLD_MS;
 }
 
 function PersonCell({ name, adminRole, teamType, avatarUrl }: { name: string; adminRole: string; teamType?: string | null; avatarUrl?: string | null }) {
@@ -137,7 +148,8 @@ function AttendanceTab() {
           <div className="card"><EmptyState icon={CalendarCheck} title="No one in scope yet" description="Team members will show up here once accounts exist." /></div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <MetricCard label="Active Now" value={daily.data.data.filter((d) => isActiveNow(d.lastSeenAt)).length} icon={<Radio size={18} />} color="bg-emerald-50 text-emerald-600" />
               <MetricCard label="Present Today" value={daily.data.data.filter((d) => d.present).length} icon={<CheckCircle2 size={18} />} color="bg-green-50 text-green-600" />
               <MetricCard label="Absent" value={daily.data.data.filter((d) => !d.present).length} icon={<XCircle size={18} />} color="bg-red/10 text-red" />
               <MetricCard label="Team Size" value={daily.data.data.length} icon={<Users size={18} />} color="bg-blue-50 text-blue-600" />
@@ -152,19 +164,38 @@ function AttendanceTab() {
                   <th className="th">Total Hours</th>
                 </tr></thead>
                 <tbody>
-                  {daily.data.data.map((d) => (
+                  {daily.data.data.map((d) => {
+                    const activeNow = isActiveNow(d.lastSeenAt);
+                    return (
                     <tr key={d.id} className="tr-hover">
                       <td className="td"><PersonCell name={d.name} adminRole={d.adminRole} teamType={d.teamType} avatarUrl={d.avatarUrl} /></td>
                       <td className="td">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-semibold ${d.present ? 'bg-green-50 text-green-700 border border-green-200' : 'badge-gray'}`}>
-                          {d.present ? 'Present' : 'Absent'}
+                        {/* Three states: Active now (pinged within the last
+                            2 min — genuinely using the panel right now),
+                            Present (logged in today but idle or the tab's
+                            closed), Absent (never logged in today). */}
+                        <span
+                          title={activeNow ? 'Heartbeat received within the last 2 minutes' : d.present ? 'Logged in today, but not active right now' : undefined}
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-2xs font-semibold ${
+                            activeNow
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : d.present
+                              ? 'bg-green-50 text-green-700 border border-green-200'
+                              : 'badge-gray'
+                          }`}
+                        >
+                          {activeNow && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                          {activeNow ? 'Active' : d.present ? 'Present' : 'Absent'}
                         </span>
                       </td>
                       <td className="td text-xs text-text-muted">{d.firstSeenAt ? new Date(d.firstSeenAt).toLocaleTimeString() : '—'}</td>
-                      <td className="td text-xs text-text-muted">{d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleTimeString() : '—'}</td>
+                      <td className="td text-xs text-text-muted">
+                        {activeNow ? <span className="text-emerald-600 font-medium">Still active</span> : d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleTimeString() : '—'}
+                      </td>
                       <td className="td text-sm text-text-secondary">{d.present ? `${(d.activeMinutes / 60).toFixed(1)} hrs` : '—'}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

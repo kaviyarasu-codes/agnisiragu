@@ -22,6 +22,11 @@ export function useDailyAttendance(date: string) {
   return useQuery({
     queryKey: ['hr', 'attendance', 'daily', date],
     queryFn: () => apiGet<{ data: DailyAttendanceEntry[] }>('/hr/attendance', { date }),
+    // Polls while this tab is open so the "Active now" indicator (derived
+    // from lastSeenAt in WorkforcePage) actually stays live rather than
+    // only updating on a manual reload — heartbeats land roughly every 60s
+    // (see hr.service.ts), so 30s keeps this comfortably fresher than that.
+    refetchInterval: 30_000,
   });
 }
 
