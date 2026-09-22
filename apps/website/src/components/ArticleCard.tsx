@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import type { Article } from '@/lib/api';
-import ImageWatermark from './ImageWatermark';
 import MediaThumbnail from './MediaThumbnail';
 
 function timeAgo(iso: string | null): string {
@@ -45,7 +44,6 @@ export default function ArticleCard({ article }: { article: Article }) {
             Breaking
           </span>
         )}
-        {article.thumbnailUrl && <ImageWatermark size="md" />}
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
         <h3 className="font-tamil text-lg font-bold leading-snug text-black group-hover:text-brand-red">

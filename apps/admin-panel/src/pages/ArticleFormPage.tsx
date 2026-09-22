@@ -30,6 +30,10 @@ const schema = z.object({
   categoryId: z.string().min(1, 'Category is required'),
   status: z.enum(['DRAFT', 'REVIEW', 'PUBLISHED', 'UNPUBLISHED', 'DELETED']),
   isBreaking: z.boolean(),
+  // Manual homepage curation (website only) — see HomepageView. Lower
+  // featuredOrder = earlier (lead story first, then side stories).
+  isFeatured: z.boolean(),
+  featuredOrder: z.number().optional(),
   cardStyle: z.enum(['STANDARD', 'FULL_BLEED', 'NEWSPRINT']),
   thumbnailUrl: z.string().optional(),
   // Extra gallery photos beyond the single required thumbnail — the reader
@@ -100,7 +104,7 @@ export default function ArticleFormPage({ mode }: Props) {
 
   const { register, handleSubmit, control, setValue, watch, getValues, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { status: 'DRAFT', isBreaking: false, cardStyle: 'STANDARD', byline: '', thumbnailUrl: '', mediaUrls: [] },
+    defaultValues: { status: 'DRAFT', isBreaking: false, isFeatured: false, cardStyle: 'STANDARD', byline: '', thumbnailUrl: '', mediaUrls: [] },
   });
 
   const thumbnailUrl = watch('thumbnailUrl');
@@ -119,6 +123,8 @@ export default function ArticleFormPage({ mode }: Props) {
       setValue('categoryId', a.category.id);
       setValue('status', a.status);
       setValue('isBreaking', a.isBreaking);
+      setValue('isFeatured', a.isFeatured ?? false);
+      setValue('featuredOrder', a.featuredOrder);
       setValue('cardStyle', a.cardStyle ?? 'STANDARD');
       setValue('thumbnailUrl', a.thumbnailUrl ?? '');
       setValue('mediaUrls', a.mediaUrls ?? []);
@@ -538,6 +544,31 @@ export default function ArticleFormPage({ mode }: Props) {
                 Breaking News
               </label>
             </div>
+
+            {/* Website-only homepage curation — see NewsService.homepagePicks.
+                Featured articles (ordered by featuredOrder, lead first) fill
+                the homepage hero; unfeatured articles never appear there. */}
+            <div className="flex items-center gap-3 pt-1 pb-0.5">
+              <Controller name="isFeatured" control={control} render={({ field }) => (
+                <input type="checkbox" id="isFeatured" checked={field.value} onChange={field.onChange}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-400 cursor-pointer" />
+              )} />
+              <label htmlFor="isFeatured" className="text-sm font-medium text-gray-700 cursor-pointer flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                Feature on Website Homepage
+              </label>
+            </div>
+            {watch('isFeatured') && (
+              <div>
+                <Label>Homepage Position</Label>
+                <Controller name="featuredOrder" control={control} render={({ field }) => (
+                  <input type="number" min={1} step={1} placeholder="1 = lead story, 2/3 = side stories"
+                    value={field.value ?? ''}
+                    onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                    className="input-field h-10 text-sm" />
+                )} />
+              </div>
+            )}
 
             {/* Feed Card Style picker removed — the reader app now renders every
                 article with the single standard card (Full-bleed/Newsprint/

@@ -94,6 +94,8 @@ export interface Article {
   admin: { id: string; name: string };
   status: ArticleStatus;
   isBreaking: boolean;
+  isFeatured?: boolean;
+  featuredOrder?: number;
   cardStyle?: 'STANDARD' | 'FULL_BLEED' | 'NEWSPRINT';
   likeCount?: number;
   dislikeCount?: number;

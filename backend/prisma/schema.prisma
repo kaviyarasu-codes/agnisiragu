@@ -226,6 +226,14 @@ model Article {
   status       ArticleStatus @default(DRAFT)
   isBreaking   Boolean       @default(false)
   cardStyle    CardStyle     @default(STANDARD)
+
+  // Manual homepage curation (website only — see HomepageView in
+  // apps/website/app/page.tsx). When isFeatured is set, the article is
+  // eligible for the hero "lead story"/"side stories" slots, ordered by
+  // featuredOrder (lower = earlier/lead). GET /news/homepage-picks fills
+  // any remaining slots (below 3) with the newest published articles.
+  isFeatured    Boolean      @default(false)
+  featuredOrder Int?
   scheduledAt  DateTime?
   publishedAt  DateTime?
   createdAt    DateTime      @default(now())
@@ -255,6 +263,8 @@ model Article {
 
   reads        ArticleRead[]
   comments     Comment[]
+
+  @@index([isFeatured, featuredOrder])
 }
 
 model ArticleRead {

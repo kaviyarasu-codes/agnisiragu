@@ -43,6 +43,12 @@ export class NewsController {
     return this.newsService.findBreaking();
   }
 
+  @Get('homepage-picks')
+  @ApiOperation({ summary: 'Up to 3 articles for the website homepage hero (lead + 2 side stories)' })
+  homepagePicks() {
+    return this.newsService.homepagePicks();
+  }
+
   @Get('search')
   @ApiOperation({ summary: 'Full-text search articles (public)' })
   search(@Query() query: SearchArticleDto) {

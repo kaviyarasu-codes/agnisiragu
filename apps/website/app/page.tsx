@@ -1,5 +1,5 @@
 import { Fragment, Suspense } from 'react';
-import { getArticles, getCategories, getSiteConfig } from '@/lib/api';
+import { getArticles, getCategories, getSiteConfig, getHomepagePicks } from '@/lib/api';
 import type { Article, Category, WebsiteAdsConfig } from '@/lib/api';
 import ArticleCard from '@/components/ArticleCard';
 import CategoryTabs from '@/components/CategoryTabs';
@@ -28,10 +28,12 @@ export default async function HomePage({
 }) {
   const categoryId = searchParams.category;
 
-  const [{ data: categories }, { data: articles }, { ads, site }] = await Promise.all([
+  const [{ data: categories }, { data: articles }, { ads, site }, { data: picks }] = await Promise.all([
     getCategories().catch(() => ({ data: [] })),
     getArticles(categoryId).catch(() => ({ data: [] })),
     getSiteConfig(),
+    // Only the default (non-category) homepage shows the curated hero.
+    categoryId ? Promise.resolve({ data: [] as Article[] }) : getHomepagePicks().catch(() => ({ data: [] as Article[] })),
   ]);
 
   return (
@@ -46,7 +48,7 @@ export default async function HomePage({
         ) : categoryId ? (
           <FilteredCategoryView articles={articles} ads={ads} />
         ) : (
-          <HomepageView articles={articles} categories={categories} ads={ads} sectionCount={site.homepageSectionCount} />
+          <HomepageView articles={articles} categories={categories} ads={ads} sectionCount={site.homepageSectionCount} picks={picks} />
         )}
       </div>
     </>
@@ -86,14 +88,21 @@ async function HomepageView({
   categories,
   ads,
   sectionCount,
+  picks,
 }: {
   articles: Article[];
   categories: Category[];
   ads: WebsiteAdsConfig;
   sectionCount: number;
+  // Admin-curated (or auto-filled) hero picks — see HomePage above and
+  // NewsService.homepagePicks. Excluded from `articles` below so the same
+  // article never shows twice (once in the hero, once in Recent News).
+  picks: Article[];
 }) {
-  const [lead, ...rest] = articles;
-  const secondary = rest.slice(0, 2);
+  const pickedIds = new Set(picks.map((a) => a.id));
+  const lead = picks[0];
+  const secondary = picks.slice(1, 3);
+  const rest = articles.filter((a) => !pickedIds.has(a.id));
   const trending = trendingFrom(articles);
 
   const sectionCategories = categories.slice(0, sectionCount);
@@ -121,7 +130,7 @@ async function HomepageView({
         <div className="flex flex-col gap-6">
           <SectionHeading title="சமீபத்திய செய்திகள்" />
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            {rest.slice(2, 8).map((article) => (
+            {rest.slice(0, 6).map((article) => (
               <ArticleCard key={article.id} article={article} />
             ))}
           </div>

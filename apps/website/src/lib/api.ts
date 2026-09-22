@@ -131,6 +131,14 @@ export function getBreakingNews(): Promise<{ data: Article[] }> {
   return apiGet<{ data: Article[] }>('/news/breaking');
 }
 
+// Up to 3 articles for the homepage hero (lead story + 2 side stories) —
+// admin-curated via the "Feature on Website Homepage" toggle in the article
+// editor, auto-filled with the newest published articles when fewer than 3
+// are featured. See NewsService.homepagePicks.
+export function getHomepagePicks(): Promise<{ data: Article[] }> {
+  return apiGet<{ data: Article[] }>('/news/homepage-picks');
+}
+
 export async function getArticle(id: string): Promise<{ data: Article } | null> {
   try {
     return await apiGet<{ data: Article }>(`/news/${id}`);

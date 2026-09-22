@@ -77,6 +77,17 @@ export class CreateArticleDto {
   @IsOptional()
   @IsDateString()
   scheduledAt?: string;
+
+  // Manual homepage curation (website only) — see NewsService.homepagePicks.
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  isFeatured?: boolean;
+
+  @ApiPropertyOptional({ description: 'Lower = earlier (lead story first). Only matters when isFeatured is true.' })
+  @IsOptional()
+  @Type(() => Number)
+  featuredOrder?: number;
 }
 
 export class UpdateArticleDto {
@@ -145,6 +156,16 @@ export class UpdateArticleDto {
   @IsOptional()
   @IsDateString()
   scheduledAt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isFeatured?: boolean;
+
+  @ApiPropertyOptional({ description: 'Lower = earlier (lead story first). Only matters when isFeatured is true.' })
+  @IsOptional()
+  @Type(() => Number)
+  featuredOrder?: number;
 }
 
 export class ArticleListQueryDto {

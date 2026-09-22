@@ -24,6 +24,8 @@ interface CreateArticlePayload {
   isBreaking: boolean;
   cardStyle?: 'STANDARD' | 'FULL_BLEED' | 'NEWSPRINT';
   scheduledAt?: string;
+  isFeatured?: boolean;
+  featuredOrder?: number;
 }
 
 // Byline picker on the article form — uses the minimal, any-admin-accessible

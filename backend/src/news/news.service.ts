@@ -104,6 +104,34 @@ export class NewsService {
     return { data: articles };
   }
 
+  // ─── Public: homepage hero picks (website only) ───────────────────────────
+  // Up to 3 articles for the homepage's lead story + 2 side stories. Admin-
+  // curated ones (isFeatured, ordered by featuredOrder — nulls last) come
+  // first; any remaining slots are filled with the newest published articles
+  // not already picked, so the hero never looks empty even with 0 featured.
+
+  async homepagePicks() {
+    const featured = await this.prisma.article.findMany({
+      where: { status: 'PUBLISHED', isFeatured: true },
+      take: 3,
+      orderBy: [{ featuredOrder: 'asc' }, { publishedAt: 'desc' }],
+      include: { category: true, admin: { select: { id: true, name: true, avatarUrl: true } } },
+    });
+
+    const remaining = 3 - featured.length;
+    if (remaining > 0) {
+      const filler = await this.prisma.article.findMany({
+        where: { status: 'PUBLISHED', id: { notIn: featured.map((a) => a.id) } },
+        take: remaining,
+        orderBy: { publishedAt: 'desc' },
+        include: { category: true, admin: { select: { id: true, name: true, avatarUrl: true } } },
+      });
+      return { data: [...featured, ...filler] };
+    }
+
+    return { data: featured };
+  }
+
   // ─── Public: get single article ───────────────────────────────────────────
 
   async findOne(id: string, userId?: string) {
@@ -275,6 +303,8 @@ export class NewsService {
         adminId,
         isBreaking: dto.isBreaking ?? false,
         cardStyle: dto.cardStyle ?? 'STANDARD',
+        isFeatured: dto.isFeatured ?? false,
+        featuredOrder: dto.featuredOrder ?? null,
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
         status,
         publishedAt: status === 'PUBLISHED' ? new Date() : null,

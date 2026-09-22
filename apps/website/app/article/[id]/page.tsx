@@ -7,7 +7,6 @@ import AdSlot from '@/components/AdSlot';
 import AuthorCard from '@/components/AuthorCard';
 import ArticleActions from '@/components/ArticleActions';
 import ViewTracker from '@/components/ViewTracker';
-import ImageWatermark from '@/components/ImageWatermark';
 import CommentsSection from '@/components/CommentsSection';
 import MediaThumbnail from '@/components/MediaThumbnail';
 
@@ -110,7 +109,6 @@ export default async function ArticlePage({ params }: { params: { id: string } }
       {article.thumbnailUrl && (
         <div className="relative mt-6 aspect-video w-full overflow-hidden rounded-xl bg-black/5">
           <MediaThumbnail src={article.thumbnailUrl} alt={article.titleTa} className="object-cover" priority player />
-          <ImageWatermark size="lg" />
         </div>
       )}
 
