@@ -305,6 +305,7 @@ export class NewsService {
         cardStyle: dto.cardStyle ?? 'STANDARD',
         isFeatured: dto.isFeatured ?? false,
         featuredOrder: dto.featuredOrder ?? null,
+        thumbnailWatermarked: dto.thumbnailWatermarked ?? false,
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
         status,
         publishedAt: status === 'PUBLISHED' ? new Date() : null,

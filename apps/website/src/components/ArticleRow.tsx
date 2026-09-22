@@ -6,6 +6,7 @@
 
 import Link from 'next/link';
 import type { Article } from '@/lib/api';
+import ImageWatermark from './ImageWatermark';
 import MediaThumbnail from './MediaThumbnail';
 
 function timeAgo(iso: string | null): string {
@@ -25,12 +26,15 @@ export default function ArticleRow({ article }: { article: Article }) {
     <Link href={`/article/${article.id}`} className="group flex gap-3 py-3">
       <div className="relative aspect-square w-16 shrink-0 overflow-hidden rounded-lg bg-black/5">
         {article.thumbnailUrl ? (
-          <MediaThumbnail
-            src={article.thumbnailUrl}
-            alt={article.titleTa}
-            className="object-cover transition duration-300 group-hover:scale-105"
-            sizes="64px"
-          />
+          <>
+            <MediaThumbnail
+              src={article.thumbnailUrl}
+              alt={article.titleTa}
+              className="object-cover transition duration-300 group-hover:scale-105"
+              sizes="64px"
+            />
+            {!article.thumbnailWatermarked && <ImageWatermark size="xs" />}
+          </>
         ) : (
           <div className="flex h-full items-center justify-center text-[9px] text-black/20">அக்னி</div>
         )}

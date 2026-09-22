@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import type { Article } from '@/lib/api';
+import ImageWatermark from './ImageWatermark';
 import MediaThumbnail from './MediaThumbnail';
 
 function timeAgo(iso: string | null): string {
@@ -36,6 +37,7 @@ export default function ArticleCard({ article }: { article: Article }) {
           </div>
         )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
+        {article.thumbnailUrl && !article.thumbnailWatermarked && <ImageWatermark size="md" />}
         <span className="absolute left-2.5 top-2.5 rounded bg-brand-red/95 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm">
           {article.category.nameTa}
         </span>

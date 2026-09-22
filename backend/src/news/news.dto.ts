@@ -88,6 +88,14 @@ export class CreateArticleDto {
   @IsOptional()
   @Type(() => Number)
   featuredOrder?: number;
+
+  // Set by the admin panel right after MediaService.bakeWatermark succeeds
+  // for thumbnailUrl — not user-facing. See NewsService for how the
+  // website uses this to skip the on-page overlay for already-baked images.
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  thumbnailWatermarked?: boolean;
 }
 
 export class UpdateArticleDto {
@@ -166,6 +174,11 @@ export class UpdateArticleDto {
   @IsOptional()
   @Type(() => Number)
   featuredOrder?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  thumbnailWatermarked?: boolean;
 }
 
 export class ArticleListQueryDto {

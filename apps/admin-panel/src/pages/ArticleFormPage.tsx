@@ -34,6 +34,10 @@ const schema = z.object({
   // featuredOrder = earlier (lead story first, then side stories).
   isFeatured: z.boolean(),
   featuredOrder: z.number().optional(),
+  // Not user-facing — set automatically after a successful watermark bake
+  // (see handleThumbnailUpload) so the website knows it can skip its own
+  // on-page overlay for this image.
+  thumbnailWatermarked: z.boolean().optional(),
   cardStyle: z.enum(['STANDARD', 'FULL_BLEED', 'NEWSPRINT']),
   thumbnailUrl: z.string().optional(),
   // Extra gallery photos beyond the single required thumbnail — the reader
@@ -125,6 +129,7 @@ export default function ArticleFormPage({ mode }: Props) {
       setValue('isBreaking', a.isBreaking);
       setValue('isFeatured', a.isFeatured ?? false);
       setValue('featuredOrder', a.featuredOrder);
+      setValue('thumbnailWatermarked', a.thumbnailWatermarked ?? false);
       setValue('cardStyle', a.cardStyle ?? 'STANDARD');
       setValue('thumbnailUrl', a.thumbnailUrl ?? '');
       setValue('mediaUrls', a.mediaUrls ?? []);
@@ -168,11 +173,17 @@ export default function ArticleFormPage({ mode }: Props) {
       if (!res.ok) throw new Error();
       const data = await res.json() as { secure_url: string; public_id: string };
       setValue('thumbnailUrl', data.secure_url);
+      setValue('thumbnailWatermarked', false); // reset until the bake below confirms it
       setThumbnailPreview(data.secure_url);
       toast.success(resourceType === 'video' ? 'Video thumbnail uploaded' : 'Thumbnail uploaded');
       // Bake the brand watermark into the actual stored file (best-effort —
-      // the thumbnail is already usable even if this fails).
-      apiPost('/media/bake-watermark', { publicId: data.public_id, resourceType }).catch(() => {});
+      // the thumbnail is already usable even if this fails). Only flip
+      // thumbnailWatermarked once Cloudinary confirms it's actually baked
+      // in, so the website's on-page overlay stays as a fallback if this
+      // silently fails.
+      apiPost('/media/bake-watermark', { publicId: data.public_id, resourceType })
+        .then(() => setValue('thumbnailWatermarked', true))
+        .catch(() => {});
     } catch {
       toast.error('Upload failed — paste URL below instead');
     } finally {

@@ -96,6 +96,7 @@ export interface Article {
   isBreaking: boolean;
   isFeatured?: boolean;
   featuredOrder?: number;
+  thumbnailWatermarked?: boolean;
   cardStyle?: 'STANDARD' | 'FULL_BLEED' | 'NEWSPRINT';
   likeCount?: number;
   dislikeCount?: number;

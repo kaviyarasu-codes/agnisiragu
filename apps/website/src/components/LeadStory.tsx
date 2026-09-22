@@ -5,6 +5,7 @@
 
 import Link from 'next/link';
 import type { Article } from '@/lib/api';
+import ImageWatermark from './ImageWatermark';
 import MediaThumbnail from './MediaThumbnail';
 
 function timeAgo(iso: string | null): string {
@@ -22,19 +23,25 @@ function timeAgo(iso: string | null): string {
 export default function LeadStory({ article }: { article: Article }) {
   return (
     <Link href={`/article/${article.id}`} className="group block">
-      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-black/5 sm:aspect-[21/9]">
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-black sm:aspect-[21/9]">
         {article.thumbnailUrl ? (
           <MediaThumbnail
             src={article.thumbnailUrl}
             alt={article.titleTa}
             priority
             player
-            className="object-cover transition duration-300 group-hover:scale-105"
+            // object-contain — the original image is shown in full (no
+            // cropping), letterboxed on a black backdrop when its aspect
+            // ratio doesn't match the hero box. Only the video path (see
+            // VideoPlayer.tsx) ignores this in favor of its own fixed
+            // object-contain; this class is what actually governs images.
+            className="object-contain transition duration-300 group-hover:scale-105"
             sizes="(max-width: 1024px) 100vw, 720px"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-black/20">அக்னிசிறகு</div>
         )}
+        {article.thumbnailUrl && !article.thumbnailWatermarked && <ImageWatermark size="lg" />}
         {article.isBreaking && (
           <span className="absolute left-3 top-3 rounded bg-brand-red px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-white">
             Breaking

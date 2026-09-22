@@ -9,6 +9,7 @@ import ArticleActions from '@/components/ArticleActions';
 import ViewTracker from '@/components/ViewTracker';
 import CommentsSection from '@/components/CommentsSection';
 import MediaThumbnail from '@/components/MediaThumbnail';
+import ImageWatermark from '@/components/ImageWatermark';
 
 export const revalidate = 60;
 
@@ -107,8 +108,9 @@ export default async function ArticlePage({ params }: { params: { id: string } }
       />
 
       {article.thumbnailUrl && (
-        <div className="relative mt-6 aspect-video w-full overflow-hidden rounded-xl bg-black/5">
-          <MediaThumbnail src={article.thumbnailUrl} alt={article.titleTa} className="object-cover" priority player />
+        <div className="relative mt-6 aspect-video w-full overflow-hidden rounded-xl bg-black">
+          <MediaThumbnail src={article.thumbnailUrl} alt={article.titleTa} className="object-contain" priority player />
+          {!article.thumbnailWatermarked && <ImageWatermark size="lg" />}
         </div>
       )}
 

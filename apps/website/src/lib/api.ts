@@ -29,6 +29,7 @@ export interface Article {
   categoryId: string;
   category: Category;
   isBreaking: boolean;
+  thumbnailWatermarked?: boolean;
   publishedAt: string | null;
   likeCount: number;
   dislikeCount: number;

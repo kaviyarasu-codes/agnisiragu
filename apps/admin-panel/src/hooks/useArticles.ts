@@ -26,6 +26,7 @@ interface CreateArticlePayload {
   scheduledAt?: string;
   isFeatured?: boolean;
   featuredOrder?: number;
+  thumbnailWatermarked?: boolean;
 }
 
 // Byline picker on the article form — uses the minimal, any-admin-accessible

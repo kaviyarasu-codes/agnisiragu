@@ -234,6 +234,15 @@ model Article {
   // any remaining slots (below 3) with the newest published articles.
   isFeatured    Boolean      @default(false)
   featuredOrder Int?
+
+  // True once thumbnailUrl's actual file has the brand logo baked into its
+  // pixels (see MediaService.bakeWatermark, called by the admin panel right
+  // after upload). The website uses this to decide whether it still needs
+  // to draw the on-page ImageWatermark overlay for this article's hero
+  // image — baked images don't need it (would double up the logo); older
+  // articles uploaded before this feature existed default to false, so
+  // they keep the overlay as their only protection.
+  thumbnailWatermarked Boolean @default(false)
   scheduledAt  DateTime?
   publishedAt  DateTime?
   createdAt    DateTime      @default(now())
