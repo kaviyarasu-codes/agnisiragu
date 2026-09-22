@@ -41,6 +41,7 @@ const PERIODS: { value: Period; label: string }[] = [
 ];
 
 const TEAM_LABELS: Record<string, string> = {
+  ADMIN_TEAM:                 'Admin Team',
   EDITOR_TEAM:                'Editor Team',
   VERIFICATION_TEAM:          'Verification Team',
   REPORTER_APP_TEAM:          'Reporter App Team',
@@ -65,6 +66,14 @@ const ROLE_LABELS: Record<string, string> = {
   LOCAL_ADS_MANAGER:     'Local Ads Manager',
   ADMOB_MANAGER:         'AdMob Manager',
 };
+
+// Plain ADMIN accounts have no teamType — show "Admin Team" instead of a
+// blank/dash, same synthetic grouping the backend now uses in getTeamReport.
+function teamLabelFor(m: { teamType?: string | null; adminRole?: string }): string {
+  if (m.teamType) return TEAM_LABELS[m.teamType] ?? m.teamType;
+  if (m.adminRole === 'ADMIN') return 'Admin Team';
+  return 'Unassigned';
+}
 
 // ─── Export Utilities ─────────────────────────────────────────────────────────
 
@@ -468,7 +477,7 @@ function MemberReport({ from, to }: { from: string; to: string }) {
   const exportRows = members.map((m: any) => ({
     Name: m.name, Email: m.email,
     Role: ROLE_LABELS[m.adminRole] ?? m.adminRole,
-    Team: TEAM_LABELS[m.teamType ?? ''] ?? m.teamType ?? 'Unassigned',
+    Team: teamLabelFor(m),
     Published: m.published, Drafts: m.drafts, Edits: m.edits,
     Logins: m.logins, Score: m.score,
     'Last Login': m.lastLoginAt ? format(new Date(m.lastLoginAt), 'dd MMM yyyy HH:mm') : 'Never',
@@ -524,7 +533,7 @@ function MemberReport({ from, to }: { from: string; to: string }) {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-text-secondary">{TEAM_LABELS[m.teamType ?? ''] ?? '—'}</td>
+                      <td className="px-4 py-2.5 text-text-secondary">{teamLabelFor(m)}</td>
                       <td className="px-4 py-2.5 font-semibold text-text-primary">{m.published}</td>
                       <td className="px-4 py-2.5 text-text-secondary">{m.edits}</td>
                       <td className="px-4 py-2.5 text-text-secondary">{m.logins}</td>

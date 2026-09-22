@@ -2,11 +2,13 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
-// Fixed two-tier split (unlike Task's team-scoped manager rule): any
-// Manager or Member may raise a ticket; only SUPER_ADMIN/ADMIN see the
-// shared pool and resolve it. No team scoping — an issue raised by an
-// Editor team member may well need an Admin's attention regardless of team.
-const TOP_ROLES = ['SUPER_ADMIN', 'ADMIN'];
+// Any Manager, Member, or plain ADMIN may raise a ticket (to Super Admin or
+// another Admin); only SUPER_ADMIN and ADMIN see the shared pool and
+// resolve it (RolesGuard on the controller). SUPER_ADMIN itself is the only
+// role that can't raise one — there's no one above it to raise to. No team
+// scoping — an issue raised by an Editor team member may well need an
+// Admin's attention regardless of team.
+const CANNOT_RAISE_TICKETS = ['SUPER_ADMIN'];
 
 const ticketInclude = {
   raisedBy:   { select: { id: true, name: true, avatarUrl: true, adminRole: true, teamType: true } },
@@ -21,8 +23,8 @@ export class TicketsService {
     requesterId: string, requesterRole: string,
     dto: { title: string; description: string; priority?: 'LOW' | 'MEDIUM' | 'HIGH'; attachmentUrls?: string[] },
   ) {
-    if (TOP_ROLES.includes(requesterRole)) {
-      throw new ForbiddenException('Admins resolve tickets — they are raised by managers and team members');
+    if (CANNOT_RAISE_TICKETS.includes(requesterRole)) {
+      throw new ForbiddenException('Super Admin resolves tickets — there is no one above Super Admin to raise one to');
     }
     const ticket = await this.prisma.ticket.create({
       data: {

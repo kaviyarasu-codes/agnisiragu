@@ -586,7 +586,10 @@ export class AdminService {
     }>();
 
     for (const m of members) {
-      const key = m.teamType ?? 'UNASSIGNED';
+      // Plain ADMIN accounts have no teamType (they're not on any one
+      // team) — group them under a synthetic "Admin Team" rather than
+      // lumping them in with genuinely unassigned Managers/Members.
+      const key = m.teamType ?? (m.adminRole === 'ADMIN' ? 'ADMIN_TEAM' : 'UNASSIGNED');
       if (!teamMap.has(key)) {
         teamMap.set(key, { teamType: key, memberCount: 0, published: 0, drafts: 0, edits: 0, logins: 0, score: 0, members: [] });
       }

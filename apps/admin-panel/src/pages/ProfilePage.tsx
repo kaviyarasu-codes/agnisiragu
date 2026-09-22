@@ -25,10 +25,11 @@ import { useMyTasks, useAssignedByMe, useAssignableUsers, useCreateTask, useUpda
 import { useMyTickets, useCreateTicket } from '../hooks/useTickets';
 import type { Admin, Task, TaskStatus, Ticket, TicketPriority, TicketStatusValue } from '../types';
 
-// Support tickets are raised BY managers/members TO an admin — admins and
-// super admins resolve them (see TicketsPage.tsx) rather than raising them,
-// so the "Support" tab only appears for everyone else.
-const TOP_ROLES = ['SUPER_ADMIN', 'ADMIN'];
+// Support tickets are raised BY managers/members/ADMINs TO an admin —
+// SUPER_ADMIN resolves them (see TicketsPage.tsx) rather than raising them
+// (there's no one above Super Admin to raise a ticket to), so the "Support"
+// tab is hidden for Super Admin only. ADMIN can both raise tickets (to
+// Super Admin or another Admin) and resolve them from the shared pool.
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
@@ -60,10 +61,10 @@ function Avatar({ name, avatarUrl, size = 'md' }: { name: string; avatarUrl?: st
 }
 
 const ALL_TABS = [
-  { id: 'overview', label: 'Overview', icon: Gauge },
-  { id: 'tasks',     label: 'Tasks',    icon: ListTodo },
-  { id: 'support',   label: 'Support',  icon: LifeBuoy, hideForTopRoles: true },
-  { id: 'settings',  label: 'Settings', icon: User },
+  { id: 'overview', label: 'Overview', icon: Gauge,     hideForSuperAdmin: false },
+  { id: 'tasks',     label: 'Tasks',    icon: ListTodo,  hideForSuperAdmin: false },
+  { id: 'support',   label: 'Support',  icon: LifeBuoy,  hideForSuperAdmin: true },
+  { id: 'settings',  label: 'Settings', icon: User,      hideForSuperAdmin: false },
 ] as const;
 type TabId = typeof ALL_TABS[number]['id'];
 
@@ -73,8 +74,8 @@ export default function ProfilePage() {
 
   if (!admin) return null;
 
-  const isTopRole = TOP_ROLES.includes(admin.adminRole);
-  const tabs = ALL_TABS.filter((t) => !(t.hideForTopRoles && isTopRole));
+  const isSuperAdmin = admin.adminRole === 'SUPER_ADMIN';
+  const tabs = ALL_TABS.filter((t) => !(t.hideForSuperAdmin && isSuperAdmin));
 
   return (
     <div className="space-y-5">
@@ -107,7 +108,7 @@ export default function ProfilePage() {
 
       {tab === 'overview' && <OverviewTab adminId={admin.id} />}
       {tab === 'tasks'    && <TasksTab />}
-      {tab === 'support'  && !isTopRole && <SupportTab />}
+      {tab === 'support'  && !isSuperAdmin && <SupportTab />}
       {tab === 'settings' && <SettingsTab admin={admin} onSaved={(updated) => setAdmin({ ...admin, ...updated })} />}
     </div>
   );

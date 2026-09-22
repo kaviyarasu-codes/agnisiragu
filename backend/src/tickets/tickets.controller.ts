@@ -34,9 +34,10 @@ export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
 
   // No @Roles() — open to any authenticated admin; TicketsService itself
-  // rejects SUPER_ADMIN/ADMIN (they resolve tickets, they don't raise them).
+  // rejects only SUPER_ADMIN (everyone else, including a plain ADMIN, can
+  // raise a ticket to Super Admin or another Admin).
   @Post()
-  @ApiOperation({ summary: 'Raise a support ticket (Managers/Members only)' })
+  @ApiOperation({ summary: 'Raise a support ticket (anyone except Super Admin)' })
   createTicket(
     @CurrentUser('id') id: string,
     @CurrentUser('adminRole') role: string,

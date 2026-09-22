@@ -9,10 +9,11 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import toast from 'react-hot-toast';
-import { Loader2, Upload, Bold, Italic, List, Heading2 } from 'lucide-react';
+import { Loader2, Upload, Bold, Italic, List, Heading2, Eye } from 'lucide-react';
 import { useArticle, useCreateArticle, useUpdateArticle, useAdminAccounts } from '../hooks/useArticles';
 import { useCategories } from '../hooks/useCategories';
 import { useAuthStore } from '../store/auth.store';
+import ArticlePreviewModal from '../components/ArticlePreviewModal';
 import type { ArticleStatus } from '../types';
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
@@ -83,6 +84,7 @@ export default function ArticleFormPage({ mode }: Props) {
   const [mediaUploading, setMediaUploading] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState('');
   const [bylineMode, setBylineMode] = useState<'select' | 'custom'>('select');
+  const [showPreview, setShowPreview] = useState(false);
 
   const { admin: currentAdmin } = useAuthStore();
   const { data: articleData, isLoading: articleLoading, isError: articleError, refetch: refetchArticle } = useArticle(id ?? '');
@@ -94,7 +96,7 @@ export default function ArticleFormPage({ mode }: Props) {
   const createMutation = useCreateArticle();
   const updateMutation = useUpdateArticle(id ?? '');
 
-  const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, control, setValue, watch, getValues, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { status: 'DRAFT', isBreaking: false, cardStyle: 'STANDARD', byline: '', thumbnailUrl: '', mediaUrls: [] },
   });
@@ -537,6 +539,14 @@ export default function ArticleFormPage({ mode }: Props) {
 
           {/* Actions card */}
           <div className="card p-4 space-y-2">
+            {/* Works from live form state, so anyone can see how a DRAFT
+                will look before it's ever saved or published — the website
+                only ever serves PUBLISHED articles, so this is otherwise
+                the only way to preview one. */}
+            <button type="button" onClick={() => setShowPreview(true)}
+              className="btn-secondary w-full justify-center">
+              <Eye size={15} /> Preview
+            </button>
             <button type="button" disabled={isSubmitting}
               onClick={handleSubmit((v) => onSubmit(v, true))}
               className="btn-primary w-full justify-center">
@@ -565,6 +575,29 @@ export default function ArticleFormPage({ mode }: Props) {
           </div>
         </div>
       </div>
+
+      {showPreview && (() => {
+        const v = getValues();
+        const category = categories.find((c) => c.id === v.categoryId);
+        return (
+          <ArticlePreviewModal
+            onClose={() => setShowPreview(false)}
+            article={{
+              titleTa: v.titleTa,
+              titleEn: v.titleEn,
+              bodyTa: tamilEditor?.getHTML() ?? '',
+              bodyEn: englishEditor?.getHTML() ?? '',
+              excerpt: v.excerpt,
+              thumbnailUrl: v.thumbnailUrl,
+              mediaUrls: v.mediaUrls,
+              byline: v.byline,
+              categoryName: category ? `${category.nameTa} / ${category.nameEn}` : undefined,
+              isBreaking: v.isBreaking,
+              status: v.status,
+            }}
+          />
+        );
+      })()}
     </form>
   );
 }

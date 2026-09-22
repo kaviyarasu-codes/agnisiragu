@@ -8,6 +8,7 @@ import ArticleStatusBadge from '../components/ArticleStatusBadge';
 import ConfirmModal from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
 import EmptyState from '../components/EmptyState';
+import ArticlePreviewModal from '../components/ArticlePreviewModal';
 import { useArticles, useDeleteArticle, usePublishArticle, useUnpublishArticle, useBulkAction } from '../hooks/useArticles';
 import { useCategories } from '../hooks/useCategories';
 import type { ArticleStatus, Article } from '../types';
@@ -30,6 +31,7 @@ export default function ArticleListPage() {
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [previewArticle, setPreviewArticle] = useState<Article | null>(null);
 
   const handleSearchChange = useCallback((val: string) => {
     setSearch(val);
@@ -283,6 +285,16 @@ export default function ArticleListPage() {
                     </td>
                     <td className="td" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1 justify-end">
+                        {/* Draft or published, anyone can preview how the article
+                            renders — the website only ever serves published
+                            ones, so this is the only preview a draft ever gets. */}
+                        <button
+                          onClick={() => setPreviewArticle(article)}
+                          className="p-1.5 text-text-muted hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                          title="Preview"
+                        >
+                          <Eye size={14} />
+                        </button>
                         <button
                           onClick={() => navigate(`/articles/${article.id}/edit`)}
                           className="p-1.5 text-text-muted hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -331,6 +343,25 @@ export default function ArticleListPage() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      {previewArticle && (
+        <ArticlePreviewModal
+          onClose={() => setPreviewArticle(null)}
+          article={{
+            titleTa: previewArticle.titleTa,
+            titleEn: previewArticle.titleEn,
+            bodyTa: previewArticle.bodyTa,
+            bodyEn: previewArticle.bodyEn,
+            excerpt: previewArticle.excerpt,
+            thumbnailUrl: previewArticle.thumbnailUrl,
+            mediaUrls: previewArticle.mediaUrls,
+            byline: previewArticle.byline,
+            categoryName: previewArticle.category ? `${previewArticle.category.nameTa} / ${previewArticle.category.nameEn}` : undefined,
+            isBreaking: previewArticle.isBreaking,
+            status: previewArticle.status,
+          }}
+        />
+      )}
     </div>
   );
 }
