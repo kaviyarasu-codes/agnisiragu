@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { format, subMonths } from 'date-fns';
 import { apiGet } from '../lib/api';
+import { useAuthStore } from '../store/auth.store';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -767,11 +768,22 @@ const defaultFrom = format(subMonths(new Date(), 3), 'yyyy-MM-dd');
 const defaultTo   = format(new Date(), 'yyyy-MM-dd');
 
 export default function ReportsPage() {
+  const { admin } = useAuthStore();
   const [activeTab, setActiveTab]   = useState<ReportType>('overall');
   const [dateFrom, setDateFrom]     = useState(defaultFrom);
   const [dateTo, setDateTo]         = useState(defaultTo);
 
   const handleDateChange = (f: string, t: string) => { setDateFrom(f); setDateTo(t); };
+
+  if (admin?.adminRole !== 'SUPER_ADMIN' && admin?.adminRole !== 'ADMIN') {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+        <Shield size={48} className="mb-3" />
+        <p className="text-lg font-medium text-gray-600">Access Restricted</p>
+        <p className="text-sm mt-1">Only Admins can view Reports.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 print:space-y-3" id="reports-root">

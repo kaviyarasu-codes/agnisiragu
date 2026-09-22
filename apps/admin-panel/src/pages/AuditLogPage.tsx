@@ -1,11 +1,12 @@
 // src/pages/AuditLogPage.tsx
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, ClipboardList, Search, X, Monitor, Smartphone } from 'lucide-react';
+import { Loader2, ClipboardList, Search, X, Monitor, Smartphone, Shield } from 'lucide-react';
 import { format } from 'date-fns';
 import Pagination from '../components/Pagination';
 import EmptyState from '../components/EmptyState';
 import { apiGet } from '../lib/api';
+import { useAuthStore } from '../store/auth.store';
 import type { AuditLog, PaginatedResponse } from '../types';
 
 const ACTION_OPTIONS = [
@@ -119,6 +120,7 @@ function DeviceCell({ device }: { device?: string }) {
 }
 
 export default function AuditLogPage() {
+  const { admin } = useAuthStore();
   const [actionFilter, setActionFilter] = useState('');
   const [adminFilter, setAdminFilter]   = useState('');
   const [teamFilter, setTeamFilter]     = useState('');
@@ -153,6 +155,16 @@ export default function AuditLogPage() {
 
   const handleNext = () => { if (meta?.hasMore) setPage((p) => p + 1); };
   const handlePrev = () => { if (page > 1) setPage((p) => p - 1); };
+
+  if (admin?.adminRole !== 'SUPER_ADMIN' && admin?.adminRole !== 'ADMIN') {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+        <Shield size={48} className="mb-3" />
+        <p className="text-lg font-medium text-gray-600">Access Restricted</p>
+        <p className="text-sm mt-1">Only Admins can view the audit trail.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

@@ -29,16 +29,18 @@ const navGroups = [
       { to: '/local-ads',     label: 'Local Ads',      icon: Megaphone },
     ],
   },
-  {
-    label: 'Analytics',
-    items: [
-      { to: '/reports',    label: 'Reports',     icon: BarChart2 },
-      { to: '/audit-logs', label: 'Audit Logs',  icon: ClipboardList },
-    ],
-  },
 ];
 
 const TOP_ROLES = ['SUPER_ADMIN', 'ADMIN'];
+
+// Reports/Audit Logs expose every other admin's performance data and login
+// activity — SUPER_ADMIN + ADMIN only (see backend/src/admin/admin.controller.ts,
+// now @Roles-guarded to match). Kept separate from adminOnlyItems below,
+// which is SUPER_ADMIN-exclusive account/team/app management.
+const analyticsItems = [
+  { to: '/reports',    label: 'Reports',     icon: BarChart2 },
+  { to: '/audit-logs', label: 'Audit Logs',  icon: ClipboardList },
+];
 
 const adminOnlyItems = [
   { to: '/accounts',   label: 'Admin Accounts', icon: UserCog },
@@ -104,6 +106,27 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </div>
             </div>
           ))}
+
+          {admin?.adminRole && TOP_ROLES.includes(admin.adminRole) && (
+            <div>
+              <p className="text-2xs font-semibold uppercase tracking-widest text-ink-500 px-3 mb-2">
+                Analytics
+              </p>
+              <div className="space-y-0.5">
+                {analyticsItems.map(({ to, label, icon: Icon }) => (
+                  <NavLink
+                    key={to} to={to}
+                    onClick={onClose}
+                    className={({ isActive }) => linkClass(isActive)}
+                  >
+                    <Icon size={16} className="flex-shrink-0" />
+                    <span className="flex-1">{label}</span>
+                    <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+          )}
 
           {admin?.adminRole && TOP_ROLES.includes(admin.adminRole) && (
             <div>

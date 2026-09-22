@@ -75,37 +75,48 @@ export class AdminController {
   @ApiOperation({ summary: 'Article counts last 7 days (dashboard chart)' })
   getWeeklyTrend() { return this.adminService.getWeeklyTrend(); }
 
+  // Reports expose every other admin/member's performance data, scores and
+  // login activity — restricted to the two top roles, same as Support
+  // Tickets and the account-management routes below (accounts/*, which
+  // stay SUPER_ADMIN-only since creating/deleting admin accounts is more
+  // sensitive still). A Manager/Member should only ever see their own
+  // stats, via /admin/me and their own My Profile tab — never this.
   @Get('reports')
+  @Roles('SUPER_ADMIN', 'ADMIN')
   @ApiQuery({ name: 'period', required: false, enum: ['daily', 'weekly', 'monthly', 'yearly'] })
-  @ApiOperation({ summary: 'Articles + users trend by period' })
+  @ApiOperation({ summary: 'Articles + users trend by period (super admin/admin only)' })
   getReports(@Query('period') period?: string) {
     return this.adminService.getReports(period ?? 'monthly');
   }
 
   @Get('reports/categories')
-  @ApiOperation({ summary: 'Article count by category' })
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  @ApiOperation({ summary: 'Article count by category (super admin/admin only)' })
   getCategoryReport() { return this.adminService.getCategoryReport(); }
 
   @Get('reports/members')
+  @Roles('SUPER_ADMIN', 'ADMIN')
   @ApiQuery({ name: 'dateFrom', required: false })
   @ApiQuery({ name: 'dateTo',   required: false })
-  @ApiOperation({ summary: 'All members performance report' })
+  @ApiOperation({ summary: 'All members performance report (super admin/admin only)' })
   getMembersReport(@Query('dateFrom') dateFrom?: string, @Query('dateTo') dateTo?: string) {
     return this.adminService.getMembersReport(dateFrom, dateTo);
   }
 
   @Get('reports/teams')
+  @Roles('SUPER_ADMIN', 'ADMIN')
   @ApiQuery({ name: 'dateFrom', required: false })
   @ApiQuery({ name: 'dateTo',   required: false })
-  @ApiOperation({ summary: 'Team-level performance report' })
+  @ApiOperation({ summary: 'Team-level performance report (super admin/admin only)' })
   getTeamReport(@Query('dateFrom') dateFrom?: string, @Query('dateTo') dateTo?: string) {
     return this.adminService.getTeamReport(dateFrom, dateTo);
   }
 
   @Get('reports/member/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
   @ApiQuery({ name: 'dateFrom', required: false })
   @ApiQuery({ name: 'dateTo',   required: false })
-  @ApiOperation({ summary: 'Individual member detail report' })
+  @ApiOperation({ summary: 'Individual member detail report (super admin/admin only)' })
   getMemberDetail(
     @Param('id') id: string,
     @Query('dateFrom') dateFrom?: string,
@@ -115,9 +126,10 @@ export class AdminController {
   }
 
   @Get('reports/ads')
+  @Roles('SUPER_ADMIN', 'ADMIN')
   @ApiQuery({ name: 'dateFrom', required: false })
   @ApiQuery({ name: 'dateTo',   required: false })
-  @ApiOperation({ summary: 'Advertisement team report' })
+  @ApiOperation({ summary: 'Advertisement team report (super admin/admin only)' })
   getAdReport(@Query('dateFrom') dateFrom?: string, @Query('dateTo') dateTo?: string) {
     return this.adminService.getAdReport(dateFrom, dateTo);
   }
@@ -190,6 +202,8 @@ export class AdminController {
   }
 
   @Get('audit-logs')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  @ApiOperation({ summary: 'Full audit trail across all admins (super admin/admin only)' })
   @ApiQuery({ name: 'page',     required: false })
   @ApiQuery({ name: 'limit',    required: false })
   @ApiQuery({ name: 'action',   required: false })
