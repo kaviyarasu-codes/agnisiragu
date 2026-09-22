@@ -148,23 +148,33 @@ export class AdminController {
     return this.adminService.updateMyProfile(id, dto);
   }
 
+  // No @Roles() here — SUPER_ADMIN/ADMIN get the full roster, and a
+  // *_MANAGER gets their own team's Members, enforced (and scoped) inside
+  // AdminService. Same "no static role list, service checks the
+  // relationship" pattern as TasksController's assignment hierarchy.
   @Get('accounts')
-  @Roles('SUPER_ADMIN')
-  @ApiOperation({ summary: 'List all admin accounts (super admin only)' })
-  getAdminAccounts() { return this.adminService.getAdminAccounts(); }
+  @ApiOperation({ summary: 'List admin accounts (super admin/admin: everyone; team manager: own team\'s members only)' })
+  getAdminAccounts(@CurrentUser('id') id: string, @CurrentUser('adminRole') role: string, @CurrentUser('teamType') team: string) {
+    return this.adminService.getAdminAccounts(id, role, team ?? null);
+  }
 
   @Post('accounts')
-  @Roles('SUPER_ADMIN')
-  @ApiOperation({ summary: 'Create admin account (super admin only)' })
-  createAdminAccount(@Body() dto: CreateAdminDto) {
-    return this.adminService.createAdminAccount(dto);
+  @ApiOperation({ summary: 'Create admin account (super admin/admin: any role; team manager: Members on their own team only)' })
+  createAdminAccount(
+    @CurrentUser('id') id: string, @CurrentUser('adminRole') role: string, @CurrentUser('teamType') team: string,
+    @Body() dto: CreateAdminDto,
+  ) {
+    return this.adminService.createAdminAccount(dto, id, role, team ?? null);
   }
 
   @Patch('accounts/:id')
-  @Roles('SUPER_ADMIN')
-  @ApiOperation({ summary: 'Update admin account (super admin only)' })
-  updateAdminAccount(@Param('id') id: string, @Body() dto: UpdateAdminDto) {
-    return this.adminService.updateAdminAccount(id, dto);
+  @ApiOperation({ summary: 'Update admin account (super admin/admin: anyone, incl. role; team manager: own team\'s members, no role changes)' })
+  updateAdminAccount(
+    @Param('id') id: string,
+    @CurrentUser('id') requesterId: string, @CurrentUser('adminRole') role: string, @CurrentUser('teamType') team: string,
+    @Body() dto: UpdateAdminDto,
+  ) {
+    return this.adminService.updateAdminAccount(id, dto, requesterId, role, team ?? null);
   }
 
   @Delete('accounts/:id')

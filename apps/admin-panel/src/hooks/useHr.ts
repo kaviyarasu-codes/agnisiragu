@@ -1,9 +1,9 @@
 // src/hooks/useHr.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiGet, apiPatch } from '../lib/api';
+import { apiGet, apiPatch, apiPost, apiDelete } from '../lib/api';
 import type {
   MyHrAccess, DailyAttendanceEntry, MonthlyAttendanceEntry,
-  MemberAttendanceDetail, SalaryEntry, AccessGrantEntry,
+  MemberAttendanceDetail, SalaryEntry, AccessGrantEntry, RecurringExpense, ExpenseTypeValue, SalaryStatusValue,
 } from '../types';
 
 // Used by Sidebar (to decide whether to show the Workforce link at all) and
@@ -70,6 +70,51 @@ export function useAccessGrants(enabled: boolean) {
     queryKey: ['hr', 'access-grants'],
     queryFn: () => apiGet<{ data: AccessGrantEntry[] }>('/hr/access-grants'),
     enabled,
+  });
+}
+
+// ─── Recurring expenses (domain/server renewals) ────────────────────────
+
+export function useExpenses(enabled: boolean) {
+  return useQuery({
+    queryKey: ['hr', 'expenses'],
+    queryFn: () => apiGet<{ data: RecurringExpense[]; canEdit: boolean }>('/hr/expenses'),
+    enabled,
+  });
+}
+
+interface ExpensePayload {
+  name: string;
+  type: ExpenseTypeValue;
+  provider?: string;
+  amount: number;
+  renewalDate: string;
+  status: SalaryStatusValue;
+  notes?: string;
+}
+
+export function useCreateExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ExpensePayload) => apiPost<{ data: RecurringExpense }>('/hr/expenses', payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['hr', 'expenses'] }),
+  });
+}
+
+export function useUpdateExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...payload }: ExpensePayload & { id: string }) =>
+      apiPatch<{ data: RecurringExpense }>(`/hr/expenses/${id}`, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['hr', 'expenses'] }),
+  });
+}
+
+export function useDeleteExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete(`/hr/expenses/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['hr', 'expenses'] }),
   });
 }
 

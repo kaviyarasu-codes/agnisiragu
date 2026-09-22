@@ -320,6 +320,24 @@ export interface AccessGrantEntry extends WorkforcePerson {
   grantedAt?: string | null;
 }
 
+// Org-wide recurring costs (domain/server renewals etc.) — see
+// backend RecurringExpense model. Not tied to a person, unlike salary.
+export type ExpenseTypeValue = 'DOMAIN' | 'SERVER' | 'OTHER';
+
+export interface RecurringExpense {
+  id: string;
+  name: string;
+  type: ExpenseTypeValue;
+  provider?: string | null;
+  amount: number;
+  renewalDate: string;
+  status: SalaryStatusValue;
+  notes?: string | null;
+  recordedById?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Team {
   id: string;
   name: string;

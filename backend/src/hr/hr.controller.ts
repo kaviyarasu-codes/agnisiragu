@@ -5,11 +5,11 @@
 // GET /admin/reports/* (admin.controller.ts) — this module adds the pieces
 // that didn't exist yet: hours active, daily/monthly attendance, payment.
 import {
-  Controller, Get, Patch, Param, Query, Body, UseGuards, Request,
+  Controller, Get, Post, Patch, Delete, Param, Query, Body, UseGuards, Request,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { Reflector } from '@nestjs/core';
-import { IsInt, IsNumber, IsOptional, IsString, IsIn, Min, Max, IsBoolean } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, IsIn, Min, Max, IsBoolean, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { HrService } from './hr.service';
 import { HrAccessGuard, HrScope } from './hr-access.guard';
@@ -32,6 +32,28 @@ class UpsertSalaryDto {
 class UpsertAccessGrantDto {
   @IsBoolean() canView: boolean;
   @IsBoolean() canEdit: boolean;
+}
+
+const EXPENSE_TYPES = ['DOMAIN', 'SERVER', 'OTHER'] as const;
+
+class CreateExpenseDto {
+  @IsString() name: string;
+  @IsIn(EXPENSE_TYPES) type: 'DOMAIN' | 'SERVER' | 'OTHER';
+  @IsOptional() @IsString() provider?: string;
+  @Type(() => Number) @IsNumber() @Min(0) amount: number;
+  @IsDateString() renewalDate: string;
+  @IsOptional() @IsIn(['PENDING', 'PAID']) status?: 'PENDING' | 'PAID';
+  @IsOptional() @IsString() notes?: string;
+}
+
+class UpdateExpenseDto {
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsIn(EXPENSE_TYPES) type?: 'DOMAIN' | 'SERVER' | 'OTHER';
+  @IsOptional() @IsString() provider?: string;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) amount?: number;
+  @IsOptional() @IsDateString() renewalDate?: string;
+  @IsOptional() @IsIn(['PENDING', 'PAID']) status?: 'PENDING' | 'PAID';
+  @IsOptional() @IsString() notes?: string;
 }
 
 @ApiTags('Workforce (HR)')
@@ -100,6 +122,40 @@ export class HrController {
     @Param('adminId') adminId: string, @Body() dto: UpsertSalaryDto,
   ) {
     return this.hrService.upsertSalary(req.hrScope as HrScope, recorderId, adminId, dto);
+  }
+
+  @Get('expenses')
+  @UseGuards(HrAccessGuard)
+  @ApiOperation({ summary: 'List domain/server/other recurring expenses (org-wide, not team-scoped)' })
+  getExpenses(@Request() req: any) {
+    return this.hrService.getExpenses(req.hrScope as HrScope);
+  }
+
+  @Post('expenses')
+  @UseGuards(HrAccessGuard)
+  @HrEdit()
+  @ApiOperation({ summary: 'Add a recurring expense (edit access required)' })
+  createExpense(@Request() req: any, @CurrentUser('id') recorderId: string, @Body() dto: CreateExpenseDto) {
+    return this.hrService.createExpense(req.hrScope as HrScope, recorderId, dto);
+  }
+
+  @Patch('expenses/:id')
+  @UseGuards(HrAccessGuard)
+  @HrEdit()
+  @ApiOperation({ summary: 'Update a recurring expense (edit access required)' })
+  updateExpense(
+    @Request() req: any, @CurrentUser('id') recorderId: string,
+    @Param('id') id: string, @Body() dto: UpdateExpenseDto,
+  ) {
+    return this.hrService.updateExpense(req.hrScope as HrScope, recorderId, id, dto);
+  }
+
+  @Delete('expenses/:id')
+  @UseGuards(HrAccessGuard)
+  @HrEdit()
+  @ApiOperation({ summary: 'Remove a recurring expense (edit access required)' })
+  deleteExpense(@Request() req: any, @CurrentUser('id') recorderId: string, @Param('id') id: string) {
+    return this.hrService.deleteExpense(req.hrScope as HrScope, recorderId, id);
   }
 
   @Get('access-grants')

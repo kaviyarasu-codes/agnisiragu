@@ -26,6 +26,19 @@ function formatDay(d: Date): string { return d.toISOString().slice(0, 10); }
 function dayLabel(d: Date): string {
   return d.toLocaleDateString('en-US', { weekday: 'short' });
 }
+// Same lists as tasks.service.ts's assignment-hierarchy constants — kept in
+// sync by hand across files, same tradeoff made throughout this codebase.
+// Used below so a *_MANAGER can manage (create/edit/activate/deactivate)
+// their own team's *_MEMBER accounts the same way a SUPER_ADMIN/ADMIN can,
+// without being able to touch other teams, other managers, or promote
+// anyone. Permanent delete stays SUPER_ADMIN-only (see the controller).
+const TOP_ROLES = ['SUPER_ADMIN', 'ADMIN'];
+const MANAGER_ROLES = [
+  'EDITOR_MANAGER', 'VERIFICATION_MANAGER', 'REPORTER_APP_MANAGER', 'REPORTERS_MANAGER',
+  'ADVERTISEMENT_MANAGER', 'LOCAL_ADS_MANAGER', 'ADMOB_MANAGER',
+];
+const MEMBER_ROLES = ['EDITOR_MEMBER', 'VERIFICATION_MEMBER', 'REPORTER_APP_MEMBER', 'REPORTERS_MEMBER'];
+
 function startOfWeek(d: Date): Date {
   const c = new Date(d);
   const day = c.getDay();
@@ -335,9 +348,24 @@ export class AdminService {
   }
 
   // ─── Admin accounts list ──────────────────────────────────────────────────
+  // SUPER_ADMIN/ADMIN see every account; a *_MANAGER sees only their own
+  // team's *_MEMBER accounts (same scoping tasks.service.ts already applies
+  // to the "assignable users" picker). Anyone else gets a 403 — Members use
+  // /admin/me and /admin/directory for their own info, never this.
 
-  async getAdminAccounts() {
+  async getAdminAccounts(requesterId?: string, requesterRole?: string, requesterTeam?: string | null) {
+    let where: any = {};
+    if (requesterRole && TOP_ROLES.includes(requesterRole)) {
+      // no filter — full roster, existing behavior
+    } else if (requesterRole && MANAGER_ROLES.includes(requesterRole) && requesterTeam) {
+      // Own-team Members, plus the manager's own account (so their team
+      // card shows themself as manager instead of "no manager assigned").
+      where = { OR: [{ id: requesterId }, { adminRole: { in: MEMBER_ROLES as any }, teamType: requesterTeam }] };
+    } else {
+      throw new ForbiddenException('You do not have permission to view admin accounts');
+    }
     const admins = await this.prisma.admin.findMany({
+      where,
       select: { id: true, name: true, email: true, adminRole: true,
         isActive: true, phone: true, teamType: true, avatarUrl: true, lastLoginAt: true, createdAt: true },
       orderBy: { name: 'asc' },
@@ -347,22 +375,38 @@ export class AdminService {
 
   // ─── Create admin account ─────────────────────────────────────────────────
 
-  async createAdminAccount(dto: {
-    name: string; email: string; password: string; adminRole: string; team?: string; phone?: string; avatarUrl?: string;
-  }) {
+  async createAdminAccount(
+    dto: { name: string; email: string; password: string; adminRole: string; team?: string; phone?: string; avatarUrl?: string },
+    requesterId?: string, requesterRole?: string, requesterTeam?: string | null,
+  ) {
+    const isTop = !!requesterRole && TOP_ROLES.includes(requesterRole);
+    let team = dto.team ?? null;
+    if (!isTop) {
+      if (!requesterRole || !MANAGER_ROLES.includes(requesterRole) || !requesterTeam) {
+        throw new ForbiddenException('You do not have permission to create admin accounts');
+      }
+      if (!MEMBER_ROLES.includes(dto.adminRole)) {
+        throw new ForbiddenException('You can only add Members to your own team');
+      }
+      // Force the account onto the manager's own team, regardless of
+      // whatever `team` the request sent — a Manager can't plant a member
+      // on a different team.
+      team = requesterTeam;
+    }
+
     const existing = await this.prisma.admin.findUnique({ where: { email: dto.email } });
     if (existing) throw new ConflictException('Email already registered');
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const admin = await this.prisma.admin.create({
       data: {
         name: dto.name, email: dto.email, passwordHash,
-        adminRole: dto.adminRole as any, teamType: dto.team ?? null,
+        adminRole: dto.adminRole as any, teamType: team,
         phone: dto.phone ?? null, avatarUrl: dto.avatarUrl ?? null, isActive: true,
       },
       select: { id: true, name: true, email: true, adminRole: true, isActive: true, teamType: true, avatarUrl: true, createdAt: true },
     });
     await this.prisma.auditLog.create({
-      data: { action: 'ADMIN_CREATE', entityType: 'admin', entityId: admin.id,
+      data: { adminId: requesterId ?? null, action: 'ADMIN_CREATE', entityType: 'admin', entityId: admin.id,
         metadata: { name: admin.name, email: admin.email, role: admin.adminRole } },
     }).catch(() => {});
     return { data: admin };
@@ -370,25 +414,41 @@ export class AdminService {
 
   // ─── Update admin account ─────────────────────────────────────────────────
 
-  async updateAdminAccount(id: string, dto: {
-    name?: string; adminRole?: string; password?: string; phone?: string; avatarUrl?: string; isActive?: boolean;
-  }) {
+  async updateAdminAccount(
+    id: string,
+    dto: { name?: string; adminRole?: string; password?: string; phone?: string; avatarUrl?: string; isActive?: boolean },
+    requesterId?: string, requesterRole?: string, requesterTeam?: string | null,
+  ) {
     const existing = await this.prisma.admin.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Admin not found');
+
+    const isTop = !!requesterRole && TOP_ROLES.includes(requesterRole);
+    if (!isTop) {
+      if (!requesterRole || !MANAGER_ROLES.includes(requesterRole) || !requesterTeam) {
+        throw new ForbiddenException('You do not have permission to update admin accounts');
+      }
+      if (!MEMBER_ROLES.includes(existing.adminRole) || existing.teamType !== requesterTeam) {
+        throw new ForbiddenException('You can only manage members of your own team');
+      }
+    }
+
     const updateData: any = {};
     if (dto.name      !== undefined) updateData.name      = dto.name;
-    if (dto.adminRole !== undefined) updateData.adminRole = dto.adminRole;
     if (dto.phone     !== undefined) updateData.phone     = dto.phone || null;
     if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl || null;
     if (dto.isActive  !== undefined) updateData.isActive  = dto.isActive;
     if (dto.password && dto.password.trim() !== '') updateData.passwordHash = await bcrypt.hash(dto.password, 10);
+    // Role changes (promotion/demotion) stay a top-role-only action — a
+    // Manager updating their own team member silently can't touch this.
+    if (isTop && dto.adminRole !== undefined) updateData.adminRole = dto.adminRole;
+
     const updated = await this.prisma.admin.update({
       where: { id }, data: updateData,
       select: { id: true, name: true, email: true, adminRole: true,
         isActive: true, teamType: true, avatarUrl: true, lastLoginAt: true },
     });
     await this.prisma.auditLog.create({
-      data: { action: 'ADMIN_UPDATE', entityType: 'admin', entityId: id,
+      data: { adminId: requesterId ?? null, action: 'ADMIN_UPDATE', entityType: 'admin', entityId: id,
         metadata: { name: updated.name, changes: Object.keys(updateData) } },
     }).catch(() => {});
     return { data: updated };

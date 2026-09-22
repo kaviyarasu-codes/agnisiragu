@@ -127,6 +127,12 @@ enum SalaryStatus {
   PAID
 }
 
+enum ExpenseType {
+  DOMAIN
+  SERVER
+  OTHER
+}
+
 // ─── Phase 1 Models ──────────────────────────────────────────────────────────
 
 model User {
@@ -184,6 +190,7 @@ model Admin {
   salariesRecorded AdminSalaryRecord[] @relation("SalaryRecordedBy")
   hrAccessGrant    HRAccessGrant?      @relation("HRGrantee")
   hrGrantsGiven    HRAccessGrant[]     @relation("HRGrantedBy")
+  expensesRecorded RecurringExpense[]  @relation("ExpenseRecordedBy")
 }
 
 model Category {
@@ -456,6 +463,29 @@ model HRAccessGrant {
   grantedBy   Admin?   @relation("HRGrantedBy", fields: [grantedById], references: [id])
   grantedAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// Organization-wide recurring costs (domain registration, server/VPS
+// hosting, and anything else billed on a schedule) — not tied to any one
+// admin or team the way salary is, so it's not scoped by HrAccessGuard's
+// team dimension: anyone with Workforce view/edit access sees and manages
+// the whole list, same as Super Admin. Lives in the Workforce > Payment
+// tab's "Renewals" section, next to salary.
+model RecurringExpense {
+  id           String       @id @default(uuid())
+  name         String       // e.g. "agnisiragu.com", "Hostinger VPS"
+  type         ExpenseType  @default(OTHER)
+  provider     String?      // e.g. "GoDaddy", "Hostinger", "AWS"
+  amount       Decimal      @default(0) @db.Decimal(10, 2)
+  renewalDate  DateTime     // next due date
+  status       SalaryStatus @default(PENDING)
+  notes        String?
+  recordedById String?
+  recordedBy   Admin?       @relation("ExpenseRecordedBy", fields: [recordedById], references: [id])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([renewalDate])
 }
 
 // ─── Legacy / Phase 2 Models (kept, not used in Phase 1 APIs) ────────────────

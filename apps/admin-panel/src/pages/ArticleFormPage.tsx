@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { Loader2, Upload, Bold, Italic, List, Heading2 } from 'lucide-react';
 import { useArticle, useCreateArticle, useUpdateArticle, useAdminAccounts } from '../hooks/useArticles';
 import { useCategories } from '../hooks/useCategories';
+import { useAuthStore } from '../store/auth.store';
 import type { ArticleStatus } from '../types';
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
@@ -83,6 +84,7 @@ export default function ArticleFormPage({ mode }: Props) {
   const [thumbnailPreview, setThumbnailPreview] = useState('');
   const [bylineMode, setBylineMode] = useState<'select' | 'custom'>('select');
 
+  const { admin: currentAdmin } = useAuthStore();
   const { data: articleData, isLoading: articleLoading, isError: articleError, refetch: refetchArticle } = useArticle(id ?? '');
   const { data: catData } = useCategories();
   const { data: adminData } = useAdminAccounts();
@@ -123,6 +125,19 @@ export default function ArticleFormPage({ mode }: Props) {
       englishEditor?.commands.setContent(a.bodyEn);
     }
   }, [articleData, mode, tamilEditor, englishEditor, setValue]);
+
+  // New articles default the byline to whoever is logged in — the previous
+  // "— Select publisher —" placeholder meant most articles ended up either
+  // published with no byline or manually re-set to the author's own name
+  // every single time. Only applies on create (edit mode already populates
+  // byline from the saved article above) and only fills in the select-mode
+  // field, so it doesn't clobber someone deliberately typing a custom name.
+  useEffect(() => {
+    if (mode === 'create' && currentAdmin?.name) {
+      setValue('byline', currentAdmin.name);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, currentAdmin?.name, setValue]);
 
   const handleThumbnailUpload = async (file: File) => {
     if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {

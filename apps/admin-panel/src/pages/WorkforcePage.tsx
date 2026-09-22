@@ -11,13 +11,15 @@ import { useState, Fragment } from 'react';
 import {
   Loader2, Shield, Clock, CalendarCheck, Wallet, Lock,
   Users, CheckCircle2, XCircle, ChevronDown, ChevronRight, Save,
+  Globe, Server, Receipt, Plus, Trash2, AlertTriangle,
 } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
 import {
   useMyHrAccess, useDailyAttendance, useMonthlyAttendance, useMemberAttendanceDetail,
   useSalary, useUpsertSalary, useAccessGrants, useUpsertAccessGrant,
+  useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense,
 } from '../hooks/useHr';
-import type { SalaryStatusValue } from '../types';
+import type { SalaryStatusValue, ExpenseTypeValue, RecurringExpense } from '../types';
 
 // ─── Shared label maps (kept local — small, avoids coupling to ReportsPage) ──
 
@@ -229,6 +231,25 @@ function AttendanceTab() {
 // ─── Payment tab ───────────────────────────────────────────────────────────
 
 function PaymentTab({ canEdit }: { canEdit: boolean }) {
+  const [subView, setSubView] = useState<'salary' | 'renewals'>('salary');
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-1 bg-page border border-border rounded-lg p-1 w-fit">
+        <button onClick={() => setSubView('salary')}
+          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${subView === 'salary' ? 'bg-surface shadow text-text-primary' : 'text-text-muted'}`}>
+          Salary
+        </button>
+        <button onClick={() => setSubView('renewals')}
+          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${subView === 'renewals' ? 'bg-surface shadow text-text-primary' : 'text-text-muted'}`}>
+          Domain & Server Renewals
+        </button>
+      </div>
+      {subView === 'salary' ? <SalarySection canEdit={canEdit} /> : <RenewalsSection canEdit={canEdit} />}
+    </div>
+  );
+}
+
+function SalarySection({ canEdit }: { canEdit: boolean }) {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -323,6 +344,199 @@ function PaymentTab({ canEdit }: { canEdit: boolean }) {
                           className="btn-secondary text-2xs flex items-center gap-1 px-2 py-1 disabled:opacity-40">
                           <Save size={11} /> Save
                         </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Renewals section (domain/server/other recurring costs) ───────────────
+
+const EXPENSE_TYPE_META: Record<ExpenseTypeValue, { label: string; icon: React.ReactNode; color: string }> = {
+  DOMAIN: { label: 'Domain', icon: <Globe size={12} />, color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  SERVER: { label: 'Server', icon: <Server size={12} />, color: 'bg-purple-50 text-purple-700 border-purple-200' },
+  OTHER:  { label: 'Other',  icon: <Receipt size={12} />, color: 'bg-gray-100 text-gray-600 border-gray-200' },
+};
+
+interface ExpenseDraft {
+  name: string; type: ExpenseTypeValue; provider: string;
+  amount: string; renewalDate: string; status: SalaryStatusValue; notes: string;
+}
+
+function expenseToDraft(e: RecurringExpense): ExpenseDraft {
+  return {
+    name: e.name, type: e.type, provider: e.provider ?? '',
+    amount: String(e.amount), renewalDate: e.renewalDate.slice(0, 10),
+    status: e.status, notes: e.notes ?? '',
+  };
+}
+
+const BLANK_DRAFT: ExpenseDraft = { name: '', type: 'DOMAIN', provider: '', amount: '0', renewalDate: todayStr(), status: 'PENDING', notes: '' };
+
+function daysUntil(dateStr: string): number {
+  const target = new Date(dateStr + 'T00:00:00');
+  const today = new Date(todayStr() + 'T00:00:00');
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
+}
+
+function RenewalDueBadge({ dateStr }: { dateStr: string }) {
+  const days = daysUntil(dateStr);
+  if (days < 0) return <span className="inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded bg-red/10 text-red border border-red/20"><AlertTriangle size={10} /> Overdue</span>;
+  if (days <= 30) return <span className="text-2xs font-semibold px-2 py-0.5 rounded bg-yellow-50 text-yellow-700 border border-yellow-200">Due in {days}d</span>;
+  return <span className="text-2xs text-text-muted">in {days}d</span>;
+}
+
+function RenewalsSection({ canEdit }: { canEdit: boolean }) {
+  const { data, isLoading } = useExpenses(true);
+  const createExpense = useCreateExpense();
+  const updateExpense = useUpdateExpense();
+  const deleteExpense = useDeleteExpense();
+
+  const [showAdd, setShowAdd] = useState(false);
+  const [addDraft, setAddDraft] = useState<ExpenseDraft>(BLANK_DRAFT);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<ExpenseDraft>(BLANK_DRAFT);
+
+  const startEdit = (e: RecurringExpense) => { setEditId(e.id); setEditDraft(expenseToDraft(e)); };
+
+  const submitAdd = () => {
+    const amount = Number(addDraft.amount);
+    if (!addDraft.name.trim() || Number.isNaN(amount) || amount < 0 || !addDraft.renewalDate) return;
+    createExpense.mutate(
+      { name: addDraft.name.trim(), type: addDraft.type, provider: addDraft.provider || undefined, amount, renewalDate: addDraft.renewalDate, status: addDraft.status, notes: addDraft.notes || undefined },
+      { onSuccess: () => { setShowAdd(false); setAddDraft(BLANK_DRAFT); } },
+    );
+  };
+
+  const submitEdit = (id: string) => {
+    const amount = Number(editDraft.amount);
+    if (!editDraft.name.trim() || Number.isNaN(amount) || amount < 0 || !editDraft.renewalDate) return;
+    updateExpense.mutate(
+      { id, name: editDraft.name.trim(), type: editDraft.type, provider: editDraft.provider || undefined, amount, renewalDate: editDraft.renewalDate, status: editDraft.status, notes: editDraft.notes || undefined },
+      { onSuccess: () => setEditId(null) },
+    );
+  };
+
+  const rows = data?.data ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-text-muted">Domain and server renewals, and any other recurring cost — org-wide, not tied to one person.</p>
+        {canEdit && !showAdd && (
+          <button onClick={() => setShowAdd(true)} className="btn-secondary text-xs flex items-center gap-1 px-2.5 py-1.5">
+            <Plus size={13} /> Add Renewal
+          </button>
+        )}
+      </div>
+
+      {showAdd && (
+        <div className="card card-body space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <input placeholder="e.g. agnisiragu.com" value={addDraft.name} onChange={(e) => setAddDraft((d) => ({ ...d, name: e.target.value }))} className="input text-sm col-span-2 sm:col-span-1" />
+            <select value={addDraft.type} onChange={(e) => setAddDraft((d) => ({ ...d, type: e.target.value as ExpenseTypeValue }))} className="input text-sm">
+              <option value="DOMAIN">Domain</option>
+              <option value="SERVER">Server</option>
+              <option value="OTHER">Other</option>
+            </select>
+            <input placeholder="Provider (optional)" value={addDraft.provider} onChange={(e) => setAddDraft((d) => ({ ...d, provider: e.target.value }))} className="input text-sm" />
+            <input type="number" min={0} placeholder="Amount ₹" value={addDraft.amount} onChange={(e) => setAddDraft((d) => ({ ...d, amount: e.target.value }))} className="input text-sm" />
+            <input type="date" value={addDraft.renewalDate} onChange={(e) => setAddDraft((d) => ({ ...d, renewalDate: e.target.value }))} className="input text-sm" />
+            <select value={addDraft.status} onChange={(e) => setAddDraft((d) => ({ ...d, status: e.target.value as SalaryStatusValue }))} className="input text-sm">
+              <option value="PENDING">Pending</option>
+              <option value="PAID">Paid</option>
+            </select>
+          </div>
+          <input placeholder="Notes (optional)" value={addDraft.notes} onChange={(e) => setAddDraft((d) => ({ ...d, notes: e.target.value }))} className="input text-sm w-full" />
+          <div className="flex gap-2">
+            <button onClick={submitAdd} disabled={createExpense.isPending} className="btn-primary text-xs px-3 py-1.5">
+              {createExpense.isPending && <Loader2 size={12} className="animate-spin" />} Save
+            </button>
+            <button onClick={() => { setShowAdd(false); setAddDraft(BLANK_DRAFT); }} className="btn-secondary text-xs px-3 py-1.5">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="flex justify-center py-16"><Loader2 size={26} className="animate-spin text-red" /></div>
+      ) : !rows.length ? (
+        <div className="card"><EmptyState icon={Receipt} title="No renewals tracked yet" description={canEdit ? 'Add your first domain or server renewal above.' : undefined} /></div>
+      ) : (
+        <div className="card p-0 overflow-x-auto">
+          <table className="w-full">
+            <thead><tr>
+              <th className="th">Item</th>
+              <th className="th">Type</th>
+              <th className="th">Provider</th>
+              <th className="th">Amount (₹)</th>
+              <th className="th">Renewal Date</th>
+              <th className="th">Status</th>
+              {canEdit && <th className="th"></th>}
+            </tr></thead>
+            <tbody>
+              {rows.map((e) => {
+                const isEditing = editId === e.id;
+                const meta = EXPENSE_TYPE_META[e.type];
+                if (isEditing) {
+                  return (
+                    <tr key={e.id} className="tr-hover bg-page">
+                      <td className="td"><input value={editDraft.name} onChange={(ev) => setEditDraft((d) => ({ ...d, name: ev.target.value }))} className="input text-sm w-32" /></td>
+                      <td className="td">
+                        <select value={editDraft.type} onChange={(ev) => setEditDraft((d) => ({ ...d, type: ev.target.value as ExpenseTypeValue }))} className="input text-xs">
+                          <option value="DOMAIN">Domain</option>
+                          <option value="SERVER">Server</option>
+                          <option value="OTHER">Other</option>
+                        </select>
+                      </td>
+                      <td className="td"><input value={editDraft.provider} onChange={(ev) => setEditDraft((d) => ({ ...d, provider: ev.target.value }))} className="input text-sm w-24" /></td>
+                      <td className="td"><input type="number" min={0} value={editDraft.amount} onChange={(ev) => setEditDraft((d) => ({ ...d, amount: ev.target.value }))} className="input text-sm w-24" /></td>
+                      <td className="td"><input type="date" value={editDraft.renewalDate} onChange={(ev) => setEditDraft((d) => ({ ...d, renewalDate: ev.target.value }))} className="input text-sm" /></td>
+                      <td className="td">
+                        <select value={editDraft.status} onChange={(ev) => setEditDraft((d) => ({ ...d, status: ev.target.value as SalaryStatusValue }))} className="input text-xs">
+                          <option value="PENDING">Pending</option>
+                          <option value="PAID">Paid</option>
+                        </select>
+                      </td>
+                      <td className="td">
+                        <div className="flex gap-1">
+                          <button onClick={() => submitEdit(e.id)} disabled={updateExpense.isPending} className="btn-secondary text-2xs px-2 py-1"><Save size={11} /></button>
+                          <button onClick={() => setEditId(null)} className="btn-secondary text-2xs px-2 py-1">Cancel</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+                return (
+                  <tr key={e.id} className="tr-hover">
+                    <td className="td">
+                      <p className="text-sm font-medium text-text-primary">{e.name}</p>
+                      {e.notes && <p className="text-2xs text-text-muted">{e.notes}</p>}
+                    </td>
+                    <td className="td"><span className={`inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded border ${meta.color}`}>{meta.icon} {meta.label}</span></td>
+                    <td className="td text-xs text-text-secondary">{e.provider || '—'}</td>
+                    <td className="td text-sm font-medium text-text-primary">₹{e.amount.toLocaleString()}</td>
+                    <td className="td">
+                      <p className="text-sm text-text-secondary">{e.renewalDate.slice(0, 10)}</p>
+                      <RenewalDueBadge dateStr={e.renewalDate.slice(0, 10)} />
+                    </td>
+                    <td className="td">
+                      <span className={`text-2xs font-semibold px-2 py-0.5 rounded ${e.status === 'PAID' ? 'bg-green-50 text-green-700 border border-green-200' : 'badge-gray'}`}>
+                        {e.status === 'PAID' ? 'Paid' : 'Pending'}
+                      </span>
+                    </td>
+                    {canEdit && (
+                      <td className="td">
+                        <div className="flex gap-1">
+                          <button onClick={() => startEdit(e)} className="btn-secondary text-2xs px-2 py-1">Edit</button>
+                          <button onClick={() => deleteExpense.mutate(e.id)} disabled={deleteExpense.isPending} className="btn-secondary text-2xs px-2 py-1 text-status-red"><Trash2 size={11} /></button>
+                        </div>
                       </td>
                     )}
                   </tr>

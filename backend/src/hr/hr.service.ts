@@ -242,6 +242,73 @@ export class HrService {
     return { data };
   }
 
+  // ─── Recurring expenses (domain/server renewals) ──────────────────────
+  // Org-wide, not per-admin — not scoped by team/allAdmins the way
+  // attendance/salary are, just gated by the caller's canView/canEdit.
+
+  async getExpenses(scope: HrScope) {
+    const rows = await this.prisma.recurringExpense.findMany({ orderBy: { renewalDate: 'asc' } });
+    return { data: rows.map((r) => ({ ...r, amount: Number(r.amount) })), canEdit: scope.canEdit };
+  }
+
+  async createExpense(
+    scope: HrScope, recorderId: string,
+    dto: { name: string; type: 'DOMAIN' | 'SERVER' | 'OTHER'; provider?: string; amount: number; renewalDate: string; status?: 'PENDING' | 'PAID'; notes?: string },
+  ) {
+    if (!scope.canEdit) throw new ForbiddenException('You have view-only workforce access');
+    if (dto.amount < 0) throw new BadRequestException('Amount cannot be negative');
+    const row = await this.prisma.recurringExpense.create({
+      data: {
+        name: dto.name, type: dto.type, provider: dto.provider ?? null, amount: dto.amount,
+        renewalDate: new Date(dto.renewalDate), status: dto.status ?? 'PENDING',
+        notes: dto.notes ?? null, recordedById: recorderId,
+      },
+    });
+    await this.prisma.auditLog.create({
+      data: { adminId: recorderId, action: 'EXPENSE_CREATE', entityType: 'recurring_expense', entityId: row.id,
+        metadata: { name: row.name, type: row.type, amount: dto.amount } },
+    }).catch(() => {});
+    return { data: { ...row, amount: Number(row.amount) } };
+  }
+
+  async updateExpense(
+    scope: HrScope, recorderId: string, id: string,
+    dto: Partial<{ name: string; type: 'DOMAIN' | 'SERVER' | 'OTHER'; provider: string; amount: number; renewalDate: string; status: 'PENDING' | 'PAID'; notes: string }>,
+  ) {
+    if (!scope.canEdit) throw new ForbiddenException('You have view-only workforce access');
+    const existing = await this.prisma.recurringExpense.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Expense not found');
+    if (dto.amount !== undefined && dto.amount < 0) throw new BadRequestException('Amount cannot be negative');
+
+    const updateData: any = { recordedById: recorderId };
+    if (dto.name        !== undefined) updateData.name        = dto.name;
+    if (dto.type         !== undefined) updateData.type        = dto.type;
+    if (dto.provider     !== undefined) updateData.provider    = dto.provider || null;
+    if (dto.amount       !== undefined) updateData.amount      = dto.amount;
+    if (dto.renewalDate  !== undefined) updateData.renewalDate = new Date(dto.renewalDate);
+    if (dto.status       !== undefined) updateData.status      = dto.status;
+    if (dto.notes        !== undefined) updateData.notes       = dto.notes || null;
+
+    const row = await this.prisma.recurringExpense.update({ where: { id }, data: updateData });
+    await this.prisma.auditLog.create({
+      data: { adminId: recorderId, action: 'EXPENSE_UPDATE', entityType: 'recurring_expense', entityId: id,
+        metadata: { changes: Object.keys(updateData) } },
+    }).catch(() => {});
+    return { data: { ...row, amount: Number(row.amount) } };
+  }
+
+  async deleteExpense(scope: HrScope, recorderId: string, id: string) {
+    if (!scope.canEdit) throw new ForbiddenException('You have view-only workforce access');
+    const existing = await this.prisma.recurringExpense.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Expense not found');
+    await this.prisma.recurringExpense.delete({ where: { id } });
+    await this.prisma.auditLog.create({
+      data: { adminId: recorderId, action: 'EXPENSE_DELETE', entityType: 'recurring_expense', entityId: id,
+        metadata: { name: existing.name } },
+    }).catch(() => {});
+    return { data: { success: true } };
+  }
+
   async upsertAccessGrant(granterId: string, adminId: string, dto: { canView: boolean; canEdit: boolean }) {
     const target = await this.prisma.admin.findUnique({ where: { id: adminId } });
     if (!target) throw new NotFoundException('Admin not found');

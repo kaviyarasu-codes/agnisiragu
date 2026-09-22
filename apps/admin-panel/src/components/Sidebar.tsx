@@ -50,8 +50,18 @@ const analyticsItems = [
 // into that TOP_ROLES-gated list: a granted *_MANAGER isn't a top role.
 const workforceItem = { to: '/workforce', label: 'Workforce', icon: Clock };
 
-const adminOnlyItems = [
-  { to: '/accounts',   label: 'Admin Accounts', icon: UserCog },
+// Mirrors backend/src/admin/admin.service.ts's MANAGER_ROLES — a *_MANAGER
+// can now manage their own team's Members (Admin Accounts page), same as
+// Super Admin/Admin, just scoped. Team Management/App Config/Settings stay
+// Super Admin-exclusive.
+const MANAGER_ROLES = [
+  'EDITOR_MANAGER', 'VERIFICATION_MANAGER', 'REPORTER_APP_MANAGER', 'REPORTERS_MANAGER',
+  'ADVERTISEMENT_MANAGER', 'LOCAL_ADS_MANAGER', 'ADMOB_MANAGER',
+];
+
+const accountsItem = { to: '/accounts', label: 'Admin Accounts', icon: UserCog };
+
+const superAdminOnlyItems = [
   { to: '/teams',      label: 'Team Management',icon: UsersRound },
   { to: '/app-config', label: 'App Config',     icon: Smartphone },
   { to: '/settings',   label: 'Settings',       icon: Settings },
@@ -67,6 +77,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const hrAccess = hrAccessData?.data;
   const showWorkforce = !!hrAccess && (hrAccess.isSuperAdmin || hrAccess.canView);
   const showAnalyticsSection = (!!admin?.adminRole && TOP_ROLES.includes(admin.adminRole)) || showWorkforce;
+  const isTopRole = !!admin?.adminRole && TOP_ROLES.includes(admin.adminRole);
+  const isManager = !!admin?.adminRole && MANAGER_ROLES.includes(admin.adminRole);
+  const showAdminSection = isTopRole || isManager;
 
   const linkClass = (isActive: boolean) =>
     `group flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-all duration-150 ${
@@ -151,22 +164,35 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
           )}
 
-          {admin?.adminRole && TOP_ROLES.includes(admin.adminRole) && (
+          {showAdminSection && (
             <div>
               <p className="text-2xs font-semibold uppercase tracking-widest text-ink-500 px-3 mb-2">
                 Admin
               </p>
               <div className="space-y-0.5">
+                {isTopRole && (
+                  <NavLink
+                    to={ticketItem.to}
+                    onClick={onClose}
+                    className={({ isActive }) => linkClass(isActive)}
+                  >
+                    <ticketItem.icon size={16} className="flex-shrink-0" />
+                    <span className="flex-1">{ticketItem.label}</span>
+                    <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+                  </NavLink>
+                )}
+                {/* Admin Accounts: Super Admin manages everyone; a Manager
+                    manages their own team's Members (scoped server-side). */}
                 <NavLink
-                  to={ticketItem.to}
+                  to={accountsItem.to}
                   onClick={onClose}
                   className={({ isActive }) => linkClass(isActive)}
                 >
-                  <ticketItem.icon size={16} className="flex-shrink-0" />
-                  <span className="flex-1">{ticketItem.label}</span>
+                  <accountsItem.icon size={16} className="flex-shrink-0" />
+                  <span className="flex-1">{accountsItem.label}</span>
                   <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
                 </NavLink>
-                {admin.adminRole === 'SUPER_ADMIN' && adminOnlyItems.map(({ to, label, icon: Icon }) => (
+                {admin?.adminRole === 'SUPER_ADMIN' && superAdminOnlyItems.map(({ to, label, icon: Icon }) => (
                   <NavLink
                     key={to} to={to}
                     onClick={onClose}

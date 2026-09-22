@@ -37,6 +37,15 @@ async function uploadAvatar(file: File): Promise<string> {
   return data.secure_url;
 }
 
+// Mirrors backend/src/admin/admin.service.ts's MANAGER_ROLES — a *_MANAGER
+// now manages their own team's Members the same way a Super Admin/Admin
+// manages everyone, just scoped to that one team (see AccountsPage's access
+// gate + team-list filtering below).
+const MANAGER_ROLES: AdminRole[] = [
+  'EDITOR_MANAGER', 'VERIFICATION_MANAGER', 'REPORTER_APP_MANAGER', 'REPORTERS_MANAGER',
+  'ADVERTISEMENT_MANAGER', 'LOCAL_ADS_MANAGER', 'ADMOB_MANAGER',
+];
+
 // ─── Team Config ────────────────────────────────────────────────────────────
 
 interface TeamDef {
@@ -243,8 +252,8 @@ function AvatarPicker({ name, value, onChange }: { name: string; value?: string;
   );
 }
 
-function MemberRow({ member, team, currentAdminId, onEdit, onDelete, onToggleActive }: {
-  member: Admin; team: TeamDef; currentAdminId?: string;
+function MemberRow({ member, team, currentAdminId, canDelete = true, onEdit, onDelete, onToggleActive }: {
+  member: Admin; team: TeamDef; currentAdminId?: string; canDelete?: boolean;
   onEdit: (a: Admin) => void; onDelete: (id: string) => void;
   onToggleActive: (id: string, active: boolean) => void;
 }) {
@@ -298,10 +307,14 @@ function MemberRow({ member, team, currentAdminId, onEdit, onDelete, onToggleAct
                   {member.isActive !== false ? <Ban size={12} /> : <UserCheck size={12} />}
                   {member.isActive !== false ? 'Deactivate' : 'Activate'}
                 </button>
-                <div className="border-t border-border my-1" />
-                <button onClick={() => { setMenuOpen(false); onDelete(member.id); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-status-red hover:bg-red/5">
-                  <Trash2 size={12} /> Delete Account
-                </button>
+                {canDelete && (
+                  <>
+                    <div className="border-t border-border my-1" />
+                    <button onClick={() => { setMenuOpen(false); onDelete(member.id); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-status-red hover:bg-red/5">
+                      <Trash2 size={12} /> Delete Account
+                    </button>
+                  </>
+                )}
               </div>
             </>
           )}
@@ -311,8 +324,8 @@ function MemberRow({ member, team, currentAdminId, onEdit, onDelete, onToggleAct
   );
 }
 
-function TeamCard({ team, members, currentAdminId, onAddMember, onEdit, onDelete, onToggleActive }: {
-  team: TeamDef; members: Admin[]; currentAdminId?: string;
+function TeamCard({ team, members, currentAdminId, canManageManager = true, canDelete = true, onAddMember, onEdit, onDelete, onToggleActive }: {
+  team: TeamDef; members: Admin[]; currentAdminId?: string; canManageManager?: boolean; canDelete?: boolean;
   onAddMember: (team: TeamDef) => void; onEdit: (a: Admin) => void;
   onDelete: (id: string) => void; onToggleActive: (id: string, active: boolean) => void;
 }) {
@@ -360,9 +373,9 @@ function TeamCard({ team, members, currentAdminId, onAddMember, onEdit, onDelete
             </p>
           </div>
           {manager ? (
-            <MemberRow member={manager} team={team} currentAdminId={currentAdminId}
+            <MemberRow member={manager} team={team} currentAdminId={currentAdminId} canDelete={canDelete}
               onEdit={onEdit} onDelete={onDelete} onToggleActive={onToggleActive} />
-          ) : (
+          ) : canManageManager ? (
             <div className="px-4 pb-3">
               <button onClick={() => onAddMember(team)}
                 className="flex items-center gap-2 w-full py-3 border-2 border-dashed border-border rounded-lg text-xs text-text-muted hover:border-gray-300 hover:text-text-secondary transition-colors">
@@ -370,6 +383,8 @@ function TeamCard({ team, members, currentAdminId, onAddMember, onEdit, onDelete
                 <span>Assign a {team.managerLabel}</span>
               </button>
             </div>
+          ) : (
+            <p className="px-4 pb-3 text-xs text-text-muted">No {team.managerLabel.toLowerCase()} assigned — ask a Super Admin.</p>
           )}
 
           {teamMembers.length > 0 && (
@@ -381,7 +396,7 @@ function TeamCard({ team, members, currentAdminId, onAddMember, onEdit, onDelete
               </div>
               <div className="divide-y divide-border">
                 {teamMembers.map(m => (
-                  <MemberRow key={m.id} member={m} team={team} currentAdminId={currentAdminId}
+                  <MemberRow key={m.id} member={m} team={team} currentAdminId={currentAdminId} canDelete={canDelete}
                     onEdit={onEdit} onDelete={onDelete} onToggleActive={onToggleActive} />
                 ))}
               </div>
@@ -420,6 +435,16 @@ export default function AccountsPage() {
   });
   const allAdmins = data?.data ?? [];
   const sysAdmins = allAdmins.filter(a => a.adminRole === 'SUPER_ADMIN' || a.adminRole === 'ADMIN');
+
+  const isSuperAdmin = currentAdmin?.adminRole === 'SUPER_ADMIN';
+  const isManager = !!currentAdmin?.adminRole && MANAGER_ROLES.includes(currentAdmin.adminRole);
+  const myTeam = isManager ? TEAMS.find(t => t.managerRole === currentAdmin?.adminRole) : undefined;
+  // A Manager only ever sees their own team's card — the backend already
+  // scopes /admin/accounts to just that team's Members, this just matches
+  // the team-card UI to it (and covers the ADVERTISEMENT/LOCAL_ADS/ADMOB
+  // "teams" that don't have a real Member role: myTeam is undefined there,
+  // so nothing renders rather than showing a broken empty card).
+  const visibleTeams = isSuperAdmin ? TEAMS : myTeam ? [myTeam] : [];
 
   function membersForTeam(team: TeamDef) {
     return allAdmins.filter(a => a.adminRole === team.managerRole || a.adminRole === team.memberRole);
@@ -482,12 +507,12 @@ export default function AccountsPage() {
     editForm.reset({ name: a.name, phone: a.phone ?? '', adminRole: a.adminRole, password: '', isActive: a.isActive !== false, avatarUrl: a.avatarUrl ?? '' });
   }
 
-  if (currentAdmin?.adminRole !== 'SUPER_ADMIN') {
+  if (!isSuperAdmin && !isManager) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-gray-400">
         <Shield size={48} className="mb-3" />
         <p className="text-lg font-medium text-gray-600">Access Restricted</p>
-        <p className="text-sm mt-1">Only Super Admins can manage accounts.</p>
+        <p className="text-sm mt-1">Only Admins and Team Managers can manage accounts.</p>
       </div>
     );
   }
@@ -513,79 +538,83 @@ export default function AccountsPage() {
 
   return (
     <div className="space-y-5">
-      {/* Top summary */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        {TEAMS.slice(0, 4).map(t => {
-          const m = membersForTeam(t);
-          const mgr = m.find(a => a.adminRole === t.managerRole);
-          return (
-            <div key={t.id} className={`card card-body flex items-start gap-3 border-l-4 ${t.borderColor}`}>
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${t.bgColor} ${t.color}`}>{t.icon}</div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-text-primary truncate">{t.label}</p>
-                <p className="stat-value text-lg mt-0.5">{m.length}</p>
-                <p className="text-2xs text-text-muted mt-0.5">{mgr ? `Manager: ${mgr.name}` : '⚠ No manager'}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* System accounts */}
-      <div className="card">
-        <div className="card-header">
-          <div className="flex items-center gap-2">
-            <Crown size={16} className="text-red" />
-            <span className="section-title">System Accounts</span>
-            <span className="text-2xs text-text-muted bg-page px-2 py-0.5 rounded border border-border">{sysAdmins.length}</span>
-          </div>
-          <button onClick={() => setShowSysCreate(true)} className="btn-primary text-xs px-3 py-1.5">
-            <UserPlus size={13} /> Add Admin
-          </button>
-        </div>
-        {sysAdmins.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-20 text-text-muted">
-            <User size={22} className="mb-1" /><p className="text-xs">No system admins</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {sysAdmins.map(a => (
-              <div key={a.id} className="flex items-center gap-3 px-4 py-3 hover:bg-page group transition-colors">
-                <Avatar name={a.name} avatarUrl={a.avatarUrl} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-medium text-text-primary">
-                      {a.name}
-                      {a.id === currentAdmin?.id && <span className="text-2xs text-text-muted ml-1 font-normal">(you)</span>}
-                    </p>
-                    <RoleBadge role={a.adminRole} />
+      {isSuperAdmin && (
+        <>
+          {/* Top summary */}
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+            {TEAMS.slice(0, 4).map(t => {
+              const m = membersForTeam(t);
+              const mgr = m.find(a => a.adminRole === t.managerRole);
+              return (
+                <div key={t.id} className={`card card-body flex items-start gap-3 border-l-4 ${t.borderColor}`}>
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${t.bgColor} ${t.color}`}>{t.icon}</div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-text-primary truncate">{t.label}</p>
+                    <p className="stat-value text-lg mt-0.5">{m.length}</p>
+                    <p className="text-2xs text-text-muted mt-0.5">{mgr ? `Manager: ${mgr.name}` : '⚠ No manager'}</p>
                   </div>
-                  <p className="text-xs text-text-muted mt-0.5">{a.email}</p>
-                  {a.phone && <p className="text-xs text-text-muted">{a.phone}</p>}
                 </div>
-                <p className="text-2xs text-text-muted hidden sm:block whitespace-nowrap">
-                  {a.lastLoginAt ? format(new Date(a.lastLoginAt), 'dd MMM HH:mm') : 'Never'}
-                </p>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {/* Editing yourself is allowed (e.g. to change your own photo) — only
-                      deleting your own account is blocked, to avoid self-lockout. */}
-                  <button onClick={() => openEdit(a)} className="btn-ghost p-1.5 rounded" title={a.id === currentAdmin?.id ? 'Edit your profile' : 'Edit'}>
-                    <Edit2 size={14} />
-                  </button>
-                  {a.id !== currentAdmin?.id && (
-                    <button onClick={() => setDeleteId(a.id)} className="btn-ghost p-1.5 rounded text-status-red hover:bg-red/5"><Trash2 size={14} /></button>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        )}
-      </div>
 
-      {/* Team cards */}
-      {TEAMS.map(team => (
+          {/* System accounts */}
+          <div className="card">
+            <div className="card-header">
+              <div className="flex items-center gap-2">
+                <Crown size={16} className="text-red" />
+                <span className="section-title">System Accounts</span>
+                <span className="text-2xs text-text-muted bg-page px-2 py-0.5 rounded border border-border">{sysAdmins.length}</span>
+              </div>
+              <button onClick={() => setShowSysCreate(true)} className="btn-primary text-xs px-3 py-1.5">
+                <UserPlus size={13} /> Add Admin
+              </button>
+            </div>
+            {sysAdmins.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-20 text-text-muted">
+                <User size={22} className="mb-1" /><p className="text-xs">No system admins</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {sysAdmins.map(a => (
+                  <div key={a.id} className="flex items-center gap-3 px-4 py-3 hover:bg-page group transition-colors">
+                    <Avatar name={a.name} avatarUrl={a.avatarUrl} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-text-primary">
+                          {a.name}
+                          {a.id === currentAdmin?.id && <span className="text-2xs text-text-muted ml-1 font-normal">(you)</span>}
+                        </p>
+                        <RoleBadge role={a.adminRole} />
+                      </div>
+                      <p className="text-xs text-text-muted mt-0.5">{a.email}</p>
+                      {a.phone && <p className="text-xs text-text-muted">{a.phone}</p>}
+                    </div>
+                    <p className="text-2xs text-text-muted hidden sm:block whitespace-nowrap">
+                      {a.lastLoginAt ? format(new Date(a.lastLoginAt), 'dd MMM HH:mm') : 'Never'}
+                    </p>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* Editing yourself is allowed (e.g. to change your own photo) — only
+                          deleting your own account is blocked, to avoid self-lockout. */}
+                      <button onClick={() => openEdit(a)} className="btn-ghost p-1.5 rounded" title={a.id === currentAdmin?.id ? 'Edit your profile' : 'Edit'}>
+                        <Edit2 size={14} />
+                      </button>
+                      {a.id !== currentAdmin?.id && (
+                        <button onClick={() => setDeleteId(a.id)} className="btn-ghost p-1.5 rounded text-status-red hover:bg-red/5"><Trash2 size={14} /></button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Team cards — Super Admin sees every team; a Manager sees only their own */}
+      {visibleTeams.map(team => (
         <TeamCard key={team.id} team={team} members={membersForTeam(team)}
-          currentAdminId={currentAdmin?.id}
+          currentAdminId={currentAdmin?.id} canManageManager={isSuperAdmin} canDelete={isSuperAdmin}
           onAddMember={(t) => openTeamAdd(t)}
           onEdit={openEdit} onDelete={setDeleteId}
           onToggleActive={(id, isActive) => toggleActiveMutation.mutate({ id, isActive })} />
@@ -601,16 +630,22 @@ export default function AccountsPage() {
               <p className="text-xs text-text-muted">{createTeam.description}</p>
             </div>
           </div>
-          <div className="flex gap-2 mb-4">
-            <button type="button" onClick={() => { setCreateRole('manager'); createForm.setValue('adminRole', createTeam.managerRole); }}
-              className={`flex-1 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${createRole === 'manager' ? `${createTeam.bgColor} ${createTeam.borderColor} ${createTeam.color}` : 'border-border text-text-secondary hover:bg-page'}`}>
-              <Star size={12} className="inline mr-1" />{createTeam.managerLabel}
-            </button>
-            <button type="button" onClick={() => { setCreateRole('member'); createForm.setValue('adminRole', createTeam.memberRole); }}
-              className={`flex-1 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${createRole === 'member' ? `${createTeam.bgColor} ${createTeam.borderColor} ${createTeam.color}` : 'border-border text-text-secondary hover:bg-page'}`}>
-              <User size={12} className="inline mr-1" />{createTeam.memberLabel}
-            </button>
-          </div>
+          {/* Only Super Admin can assign/replace a Manager — a Manager
+              opening this modal (via "Add Member") only ever adds Members
+              on their own team, so the role toggle is pointless (and
+              would be rejected server-side anyway) for them. */}
+          {isSuperAdmin && (
+            <div className="flex gap-2 mb-4">
+              <button type="button" onClick={() => { setCreateRole('manager'); createForm.setValue('adminRole', createTeam.managerRole); }}
+                className={`flex-1 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${createRole === 'manager' ? `${createTeam.bgColor} ${createTeam.borderColor} ${createTeam.color}` : 'border-border text-text-secondary hover:bg-page'}`}>
+                <Star size={12} className="inline mr-1" />{createTeam.managerLabel}
+              </button>
+              <button type="button" onClick={() => { setCreateRole('member'); createForm.setValue('adminRole', createTeam.memberRole); }}
+                className={`flex-1 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${createRole === 'member' ? `${createTeam.bgColor} ${createTeam.borderColor} ${createTeam.color}` : 'border-border text-text-secondary hover:bg-page'}`}>
+                <User size={12} className="inline mr-1" />{createTeam.memberLabel}
+              </button>
+            </div>
+          )}
           <CreateAccountFields form={createForm} showPass={showPass} setShowPass={setShowPass}
             onSubmit={(v) => createMutation.mutate(v)} isPending={createMutation.isPending}
             onCancel={() => setCreateTeam(null)} />
