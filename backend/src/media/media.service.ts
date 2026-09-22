@@ -113,33 +113,54 @@ export class MediaService {
     if (!this.cloudinaryConfigured) {
       throw new ServiceUnavailableException('Media upload not configured. Set CLOUDINARY_* env vars.');
     }
-    try {
-      const sourceUrl = cloudinary.url(publicId, { resource_type: resourceType, secure: true });
-      await cloudinary.uploader.upload(sourceUrl, {
-        public_id: publicId,
-        resource_type: resourceType,
-        overwrite: true,
-        invalidate: true,
-        transformation: [
-          {
-            overlay: { resource_type: 'image', public_id: WATERMARK_PUBLIC_ID },
-            gravity: 'south_east',
-            x: 14,
-            y: 14,
-            width: resourceType === 'video' ? 130 : 90,
-            opacity: 75,
-            flags: 'layer_apply',
-          },
-        ],
-      });
-      return { data: { ok: true } };
-    } catch (err) {
-      // Non-fatal from the caller's point of view — the admin panel already
-      // has a usable (un-watermarked) URL from the original upload, so a
-      // failure here shouldn't block publishing. Logged so it's visible.
-      this.logger.error(`Watermark bake failed for ${publicId}`, err?.message ?? err);
-      throw new InternalServerErrorException('Failed to apply watermark');
+
+    // Fetching by URL requires Cloudinary's own CDN to already be serving
+    // the asset that was just uploaded seconds earlier — occasionally that
+    // isn't propagated yet and the fetch 404s. A couple of short-delay
+    // retries clears that up without the caller (admin panel) needing to
+    // know anything changed.
+    const ATTEMPTS = 3;
+    let lastErr: any;
+    for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+      try {
+        // version: undefined lets Cloudinary resolve the current version
+        // itself; passing the version explicitly (from the upload response)
+        // would be more precise but bakeWatermark only receives publicId
+        // today — this already fixes the common propagation-lag case.
+        const sourceUrl = cloudinary.url(publicId, { resource_type: resourceType, secure: true });
+        await cloudinary.uploader.upload(sourceUrl, {
+          public_id: publicId,
+          resource_type: resourceType,
+          overwrite: true,
+          invalidate: true,
+          transformation: [
+            {
+              overlay: { resource_type: 'image', public_id: WATERMARK_PUBLIC_ID },
+              gravity: 'south_east',
+              x: 14,
+              y: 14,
+              width: resourceType === 'video' ? 130 : 90,
+              opacity: 75,
+              flags: 'layer_apply',
+            },
+          ],
+        });
+        return { data: { ok: true } };
+      } catch (err) {
+        lastErr = err;
+        if (attempt < ATTEMPTS) await new Promise((r) => setTimeout(r, 1200 * attempt));
+      }
     }
+
+    // Non-fatal from the caller's point of view — the admin panel already
+    // has a usable (un-watermarked) URL from the original upload, so a
+    // failure here shouldn't block publishing. Logged so it's visible, and
+    // the real Cloudinary error is included in the response (admin-only
+    // endpoint, so no sensitive info at risk) so it can be diagnosed from
+    // the browser's Network tab without needing server log access.
+    const detail = lastErr?.error?.message ?? lastErr?.message ?? String(lastErr);
+    this.logger.error(`Watermark bake failed for ${publicId} after ${ATTEMPTS} attempts`, detail);
+    throw new InternalServerErrorException(`Failed to apply watermark: ${detail}`);
   }
 
   async findAll(options: { type?: string; search?: string; page?: number; limit?: number }) {
