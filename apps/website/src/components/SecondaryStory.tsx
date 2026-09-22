@@ -4,10 +4,10 @@
 // the big lead story without competing with it. Same pattern as the
 // "top stories" rail on The Hindu / BBC Tamil homepages.
 
-import Image from 'next/image';
 import Link from 'next/link';
 import type { Article } from '@/lib/api';
 import ImageWatermark from './ImageWatermark';
+import MediaThumbnail from './MediaThumbnail';
 
 export default function SecondaryStory({ article }: { article: Article }) {
   return (
@@ -15,10 +15,9 @@ export default function SecondaryStory({ article }: { article: Article }) {
       <div className="relative aspect-[4/3] w-24 shrink-0 overflow-hidden rounded-lg bg-black/5 sm:w-28">
         {article.thumbnailUrl ? (
           <>
-            <Image
+            <MediaThumbnail
               src={article.thumbnailUrl}
               alt={article.titleTa}
-              fill
               className="object-cover transition duration-300 group-hover:scale-105"
               sizes="112px"
             />

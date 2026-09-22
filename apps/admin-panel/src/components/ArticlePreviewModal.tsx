@@ -8,6 +8,7 @@
 // through a public URL.
 import { useState } from 'react';
 import { X, Radio, Newspaper } from 'lucide-react';
+import MediaThumbnail from './MediaThumbnail';
 
 export interface PreviewArticleData {
   titleTa: string;
@@ -79,7 +80,7 @@ export default function ArticlePreviewModal({ article, onClose }: { article: Pre
         )}
 
         {article.thumbnailUrl ? (
-          <img src={article.thumbnailUrl} alt="" className="w-full h-52 object-cover bg-gray-100" />
+          <MediaThumbnail url={article.thumbnailUrl} className="w-full h-52 object-cover bg-gray-100" />
         ) : (
           <div className="w-full h-52 bg-gray-100 flex items-center justify-center text-gray-300 text-xs">No thumbnail</div>
         )}
@@ -104,7 +105,7 @@ export default function ArticlePreviewModal({ article, onClose }: { article: Pre
           {article.mediaUrls && article.mediaUrls.length > 0 && (
             <div className="grid grid-cols-2 gap-2 pt-2">
               {article.mediaUrls.map((u, i) => (
-                <img key={i} src={u} alt="" className="w-full h-24 object-cover rounded-lg bg-gray-100" />
+                <MediaThumbnail key={i} url={u} className="w-full h-24 object-cover rounded-lg bg-gray-100" />
               ))}
             </div>
           )}

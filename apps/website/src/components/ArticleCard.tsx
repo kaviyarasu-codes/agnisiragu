@@ -1,9 +1,9 @@
 // src/components/ArticleCard.tsx
 
-import Image from 'next/image';
 import Link from 'next/link';
 import type { Article } from '@/lib/api';
 import ImageWatermark from './ImageWatermark';
+import MediaThumbnail from './MediaThumbnail';
 
 function timeAgo(iso: string | null): string {
   if (!iso) return '';
@@ -25,10 +25,9 @@ export default function ArticleCard({ article }: { article: Article }) {
     >
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-black/5">
         {article.thumbnailUrl ? (
-          <Image
+          <MediaThumbnail
             src={article.thumbnailUrl}
             alt={article.titleTa}
-            fill
             className="object-cover transition duration-300 group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />

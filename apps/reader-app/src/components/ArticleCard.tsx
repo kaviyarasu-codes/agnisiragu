@@ -20,6 +20,8 @@ import { CAT_COLORS } from '@/theme';
 import { FONT_FAMILIES } from '@/constants';
 import type { Article, Language } from '@/types';
 import ImageWatermark from '@/components/feed/ImageWatermark';
+import Icon from '@/components/icons/Icon';
+import { isVideoUrl, posterOrImage } from '@/lib/media';
 
 interface ArticleCardProps {
   article: Article;
@@ -45,7 +47,12 @@ export default function ArticleCard({ article, onPress, language }: ArticleCardP
     >
       {article.thumbnailUrl ? (
         <View style={styles.imgWrap}>
-          <Image source={{ uri: article.thumbnailUrl }} style={styles.img} contentFit="cover" transition={250} />
+          <Image source={{ uri: posterOrImage(article.thumbnailUrl) }} style={styles.img} contentFit="cover" transition={250} />
+          {isVideoUrl(article.thumbnailUrl) && (
+            <View style={styles.playBadge}>
+              <Icon name="play" size={11} color="#fff" />
+            </View>
+          )}
           <ImageWatermark size="xs" />
         </View>
       ) : (
@@ -76,6 +83,10 @@ const styles = StyleSheet.create({
   },
   imgWrap: { width: 110, height: 88, position: 'relative' },
   img: { width: 110, height: 88 },
+  playBadge: {
+    position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center',
+  },
   body: { flex: 1, padding: 12, gap: 7, justifyContent: 'center' },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   catChip: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 20 },

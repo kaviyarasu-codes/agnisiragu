@@ -14,6 +14,7 @@ import { useArticle, useCreateArticle, useUpdateArticle, useAdminAccounts } from
 import { useCategories } from '../hooks/useCategories';
 import { useAuthStore } from '../store/auth.store';
 import ArticlePreviewModal from '../components/ArticlePreviewModal';
+import MediaThumbnail from '../components/MediaThumbnail';
 import type { ArticleStatus } from '../types';
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
@@ -152,12 +153,16 @@ export default function ArticleFormPage({ mode }: Props) {
       fd.append('file', file);
       fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
       fd.append('folder', 'agnisiragu');
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: 'POST', body: fd });
+      // Video thumbnails go through Cloudinary's video endpoint (same
+      // auto-detection handleMediaUpload below already uses for the
+      // Additional Media gallery) — the image endpoint rejects video files.
+      const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`, { method: 'POST', body: fd });
       if (!res.ok) throw new Error();
       const data = await res.json() as { secure_url: string };
       setValue('thumbnailUrl', data.secure_url);
       setThumbnailPreview(data.secure_url);
-      toast.success('Thumbnail uploaded');
+      toast.success(resourceType === 'video' ? 'Video thumbnail uploaded' : 'Thumbnail uploaded');
     } catch {
       toast.error('Upload failed — paste URL below instead');
     } finally {
@@ -395,7 +400,7 @@ export default function ArticleFormPage({ mode }: Props) {
 
             {(thumbnailPreview || thumbnailUrl) ? (
               <div className="relative rounded-lg overflow-hidden mb-3">
-                <img src={thumbnailPreview || thumbnailUrl} alt="Thumbnail"
+                <MediaThumbnail url={thumbnailPreview || thumbnailUrl} alt="Thumbnail"
                   className="w-full h-44 object-cover" />
                 <button type="button"
                   onClick={() => { setValue('thumbnailUrl', ''); setThumbnailPreview(''); }}
@@ -411,10 +416,10 @@ export default function ArticleFormPage({ mode }: Props) {
                   <>
                     <Upload size={18} className="text-gray-300 group-hover:text-red mb-1.5 transition-colors" />
                     <span className="text-xs font-medium text-gray-500 group-hover:text-red transition-colors">Click to upload</span>
-                    <span className="text-[11px] text-gray-300 mt-0.5">JPG, PNG, WEBP · max 5MB</span>
+                    <span className="text-[11px] text-gray-300 mt-0.5">Image or video, any common format</span>
                   </>
                 )}
-                <input type="file" accept="image/*" className="hidden"
+                <input type="file" accept="image/*,video/*" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleThumbnailUpload(f); }} />
               </label>
             )}

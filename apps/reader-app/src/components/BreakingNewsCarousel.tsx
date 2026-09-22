@@ -9,6 +9,8 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
+import { isVideoUrl, posterOrImage } from '@/lib/media';
+import Icon from '@/components/icons/Icon';
 import type { Article, Language } from '@/types';
 
 const { width: W } = Dimensions.get('window');
@@ -74,8 +76,13 @@ export default function BreakingNewsCarousel({ articles, language, mode = 'slide
               onPress={() => router.push(`/article/${article.id}`)}
             >
               {article.thumbnailUrl
-                ? <Image source={{ uri: article.thumbnailUrl }} style={s.img} contentFit="cover" />
+                ? <Image source={{ uri: posterOrImage(article.thumbnailUrl) }} style={s.img} contentFit="cover" />
                 : <View style={[s.img, { backgroundColor: t.bgAlt }]} />}
+              {isVideoUrl(article.thumbnailUrl) && (
+                <View style={s.playBadge}>
+                  <Icon name="play" size={13} color="#fff" />
+                </View>
+              )}
               <View style={s.overlay} />
               <View style={s.textWrap}>
                 <Text style={s.cardTitle} numberOfLines={2}>{title}</Text>
@@ -113,6 +120,10 @@ const s = StyleSheet.create({
 
   card: { height: 220 },
   img: { width: '100%', height: '100%' },
+  playBadge: {
+    position: 'absolute', top: 12, right: 12, width: 26, height: 26, borderRadius: 13,
+    backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center',
+  },
   overlay: {
     position: 'absolute', bottom: 0, left: 0, right: 0, height: '65%',
     backgroundColor: 'rgba(0,0,0,0.55)',

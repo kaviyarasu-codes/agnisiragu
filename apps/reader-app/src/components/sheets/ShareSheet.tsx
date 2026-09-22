@@ -15,6 +15,7 @@ import { FONT_FAMILIES } from '@/constants';
 import BottomSheet from '@/components/ui/BottomSheet';
 import Button from '@/components/ui/Button';
 import Icon from '@/components/icons/Icon';
+import { isVideoUrl, posterOrImage } from '@/lib/media';
 import type { Article, Language } from '@/types';
 
 interface ShareSheetProps {
@@ -88,7 +89,14 @@ export default function ShareSheet({ visible, onDismiss, article, language }: Sh
 
       <View style={[styles.preview, { backgroundColor: t.bg, borderColor: t.border }]}>
         {article.thumbnailUrl ? (
-          <Image source={{ uri: article.thumbnailUrl }} style={styles.thumb} contentFit="cover" />
+          <View>
+            <Image source={{ uri: posterOrImage(article.thumbnailUrl) }} style={styles.thumb} contentFit="cover" />
+            {isVideoUrl(article.thumbnailUrl) && (
+              <View style={styles.thumbPlayBadge}>
+                <Icon name="play" size={10} color="#fff" />
+              </View>
+            )}
+          </View>
         ) : (
           <View style={[styles.thumb, { backgroundColor: t.bgAlt }]} />
         )}
@@ -122,6 +130,10 @@ const styles = StyleSheet.create({
   heading: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 16, marginBottom: 14 },
   preview: { flexDirection: 'row', gap: 11, borderRadius: 10, borderWidth: 1, padding: 11, alignItems: 'center' },
   thumb: { width: 60, height: 46, borderRadius: 5 },
+  thumbPlayBadge: {
+    position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, borderRadius: 5,
+    backgroundColor: 'rgba(0,0,0,0.25)', alignItems: 'center', justifyContent: 'center',
+  },
   title: { fontFamily: FONT_FAMILIES.displayBold, fontSize: 12.5, lineHeight: 17 },
   url: { fontFamily: FONT_FAMILIES.uiMedium, fontSize: 10, marginTop: 4 },
   caption: { fontFamily: FONT_FAMILIES.condensedBold, fontSize: 10.5, letterSpacing: 1, textTransform: 'uppercase', marginTop: 20, marginBottom: 12 },

@@ -4,10 +4,10 @@
 // density (many headlines per screen) without every story needing a big
 // photo card, mirroring how Dailythanthi/Dinamalar pack their sections.
 
-import Image from 'next/image';
 import Link from 'next/link';
 import type { Article } from '@/lib/api';
 import ImageWatermark from './ImageWatermark';
+import MediaThumbnail from './MediaThumbnail';
 
 function timeAgo(iso: string | null): string {
   if (!iso) return '';
@@ -27,10 +27,9 @@ export default function ArticleRow({ article }: { article: Article }) {
       <div className="relative aspect-square w-16 shrink-0 overflow-hidden rounded-lg bg-black/5">
         {article.thumbnailUrl ? (
           <>
-            <Image
+            <MediaThumbnail
               src={article.thumbnailUrl}
               alt={article.titleTa}
-              fill
               className="object-cover transition duration-300 group-hover:scale-105"
               sizes="64px"
             />

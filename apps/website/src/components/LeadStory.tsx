@@ -3,10 +3,10 @@
 // prominent story, styled like the lead spot on thehindu.com / dinamani.com
 // (large image, oversized headline, byline + time under it).
 
-import Image from 'next/image';
 import Link from 'next/link';
 import type { Article } from '@/lib/api';
 import ImageWatermark from './ImageWatermark';
+import MediaThumbnail from './MediaThumbnail';
 
 function timeAgo(iso: string | null): string {
   if (!iso) return '';
@@ -25,10 +25,9 @@ export default function LeadStory({ article }: { article: Article }) {
     <Link href={`/article/${article.id}`} className="group block">
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-black/5 sm:aspect-[21/9]">
         {article.thumbnailUrl ? (
-          <Image
+          <MediaThumbnail
             src={article.thumbnailUrl}
             alt={article.titleTa}
-            fill
             priority
             className="object-cover transition duration-300 group-hover:scale-105"
             sizes="(max-width: 1024px) 100vw, 720px"

@@ -9,6 +9,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import Pagination from '../components/Pagination';
 import EmptyState from '../components/EmptyState';
 import ArticlePreviewModal from '../components/ArticlePreviewModal';
+import MediaThumbnail from '../components/MediaThumbnail';
 import { useArticles, useDeleteArticle, usePublishArticle, useUnpublishArticle, useBulkAction } from '../hooks/useArticles';
 import { useCategories } from '../hooks/useCategories';
 import type { ArticleStatus, Article } from '../types';
@@ -243,9 +244,8 @@ export default function ArticleListPage() {
                     <td className="td">
                       <div className="flex items-center gap-3">
                         {article.thumbnailUrl ? (
-                          <img
-                            src={article.thumbnailUrl}
-                            alt=""
+                          <MediaThumbnail
+                            url={article.thumbnailUrl}
                             className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-border"
                           />
                         ) : (
