@@ -3,9 +3,10 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Newspaper, Tag, Users, Image, Bell,
   ClipboardList, Settings, X, ChevronRight, UserCog,
-  BarChart2, Smartphone, Megaphone, UsersRound, User, LifeBuoy,
+  BarChart2, Smartphone, Megaphone, UsersRound, User, LifeBuoy, Clock,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
+import { useMyHrAccess } from '../hooks/useHr';
 import logo from '../assets/logo.png';
 
 interface SidebarProps { isOpen: boolean; onClose: () => void; }
@@ -42,6 +43,13 @@ const analyticsItems = [
   { to: '/audit-logs', label: 'Audit Logs',  icon: ClipboardList },
 ];
 
+// Workforce (attendance/hours/payment) — SUPER_ADMIN always, plus anyone
+// else Super Admin has granted access to via the Access Control tab (a
+// specific Admin, or a team Manager scoped to their own team). This is why
+// it's rendered separately from analyticsItems above rather than folded
+// into that TOP_ROLES-gated list: a granted *_MANAGER isn't a top role.
+const workforceItem = { to: '/workforce', label: 'Workforce', icon: Clock };
+
 const adminOnlyItems = [
   { to: '/accounts',   label: 'Admin Accounts', icon: UserCog },
   { to: '/teams',      label: 'Team Management',icon: UsersRound },
@@ -55,6 +63,10 @@ const ticketItem = { to: '/tickets', label: 'Support Tickets', icon: LifeBuoy };
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { admin } = useAuthStore();
+  const { data: hrAccessData } = useMyHrAccess();
+  const hrAccess = hrAccessData?.data;
+  const showWorkforce = !!hrAccess && (hrAccess.isSuperAdmin || hrAccess.canView);
+  const showAnalyticsSection = (!!admin?.adminRole && TOP_ROLES.includes(admin.adminRole)) || showWorkforce;
 
   const linkClass = (isActive: boolean) =>
     `group flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-all duration-150 ${
@@ -107,13 +119,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
           ))}
 
-          {admin?.adminRole && TOP_ROLES.includes(admin.adminRole) && (
+          {showAnalyticsSection && (
             <div>
               <p className="text-2xs font-semibold uppercase tracking-widest text-ink-500 px-3 mb-2">
                 Analytics
               </p>
               <div className="space-y-0.5">
-                {analyticsItems.map(({ to, label, icon: Icon }) => (
+                {admin?.adminRole && TOP_ROLES.includes(admin.adminRole) && analyticsItems.map(({ to, label, icon: Icon }) => (
                   <NavLink
                     key={to} to={to}
                     onClick={onClose}
@@ -124,6 +136,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
                   </NavLink>
                 ))}
+                {showWorkforce && (
+                  <NavLink
+                    to={workforceItem.to}
+                    onClick={onClose}
+                    className={({ isActive }) => linkClass(isActive)}
+                  >
+                    <workforceItem.icon size={16} className="flex-shrink-0" />
+                    <span className="flex-1">{workforceItem.label}</span>
+                    <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+                  </NavLink>
+                )}
               </div>
             </div>
           )}

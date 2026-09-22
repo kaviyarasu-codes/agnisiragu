@@ -122,6 +122,11 @@ enum TicketStatus {
   RESOLVED
 }
 
+enum SalaryStatus {
+  PENDING
+  PAID
+}
+
 // ─── Phase 1 Models ──────────────────────────────────────────────────────────
 
 model User {
@@ -172,6 +177,13 @@ model Admin {
   // raises for an Admin/Super Admin to resolve. See Ticket model below.
   ticketsRaised   Ticket[] @relation("TicketRaisedBy")
   ticketsResolved Ticket[] @relation("TicketResolvedBy")
+
+  // Workforce module (attendance/hours/payment) — see HR models below.
+  dailyActivity    AdminDailyActivity[]
+  salaryRecords    AdminSalaryRecord[] @relation("SalaryOwner")
+  salariesRecorded AdminSalaryRecord[] @relation("SalaryRecordedBy")
+  hrAccessGrant    HRAccessGrant?      @relation("HRGrantee")
+  hrGrantsGiven    HRAccessGrant[]     @relation("HRGrantedBy")
 }
 
 model Category {
@@ -375,6 +387,75 @@ model Ticket {
 
   @@index([status])
   @@index([raisedById])
+}
+
+// ─── Workforce: Attendance / Active-Hours / Payroll / Access Grants ──────────
+// "Super Admin add new features for all type of user ... performances, no
+// of hours active, daily attendance, month attendance and payment" — this
+// section, plus the existing Reports (performance) endpoints in admin.
+// service.ts, together back the admin-panel's Workforce page.
+
+// Heartbeat-based attendance — the admin panel pings PATCH /hr/heartbeat
+// roughly every 60s while its tab is open and visible (see
+// AttendanceHeartbeat.tsx). Each ping upserts *today's* row for that admin
+// and bumps activeMinutes by the gap since lastSeenAt (capped, so a laptop
+// left open overnight or a stale tab can't inflate the count). A day with a
+// row = present; no row = absent. There is no reliable client-side "logout"
+// signal for a JWT-based SPA, so presence is measured by "did we hear from
+// this person today" rather than an explicit clock-in/out action.
+model AdminDailyActivity {
+  id            String    @id @default(uuid())
+  adminId       String
+  admin         Admin     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  date          DateTime  @db.Date
+  activeMinutes Int       @default(0)
+  firstSeenAt   DateTime?
+  lastSeenAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([adminId, date])
+  @@index([date])
+}
+
+// Simple payroll log, not a payment gateway — Super Admin (or a person
+// granted HR edit access) enters an amount per admin per month and marks it
+// Paid/Pending. No money actually moves through this table.
+model AdminSalaryRecord {
+  id           String       @id @default(uuid())
+  adminId      String
+  admin        Admin        @relation("SalaryOwner", fields: [adminId], references: [id], onDelete: Cascade)
+  month        Int          // 1-12
+  year         Int
+  amount       Decimal      @default(0) @db.Decimal(10, 2)
+  status       SalaryStatus @default(PENDING)
+  paidAt       DateTime?
+  notes        String?
+  recordedById String?
+  recordedBy   Admin?       @relation("SalaryRecordedBy", fields: [recordedById], references: [id])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([adminId, month, year])
+  @@index([adminId])
+}
+
+// Per-admin HR access grant. Default (no row, or SUPER_ADMIN) behavior:
+// SUPER_ADMIN always has full view+edit access to everyone; everyone else
+// has none. Super Admin can toggle canView/canEdit on for a specific ADMIN
+// or *_MANAGER here — see HrAccessGuard for how the resulting scope (all
+// admins for a plain ADMIN grantee, own-team-only for a *_MANAGER grantee)
+// is derived at request time.
+model HRAccessGrant {
+  id          String   @id @default(uuid())
+  adminId     String   @unique
+  admin       Admin    @relation("HRGrantee", fields: [adminId], references: [id], onDelete: Cascade)
+  canView     Boolean  @default(false)
+  canEdit     Boolean  @default(false)
+  grantedById String?
+  grantedBy   Admin?   @relation("HRGrantedBy", fields: [grantedById], references: [id])
+  grantedAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // ─── Legacy / Phase 2 Models (kept, not used in Phase 1 APIs) ────────────────

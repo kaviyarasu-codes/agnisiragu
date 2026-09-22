@@ -17,6 +17,7 @@ import { TeamsModule } from './teams/teams.module';
 import { CommentsModule } from './comments/comments.module';
 import { TasksModule } from './tasks/tasks.module';
 import { TicketsModule } from './tickets/tickets.module';
+import { HrModule } from './hr/hr.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { TicketsModule } from './tickets/tickets.module';
     CommentsModule,
     TasksModule,
     TicketsModule,
+    HrModule,
   ],
   providers: [
     // ThrottlerModule.forRoot above only registers the storage/config — it

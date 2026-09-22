@@ -257,6 +257,69 @@ export interface Ticket {
   updatedAt: string;
 }
 
+// ─── Workforce (HR): attendance, hours, payment, access grants ─────────────
+// See backend/src/hr — a per-admin SUPER_ADMIN-only-by-default module that
+// can be selectively opened up to an ADMIN or team *_MANAGER.
+
+export interface MyHrAccess {
+  isSuperAdmin: boolean;
+  canView: boolean;
+  canEdit: boolean;
+}
+
+export interface WorkforcePerson {
+  id: string;
+  name: string;
+  email: string;
+  adminRole: string;
+  teamType?: string | null;
+  avatarUrl?: string | null;
+  isActive: boolean;
+}
+
+export interface DailyAttendanceEntry extends WorkforcePerson {
+  date: string;
+  present: boolean;
+  activeMinutes: number;
+  firstSeenAt?: string | null;
+  lastSeenAt?: string | null;
+}
+
+export interface MonthlyAttendanceEntry extends WorkforcePerson {
+  month: number;
+  year: number;
+  daysInMonth: number;
+  daysPresent: number;
+  totalHours: number;
+  avgHoursPerPresentDay: number;
+  attendanceRate: number;
+}
+
+export interface MemberAttendanceDetail {
+  admin: { id: string; name: string; adminRole: string; teamType?: string | null; avatarUrl?: string | null };
+  month: number;
+  year: number;
+  days: { date: string; activeMinutes: number; hours: number; firstSeenAt?: string | null; lastSeenAt?: string | null }[];
+}
+
+export type SalaryStatusValue = 'PENDING' | 'PAID';
+
+export interface SalaryEntry extends WorkforcePerson {
+  month: number;
+  year: number;
+  recordId: string | null;
+  amount: number;
+  status: SalaryStatusValue;
+  paidAt?: string | null;
+  notes?: string | null;
+}
+
+export interface AccessGrantEntry extends WorkforcePerson {
+  canView: boolean;
+  canEdit: boolean;
+  grantedAt?: string | null;
+}
+
 export interface Team {
   id: string;
   name: string;

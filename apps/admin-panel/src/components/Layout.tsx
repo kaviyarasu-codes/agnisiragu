@@ -6,6 +6,7 @@ import Sidebar from './Sidebar';
 import { useAuthStore } from '../store/auth.store';
 import { clearToken } from '../lib/auth';
 import { apiGet } from '../lib/api';
+import { useAttendanceHeartbeat } from '../hooks/useAttendanceHeartbeat';
 import type { Admin } from '../types';
 
 const BREADCRUMBS: Record<string, string[]> = {
@@ -20,6 +21,7 @@ const BREADCRUMBS: Record<string, string[]> = {
   '/notifications': ['Manage', 'Notifications'],
   '/reports':       ['Analytics', 'Reports'],
   '/audit-logs':    ['Analytics', 'Audit Logs'],
+  '/workforce':     ['Analytics', 'Workforce'],
   '/accounts':      ['Admin', 'Admin Accounts'],
   '/app-config':    ['Admin', 'App Config'],
   '/settings':      ['Admin', 'Settings'],
@@ -35,6 +37,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { admin, setAdmin, logout } = useAuthStore();
+
+  // Workforce module — records this admin's active time for attendance/
+  // hours tracking (see backend/src/hr). Any authenticated admin pings this,
+  // regardless of who can later view the aggregated data.
+  useAttendanceHeartbeat();
 
   // Login only captures a snapshot of the admin record — if the avatar (or
   // name/role) was changed from another session/device, or was set after

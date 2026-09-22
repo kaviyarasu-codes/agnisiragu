@@ -12,6 +12,7 @@ import AuditLogPage from './pages/AuditLogPage';
 import SettingsPage from './pages/SettingsPage';
 import AccountsPage from './pages/AccountsPage';
 import ReportsPage from './pages/ReportsPage';
+import WorkforcePage from './pages/WorkforcePage';
 import AppConfigPage from './pages/AppConfigPage';
 import LocalAdsPage from './pages/LocalAdsPage';
 import TeamManagementPage from './pages/TeamManagementPage';
@@ -41,6 +42,7 @@ export default function App() {
                 <Route path="/media"              element={<MediaLibraryPage />} />
                 <Route path="/notifications"      element={<PushNotificationPage />} />
                 <Route path="/reports"            element={<ReportsPage />} />
+                <Route path="/workforce"          element={<WorkforcePage />} />
                 <Route path="/audit-logs"         element={<AuditLogPage />} />
                 <Route path="/accounts"           element={<AccountsPage />} />
                 <Route path="/teams"              element={<TeamManagementPage />} />
