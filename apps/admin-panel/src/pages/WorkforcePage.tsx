@@ -147,8 +147,9 @@ function AttendanceTab() {
                 <thead><tr>
                   <th className="th">Member</th>
                   <th className="th">Status</th>
-                  <th className="th">Active Hours</th>
-                  <th className="th">Last Seen</th>
+                  <th className="th">First Login</th>
+                  <th className="th">Last Logout</th>
+                  <th className="th">Total Hours</th>
                 </tr></thead>
                 <tbody>
                   {daily.data.data.map((d) => (
@@ -159,8 +160,9 @@ function AttendanceTab() {
                           {d.present ? 'Present' : 'Absent'}
                         </span>
                       </td>
-                      <td className="td text-sm text-text-secondary">{d.present ? `${(d.activeMinutes / 60).toFixed(1)} hrs` : '—'}</td>
+                      <td className="td text-xs text-text-muted">{d.firstSeenAt ? new Date(d.firstSeenAt).toLocaleTimeString() : '—'}</td>
                       <td className="td text-xs text-text-muted">{d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleTimeString() : '—'}</td>
+                      <td className="td text-sm text-text-secondary">{d.present ? `${(d.activeMinutes / 60).toFixed(1)} hrs` : '—'}</td>
                     </tr>
                   ))}
                 </tbody>

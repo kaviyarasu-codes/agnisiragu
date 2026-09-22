@@ -1,7 +1,8 @@
 // src/components/Layout.tsx
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu, LogOut, ChevronRight } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Sidebar from './Sidebar';
 import { useAuthStore } from '../store/auth.store';
 import { clearToken } from '../lib/auth';
@@ -38,10 +39,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { admin, setAdmin, logout } = useAuthStore();
 
+  const handleLogout = useCallback(() => {
+    logout();
+    clearToken();
+    navigate('/login');
+  }, [logout, navigate]);
+
+  const handleIdleTimeout = useCallback(() => {
+    handleLogout();
+    toast.error('Signed out after 30 minutes of inactivity');
+  }, [handleLogout]);
+
   // Workforce module — records this admin's active time for attendance/
-  // hours tracking (see backend/src/hr). Any authenticated admin pings this,
-  // regardless of who can later view the aggregated data.
-  useAttendanceHeartbeat();
+  // hours tracking (see backend/src/hr), and force-logs-out after 30 minutes
+  // of no interaction. Any authenticated admin runs this, regardless of who
+  // can later view the aggregated data.
+  useAttendanceHeartbeat(handleIdleTimeout);
 
   // Login only captures a snapshot of the admin record — if the avatar (or
   // name/role) was changed from another session/device, or was set after
@@ -54,12 +67,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleLogout = () => {
-    logout();
-    clearToken();
-    navigate('/login');
-  };
 
   const crumbs = getBreadcrumb(location.pathname);
   const pageTitle = crumbs[crumbs.length - 1];
