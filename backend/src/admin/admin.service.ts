@@ -377,10 +377,43 @@ export class AdminService {
     const admins = await this.prisma.admin.findMany({
       where,
       select: { id: true, name: true, email: true, adminRole: true,
-        isActive: true, phone: true, teamType: true, avatarUrl: true, lastLoginAt: true, createdAt: true },
+        isActive: true, phone: true, teamType: true, avatarUrl: true, lastLoginAt: true, createdAt: true,
+        // Session visibility (Accounts page "Force Logout" — see
+        // forceLogoutSession below). activeSessionId itself is left out —
+        // it's an internal token-matching value, nothing for the UI to show.
+        activeSessionDevice: true, activeSessionIp: true, activeSessionAt: true },
       orderBy: { name: 'asc' },
     });
     return { data: admins };
+  }
+
+  // ─── Force-logout a stuck/suspicious session (Super Admin only) ──────────
+  // Clears the session pointer so that admin's current token(s) stop
+  // validating on their next request (see AuthService.validateJwtPayload) —
+  // the same effect as them logging out themselves, just triggered remotely
+  // for when they've lost access to the device that's still "logged in"
+  // (lost phone, crashed laptop, shared computer they walked away from).
+
+  async forceLogoutSession(adminId: string, requesterId: string) {
+    const admin = await this.prisma.admin.findUnique({ where: { id: adminId } });
+    if (!admin) throw new NotFoundException('Admin not found');
+
+    await this.prisma.admin.update({
+      where: { id: adminId },
+      data: { activeSessionId: null, activeSessionDevice: null, activeSessionIp: null, activeSessionAt: null },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        adminId: requesterId,
+        action: 'ADMIN_FORCE_LOGOUT',
+        entityType: 'admin',
+        entityId: adminId,
+        metadata: { name: admin.name, previousDevice: admin.activeSessionDevice },
+      },
+    }).catch(() => {});
+
+    return { data: { message: `${admin.name} has been signed out.` } };
   }
 
   // ─── Create admin account ─────────────────────────────────────────────────

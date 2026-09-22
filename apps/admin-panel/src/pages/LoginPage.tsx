@@ -10,6 +10,7 @@ import logo from '../assets/logo.png';
 import { apiPost } from '../lib/api';
 import { setToken } from '../lib/auth';
 import { useAuthStore } from '../store/auth.store';
+import ConfirmModal from '../components/ConfirmModal';
 import type { Admin } from '../types';
 
 const schema = z.object({
@@ -18,33 +19,74 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
+// Shown when the backend refuses a login with 409 because this account
+// already has an active session elsewhere (see AuthService.adminLogin).
+interface SessionConflict {
+  device: string | null;
+  since: string | null;
+}
+
+function formatConflictDevice(device: string | null): string {
+  if (!device) return 'another device';
+  // device is a raw User-Agent string (see extractDevice in
+  // auth.controller.ts) — keep it short and readable rather than dumping
+  // the whole UA string in the person's face.
+  if (/chrome/i.test(device) && !/edg/i.test(device)) return 'Chrome';
+  if (/firefox/i.test(device)) return 'Firefox';
+  if (/edg/i.test(device)) return 'Edge';
+  if (/safari/i.test(device) && !/chrome/i.test(device)) return 'Safari';
+  return 'another browser';
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const { setAdmin } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [conflict, setConflict] = useState<SessionConflict | null>(null);
+  const [pendingValues, setPendingValues] = useState<FormValues | null>(null);
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
   });
 
-  const onSubmit = async (values: FormValues) => {
+  const doLogin = async (values: FormValues, forceLogout?: boolean) => {
     setLoading(true);
     setError('');
     try {
       const response = await apiPost<{ data: { accessToken: string; admin: Admin } }>(
-        '/auth/admin/login', values
+        '/auth/admin/login', forceLogout ? { ...values, forceLogout: true } : values
       );
       setToken(response.data.accessToken);
       setAdmin(response.data.admin);
       toast.success(`Welcome, ${response.data.admin.name}`);
       navigate('/');
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      setError(e?.response?.data?.message || 'Invalid email or password');
+      const e = err as { response?: { status?: number; data?: { message?: string; conflict?: boolean; device?: string | null; since?: string | null } } };
+      if (e?.response?.status === 409 && e.response.data?.conflict) {
+        setPendingValues(values);
+        setConflict({ device: e.response.data.device ?? null, since: e.response.data.since ?? null });
+      } else {
+        setError(e?.response?.data?.message || 'Invalid email or password');
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const onSubmit = (values: FormValues) => doLogin(values);
+
+  const confirmForceLogout = () => {
+    if (!pendingValues) return;
+    const values = pendingValues;
+    setConflict(null);
+    setPendingValues(null);
+    doLogin(values, true);
+  };
+
+  const cancelForceLogout = () => {
+    setConflict(null);
+    setPendingValues(null);
   };
 
   return (
@@ -145,6 +187,23 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={!!conflict}
+        title="Already signed in elsewhere"
+        message={
+          conflict
+            ? `This account is already signed in on ${formatConflictDevice(conflict.device)}${
+                conflict.since ? ` since ${new Date(conflict.since).toLocaleTimeString()}` : ''
+              }. Sign out that device and continue here?`
+            : ''
+        }
+        confirmLabel="Sign out & continue"
+        cancelLabel="Cancel"
+        onConfirm={confirmForceLogout}
+        onCancel={cancelForceLogout}
+        danger={false}
+      />
     </div>
   );
 }

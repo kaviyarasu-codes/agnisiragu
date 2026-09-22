@@ -10,12 +10,24 @@ import {
   Eye, EyeOff, Crown, PenLine, CheckCircle,
   Smartphone, Users2, ChevronDown, ChevronRight,
   Star, User, MoreVertical, UserCheck, Ban,
-  Megaphone, Tv2, RadioTower,
+  Megaphone, Tv2, RadioTower, LogOut, Circle,
 } from 'lucide-react';
 import { apiGet, apiPost, apiPatch, apiDelete } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
 import type { Admin, AdminRole, TeamType } from '../types';
 import { format } from 'date-fns';
+
+// Same short-name parsing as LoginPage's formatConflictDevice — turns the
+// raw User-Agent string stored in activeSessionDevice into something
+// readable in the accounts list rather than dumping the whole UA string.
+function formatDevice(device?: string | null): string {
+  if (!device) return 'unknown device';
+  if (/chrome/i.test(device) && !/edg/i.test(device)) return 'Chrome';
+  if (/firefox/i.test(device)) return 'Firefox';
+  if (/edg/i.test(device)) return 'Edge';
+  if (/safari/i.test(device) && !/chrome/i.test(device)) return 'Safari';
+  return 'a browser';
+}
 
 // Same direct-to-Cloudinary unsigned upload used for article thumbnails
 // (see ArticleFormPage.tsx) — kept consistent rather than going through the
@@ -252,14 +264,16 @@ function AvatarPicker({ name, value, onChange }: { name: string; value?: string;
   );
 }
 
-function MemberRow({ member, team, currentAdminId, canDelete = true, onEdit, onDelete, onToggleActive }: {
-  member: Admin; team: TeamDef; currentAdminId?: string; canDelete?: boolean;
+function MemberRow({ member, team, currentAdminId, canDelete = true, isSuperAdmin = false, onEdit, onDelete, onToggleActive, onForceLogout }: {
+  member: Admin; team: TeamDef; currentAdminId?: string; canDelete?: boolean; isSuperAdmin?: boolean;
   onEdit: (a: Admin) => void; onDelete: (id: string) => void;
   onToggleActive: (id: string, active: boolean) => void;
+  onForceLogout?: (id: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const isManager = member.adminRole === team.managerRole;
   const isMe = member.id === currentAdminId;
+  const isOnline = !!member.activeSessionDevice;
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 hover:bg-page transition-colors group">
@@ -281,12 +295,22 @@ function MemberRow({ member, team, currentAdminId, canDelete = true, onEdit, onD
           {member.isActive === false && (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-semibold bg-gray-100 text-gray-500">Inactive</span>
           )}
+          {isOnline && (
+            <span
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
+              title={`Signed in on ${formatDevice(member.activeSessionDevice)}${member.activeSessionIp ? ` · ${member.activeSessionIp}` : ''}`}
+            >
+              <Circle size={6} className="fill-emerald-500 text-emerald-500" /> Online
+            </span>
+          )}
         </div>
         <p className="text-xs text-text-muted mt-0.5 truncate">{member.email}</p>
         {member.phone && <p className="text-xs text-text-muted">{member.phone}</p>}
       </div>
       <div className="text-2xs text-text-muted hidden sm:block whitespace-nowrap">
-        {member.lastLoginAt ? format(new Date(member.lastLoginAt), 'dd MMM HH:mm') : 'Never logged in'}
+        {isOnline
+          ? `On ${formatDevice(member.activeSessionDevice)}${member.activeSessionAt ? ` · ${format(new Date(member.activeSessionAt), 'dd MMM HH:mm')}` : ''}`
+          : member.lastLoginAt ? format(new Date(member.lastLoginAt), 'dd MMM HH:mm') : 'Never logged in'}
       </div>
       {!isMe && (
         <div className="relative">
@@ -299,7 +323,7 @@ function MemberRow({ member, team, currentAdminId, canDelete = true, onEdit, onD
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-8 z-20 bg-surface border border-border rounded-lg shadow-lg py-1 w-44">
+              <div className="absolute right-0 top-8 z-20 bg-surface border border-border rounded-lg shadow-lg py-1 w-48">
                 <button onClick={() => { setMenuOpen(false); onEdit(member); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-text-primary hover:bg-page">
                   <Edit2 size={12} /> Edit Account
                 </button>
@@ -307,6 +331,11 @@ function MemberRow({ member, team, currentAdminId, canDelete = true, onEdit, onD
                   {member.isActive !== false ? <Ban size={12} /> : <UserCheck size={12} />}
                   {member.isActive !== false ? 'Deactivate' : 'Activate'}
                 </button>
+                {isSuperAdmin && isOnline && onForceLogout && (
+                  <button onClick={() => { setMenuOpen(false); onForceLogout(member.id); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-amber-700 hover:bg-amber-50">
+                    <LogOut size={12} /> Force Logout
+                  </button>
+                )}
                 {canDelete && (
                   <>
                     <div className="border-t border-border my-1" />
@@ -324,10 +353,11 @@ function MemberRow({ member, team, currentAdminId, canDelete = true, onEdit, onD
   );
 }
 
-function TeamCard({ team, members, currentAdminId, canManageManager = true, canDelete = true, onAddMember, onEdit, onDelete, onToggleActive }: {
-  team: TeamDef; members: Admin[]; currentAdminId?: string; canManageManager?: boolean; canDelete?: boolean;
+function TeamCard({ team, members, currentAdminId, canManageManager = true, canDelete = true, isSuperAdmin = false, onAddMember, onEdit, onDelete, onToggleActive, onForceLogout }: {
+  team: TeamDef; members: Admin[]; currentAdminId?: string; canManageManager?: boolean; canDelete?: boolean; isSuperAdmin?: boolean;
   onAddMember: (team: TeamDef) => void; onEdit: (a: Admin) => void;
   onDelete: (id: string) => void; onToggleActive: (id: string, active: boolean) => void;
+  onForceLogout?: (id: string) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const manager = members.find(m => m.adminRole === team.managerRole);
@@ -373,8 +403,8 @@ function TeamCard({ team, members, currentAdminId, canManageManager = true, canD
             </p>
           </div>
           {manager ? (
-            <MemberRow member={manager} team={team} currentAdminId={currentAdminId} canDelete={canDelete}
-              onEdit={onEdit} onDelete={onDelete} onToggleActive={onToggleActive} />
+            <MemberRow member={manager} team={team} currentAdminId={currentAdminId} canDelete={canDelete} isSuperAdmin={isSuperAdmin}
+              onEdit={onEdit} onDelete={onDelete} onToggleActive={onToggleActive} onForceLogout={onForceLogout} />
           ) : canManageManager ? (
             <div className="px-4 pb-3">
               <button onClick={() => onAddMember(team)}
@@ -396,8 +426,8 @@ function TeamCard({ team, members, currentAdminId, canManageManager = true, canD
               </div>
               <div className="divide-y divide-border">
                 {teamMembers.map(m => (
-                  <MemberRow key={m.id} member={m} team={team} currentAdminId={currentAdminId} canDelete={canDelete}
-                    onEdit={onEdit} onDelete={onDelete} onToggleActive={onToggleActive} />
+                  <MemberRow key={m.id} member={m} team={team} currentAdminId={currentAdminId} canDelete={canDelete} isSuperAdmin={isSuperAdmin}
+                    onEdit={onEdit} onDelete={onDelete} onToggleActive={onToggleActive} onForceLogout={onForceLogout} />
                 ))}
               </div>
             </>
@@ -496,6 +526,19 @@ export default function AccountsPage() {
     onError: () => toast.error('Failed to update'),
   });
 
+  // Remotely signs an admin out of whatever device they're currently
+  // signed in on — for when they've lost access to that device (lost
+  // phone, crashed laptop) and can't just wait for the normal
+  // sign-in-elsewhere conflict flow to sort itself out.
+  const forceLogoutMutation = useMutation({
+    mutationFn: (id: string) => apiPost<{ data: { message: string } }>(`/admin/accounts/${id}/force-logout`),
+    onSuccess: (res) => {
+      toast.success(res?.data?.message ?? 'Signed out');
+      qc.invalidateQueries({ queryKey: ['admins'] });
+    },
+    onError: () => toast.error('Failed to sign out that device'),
+  });
+
   function openTeamAdd(team: TeamDef, role: 'manager' | 'member' = 'member') {
     setCreateTeam(team); setCreateRole(role);
     const adminRole = role === 'manager' ? team.managerRole : team.memberRole;
@@ -576,7 +619,9 @@ export default function AccountsPage() {
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {sysAdmins.map(a => (
+                {sysAdmins.map(a => {
+                  const isOnline = !!a.activeSessionDevice;
+                  return (
                   <div key={a.id} className="flex items-center gap-3 px-4 py-3 hover:bg-page group transition-colors">
                     <Avatar name={a.name} avatarUrl={a.avatarUrl} />
                     <div className="flex-1 min-w-0">
@@ -586,12 +631,22 @@ export default function AccountsPage() {
                           {a.id === currentAdmin?.id && <span className="text-2xs text-text-muted ml-1 font-normal">(you)</span>}
                         </p>
                         <RoleBadge role={a.adminRole} />
+                        {isOnline && (
+                          <span
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            title={`Signed in on ${formatDevice(a.activeSessionDevice)}${a.activeSessionIp ? ` · ${a.activeSessionIp}` : ''}`}
+                          >
+                            <Circle size={6} className="fill-emerald-500 text-emerald-500" /> Online
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-text-muted mt-0.5">{a.email}</p>
                       {a.phone && <p className="text-xs text-text-muted">{a.phone}</p>}
                     </div>
                     <p className="text-2xs text-text-muted hidden sm:block whitespace-nowrap">
-                      {a.lastLoginAt ? format(new Date(a.lastLoginAt), 'dd MMM HH:mm') : 'Never'}
+                      {isOnline
+                        ? `On ${formatDevice(a.activeSessionDevice)}${a.activeSessionAt ? ` · ${format(new Date(a.activeSessionAt), 'dd MMM HH:mm')}` : ''}`
+                        : a.lastLoginAt ? format(new Date(a.lastLoginAt), 'dd MMM HH:mm') : 'Never'}
                     </p>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {/* Editing yourself is allowed (e.g. to change your own photo) — only
@@ -599,12 +654,18 @@ export default function AccountsPage() {
                       <button onClick={() => openEdit(a)} className="btn-ghost p-1.5 rounded" title={a.id === currentAdmin?.id ? 'Edit your profile' : 'Edit'}>
                         <Edit2 size={14} />
                       </button>
+                      {a.id !== currentAdmin?.id && isOnline && (
+                        <button onClick={() => forceLogoutMutation.mutate(a.id)} className="btn-ghost p-1.5 rounded text-amber-700 hover:bg-amber-50" title="Force Logout">
+                          <LogOut size={14} />
+                        </button>
+                      )}
                       {a.id !== currentAdmin?.id && (
                         <button onClick={() => setDeleteId(a.id)} className="btn-ghost p-1.5 rounded text-status-red hover:bg-red/5"><Trash2 size={14} /></button>
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -614,10 +675,11 @@ export default function AccountsPage() {
       {/* Team cards — Super Admin sees every team; a Manager sees only their own */}
       {visibleTeams.map(team => (
         <TeamCard key={team.id} team={team} members={membersForTeam(team)}
-          currentAdminId={currentAdmin?.id} canManageManager={isSuperAdmin} canDelete={isSuperAdmin}
+          currentAdminId={currentAdmin?.id} canManageManager={isSuperAdmin} canDelete={isSuperAdmin} isSuperAdmin={isSuperAdmin}
           onAddMember={(t) => openTeamAdd(t)}
           onEdit={openEdit} onDelete={setDeleteId}
-          onToggleActive={(id, isActive) => toggleActiveMutation.mutate({ id, isActive })} />
+          onToggleActive={(id, isActive) => toggleActiveMutation.mutate({ id, isActive })}
+          onForceLogout={(id) => forceLogoutMutation.mutate(id)} />
       ))}
 
       {/* ── Create Modal (Team) ──────────────────────────────────────────── */}

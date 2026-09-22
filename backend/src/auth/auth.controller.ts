@@ -61,6 +61,6 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Returns accessToken and admin profile' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   adminLogin(@Body() dto: AdminLoginDto, @Req() req: Request) {
-    return this.authService.adminLogin(dto.email, dto.password, extractIp(req), extractDevice(req));
+    return this.authService.adminLogin(dto.email, dto.password, extractIp(req), extractDevice(req), dto.forceLogout);
   }
 }

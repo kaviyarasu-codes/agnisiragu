@@ -49,6 +49,12 @@ export interface Admin {
   isActive?: boolean;
   lastLoginAt?: string;
   createdAt: string;
+  // Current session visibility (see backend AdminService.getAdminAccounts) —
+  // used by AccountsPage to show "signed in on X" + a Force Logout button.
+  // null/undefined means not currently signed in anywhere.
+  activeSessionDevice?: string | null;
+  activeSessionIp?: string | null;
+  activeSessionAt?: string | null;
 }
 
 export interface Category {

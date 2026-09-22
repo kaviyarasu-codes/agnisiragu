@@ -1,5 +1,6 @@
 // src/lib/api.ts
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -28,8 +29,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // AuthService.validateJwtPayload throws this specific message (rather
+      // than the generic "Unauthorized") when this token's session id no
+      // longer matches the account's active one — i.e. someone signed in
+      // on another device and this session got superseded. Worth a clearer
+      // message than "please log in again", since the person didn't do
+      // anything wrong here.
+      const superseded = error.response?.data?.message === 'SESSION_SUPERSEDED';
       localStorage.removeItem('admin_token');
       localStorage.removeItem('admin_user');
+      if (superseded) {
+        toast.error('You were signed out because this account was signed in on another device.', { duration: 6000 });
+      }
       window.location.href = '/login';
     }
     return Promise.reject(error);

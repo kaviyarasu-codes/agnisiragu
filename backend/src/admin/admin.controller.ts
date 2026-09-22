@@ -185,6 +185,14 @@ export class AdminController {
     return this.adminService.deleteAdminAccount(id);
   }
 
+  @Post('accounts/:id/force-logout')
+  @Roles('SUPER_ADMIN')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Remotely sign an admin out of their current session (super admin only) — for when they've lost access to the device that's still logged in" })
+  forceLogoutSession(@Param('id') id: string, @CurrentUser('id') requesterId: string) {
+    return this.adminService.forceLogoutSession(id, requesterId);
+  }
+
   @Get('users')
   @ApiQuery({ name: 'page',   required: false })
   @ApiQuery({ name: 'limit',  required: false })
