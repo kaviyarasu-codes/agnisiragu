@@ -29,6 +29,7 @@ export default function LeadStory({ article }: { article: Article }) {
             src={article.thumbnailUrl}
             alt={article.titleTa}
             priority
+            player
             className="object-cover transition duration-300 group-hover:scale-105"
             sizes="(max-width: 1024px) 100vw, 720px"
           />

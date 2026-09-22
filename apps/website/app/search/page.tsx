@@ -3,7 +3,9 @@ import { getCategories, getAuthors } from '@/lib/api';
 import SearchClient from '@/components/SearchClient';
 
 export const metadata = {
-  title: 'தேடல் — அக்னிசிறகு',
+  // Root layout's title template already appends " — <site name>" — a full
+  // title here would double it up to "தேடல் — அக்னிசிறகு — அக்னிசிறகு".
+  title: 'தேடல்',
   description: 'Search Agnisiragu news in Tamil, English or Thanglish — by keyword, category, reporter or date.',
 };
 

@@ -20,10 +20,12 @@ const BREADCRUMBS: Record<string, string[]> = {
   '/users':         ['Manage', 'Users'],
   '/media':         ['Manage', 'Media Library'],
   '/notifications': ['Manage', 'Notifications'],
+  '/local-ads':     ['Manage', 'Local Ads'],
   '/reports':       ['Analytics', 'Reports'],
   '/audit-logs':    ['Analytics', 'Audit Logs'],
   '/workforce':     ['Analytics', 'Workforce'],
   '/accounts':      ['Admin', 'Admin Accounts'],
+  '/teams':         ['Admin', 'Team Management'],
   '/app-config':    ['Admin', 'App Config'],
   '/settings':      ['Admin', 'Settings'],
 };

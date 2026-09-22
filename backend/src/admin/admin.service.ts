@@ -13,6 +13,14 @@ import * as bcrypt from 'bcrypt';
 function startOfDay(d: Date): Date {
   const c = new Date(d); c.setHours(0, 0, 0, 0); return c;
 }
+// dateTo query params arrive as a plain "YYYY-MM-DD" date with no time —
+// parsed as-is that's midnight UTC, which excludes almost all of that day's
+// own activity from a `createdAt <= to` / `BETWEEN from AND to` comparison
+// (e.g. today's logins). Treat it as inclusive of the whole day instead,
+// matching getAuditLogs' existing end-of-day handling.
+function endOfDay(dateStr: string): Date {
+  const c = new Date(dateStr); c.setHours(23, 59, 59, 999); return c;
+}
 function subDays(d: Date, n: number): Date {
   const c = new Date(d); c.setDate(c.getDate() - n); return c;
 }
@@ -277,14 +285,16 @@ export class AdminService {
     const [logs, total] = await Promise.all([
       this.prisma.auditLog.findMany({
         where, skip, take: limit, orderBy: { createdAt: 'desc' },
-        include: { admin: { select: { id: true, name: true, email: true, teamType: true } } },
+        include: { admin: { select: { id: true, name: true, email: true, teamType: true, adminRole: true } } },
       }),
       this.prisma.auditLog.count({ where }),
     ]);
+    // Plain ADMIN accounts have no teamType (see getTeamReport's identical
+    // fallback) — show them as "Admin Team" instead of a blank "—" here too.
     const data = logs.map(({ admin, ...log }) => ({
       ...log,
       adminName: admin?.name ?? null,
-      adminTeam: admin?.teamType ?? null,
+      adminTeam: admin?.teamType ?? (admin?.adminRole === 'ADMIN' ? 'ADMIN_TEAM' : null),
     }));
     return { data, meta: { total, page, limit, hasMore: skip + limit < total } };
   }
@@ -511,7 +521,7 @@ export class AdminService {
 
   async getMembersReport(dateFrom?: string, dateTo?: string) {
     const from = dateFrom ? new Date(dateFrom) : new Date('2020-01-01');
-    const to   = dateTo   ? new Date(dateTo)   : new Date();
+    const to   = dateTo   ? endOfDay(dateTo)   : new Date();
 
     // All admins except SUPER_ADMIN itself — ADMIN accounts ARE included
     // (a Super Admin watching "other admins' work status, performance and
@@ -614,7 +624,7 @@ export class AdminService {
 
   async getMemberDetail(adminId: string, dateFrom?: string, dateTo?: string) {
     const from = dateFrom ? new Date(dateFrom) : new Date('2020-01-01');
-    const to   = dateTo   ? new Date(dateTo)   : new Date();
+    const to   = dateTo   ? endOfDay(dateTo)   : new Date();
 
     const admin = await this.prisma.admin.findUnique({
       where: { id: adminId },
@@ -684,7 +694,7 @@ export class AdminService {
 
   async getReporterReport(dateFrom?: string, dateTo?: string) {
     const from = dateFrom ? new Date(dateFrom) : new Date('2020-01-01');
-    const to   = dateTo   ? new Date(dateTo)   : new Date();
+    const to   = dateTo   ? endOfDay(dateTo)   : new Date();
 
     const [total, verified, active, newInRange] = await Promise.all([
       this.prisma.user.count({ where: this.realUserWhere }),
@@ -717,7 +727,7 @@ export class AdminService {
 
   async getAdReport(dateFrom?: string, dateTo?: string) {
     const from = dateFrom ? new Date(dateFrom) : new Date('2020-01-01');
-    const to   = dateTo   ? new Date(dateTo)   : new Date();
+    const to   = dateTo   ? endOfDay(dateTo)   : new Date();
 
     const [ads, activeAds] = await Promise.all([
       this.prisma.localAd.findMany({

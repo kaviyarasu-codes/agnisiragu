@@ -109,7 +109,7 @@ export default async function ArticlePage({ params }: { params: { id: string } }
 
       {article.thumbnailUrl && (
         <div className="relative mt-6 aspect-video w-full overflow-hidden rounded-xl bg-black/5">
-          <MediaThumbnail src={article.thumbnailUrl} alt={article.titleTa} className="object-cover" priority />
+          <MediaThumbnail src={article.thumbnailUrl} alt={article.titleTa} className="object-cover" priority player />
           <ImageWatermark size="lg" />
         </div>
       )}
