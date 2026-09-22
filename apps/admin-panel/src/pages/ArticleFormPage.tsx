@@ -573,7 +573,7 @@ export default function ArticleFormPage({ mode }: Props) {
               <div>
                 <Label>Homepage Position</Label>
                 <Controller name="featuredOrder" control={control} render={({ field }) => (
-                  <input type="number" min={1} step={1} placeholder="1 = lead story, 2/3 = side stories"
+                  <input type="number" min={1} step={1} placeholder="1 = lead story, 2-6 = side stories"
                     value={field.value ?? ''}
                     onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                     className="input-field h-10 text-sm" />

@@ -105,20 +105,21 @@ export class NewsService {
   }
 
   // ─── Public: homepage hero picks (website only) ───────────────────────────
-  // Up to 3 articles for the homepage's lead story + 2 side stories. Admin-
+  // Up to 6 articles for the homepage's lead story + 5 side stories. Admin-
   // curated ones (isFeatured, ordered by featuredOrder — nulls last) come
   // first; any remaining slots are filled with the newest published articles
   // not already picked, so the hero never looks empty even with 0 featured.
 
   async homepagePicks() {
+    const HERO_SLOTS = 6;
     const featured = await this.prisma.article.findMany({
       where: { status: 'PUBLISHED', isFeatured: true },
-      take: 3,
+      take: HERO_SLOTS,
       orderBy: [{ featuredOrder: 'asc' }, { publishedAt: 'desc' }],
       include: { category: true, admin: { select: { id: true, name: true, avatarUrl: true } } },
     });
 
-    const remaining = 3 - featured.length;
+    const remaining = HERO_SLOTS - featured.length;
     if (remaining > 0) {
       const filler = await this.prisma.article.findMany({
         where: { status: 'PUBLISHED', id: { notIn: featured.map((a) => a.id) } },

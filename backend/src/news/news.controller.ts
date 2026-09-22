@@ -44,7 +44,7 @@ export class NewsController {
   }
 
   @Get('homepage-picks')
-  @ApiOperation({ summary: 'Up to 3 articles for the website homepage hero (lead + 2 side stories)' })
+  @ApiOperation({ summary: 'Up to 6 articles for the website homepage hero (lead + 5 side stories)' })
   homepagePicks() {
     return this.newsService.homepagePicks();
   }

@@ -101,7 +101,7 @@ async function HomepageView({
 }) {
   const pickedIds = new Set(picks.map((a) => a.id));
   const lead = picks[0];
-  const secondary = picks.slice(1, 3);
+  const secondary = picks.slice(1, 6);
   const rest = articles.filter((a) => !pickedIds.has(a.id));
   const trending = trendingFrom(articles);
 
