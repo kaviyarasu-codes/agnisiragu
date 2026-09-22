@@ -20,6 +20,12 @@ import type { ArticleStatus } from '../types';
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
+// The watermark bake re-uploads the asset through Cloudinary with an overlay
+// transformation applied synchronously — slower than a normal API call,
+// more so for video — so it needs a longer client timeout than the default
+// 20s (see lib/api.ts) or the browser cancels it before the backend's own
+// (much faster) retry logic gets a chance to finish.
+const WATERMARK_BAKE_TIMEOUT_MS = 60000;
 
 // Draft: only title + category required
 // Publish: title + category + byline + thumbnail all required
@@ -181,7 +187,7 @@ export default function ArticleFormPage({ mode }: Props) {
       // thumbnailWatermarked once Cloudinary confirms it's actually baked
       // in, so the website's on-page overlay stays as a fallback if this
       // silently fails.
-      apiPost('/media/bake-watermark', { publicId: data.public_id, resourceType })
+      apiPost('/media/bake-watermark', { publicId: data.public_id, resourceType }, WATERMARK_BAKE_TIMEOUT_MS)
         .then(() => setValue('thumbnailWatermarked', true))
         .catch(() => {});
     } catch {
@@ -210,7 +216,7 @@ export default function ArticleFormPage({ mode }: Props) {
         const data = await res.json() as { secure_url: string; public_id: string };
         uploaded.push(data.secure_url);
         // Bake the brand watermark into the actual stored file (best-effort).
-        apiPost('/media/bake-watermark', { publicId: data.public_id, resourceType }).catch(() => {});
+        apiPost('/media/bake-watermark', { publicId: data.public_id, resourceType }, WATERMARK_BAKE_TIMEOUT_MS).catch(() => {});
       }
       if (uploaded.length) {
         setValue('mediaUrls', [...mediaUrls, ...uploaded]);

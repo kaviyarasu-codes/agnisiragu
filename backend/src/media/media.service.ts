@@ -116,17 +116,19 @@ export class MediaService {
 
     // Fetching by URL requires Cloudinary's own CDN to already be serving
     // the asset that was just uploaded seconds earlier — occasionally that
-    // isn't propagated yet and the fetch 404s. A couple of short-delay
-    // retries clears that up without the caller (admin panel) needing to
-    // know anything changed.
-    const ATTEMPTS = 3;
+    // isn't propagated yet and the fetch 404s. One short-delay retry clears
+    // that up. Kept deliberately lean (not 3 attempts with growing backoff,
+    // which a previous version of this method used) — Cloudinary applies
+    // the overlay transformation synchronously during the re-upload, which
+    // can itself take several seconds (more for video), so stacking retries
+    // risked pushing total latency past the admin panel's request timeout
+    // and getting the whole call cancelled client-side before any attempt
+    // could finish. See ArticleFormPage.tsx's bake-watermark call for the
+    // matching client-side timeout.
+    const ATTEMPTS = 2;
     let lastErr: any;
     for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
       try {
-        // version: undefined lets Cloudinary resolve the current version
-        // itself; passing the version explicitly (from the upload response)
-        // would be more precise but bakeWatermark only receives publicId
-        // today — this already fixes the common propagation-lag case.
         const sourceUrl = cloudinary.url(publicId, { resource_type: resourceType, secure: true });
         await cloudinary.uploader.upload(sourceUrl, {
           public_id: publicId,
@@ -148,7 +150,7 @@ export class MediaService {
         return { data: { ok: true } };
       } catch (err) {
         lastErr = err;
-        if (attempt < ATTEMPTS) await new Promise((r) => setTimeout(r, 1200 * attempt));
+        if (attempt < ATTEMPTS) await new Promise((r) => setTimeout(r, 1000));
       }
     }
 
