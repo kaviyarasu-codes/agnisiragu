@@ -557,29 +557,57 @@ export default function ArticleFormPage({ mode }: Props) {
             </div>
 
             {/* Website-only homepage curation — see NewsService.homepagePicks.
-                Featured articles (ordered by featuredOrder, lead first) fill
-                the homepage hero; unfeatured articles never appear there. */}
-            <div className="flex items-center gap-3 pt-1 pb-0.5">
-              <Controller name="isFeatured" control={control} render={({ field }) => (
-                <input type="checkbox" id="isFeatured" checked={field.value} onChange={field.onChange}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-400 cursor-pointer" />
-              )} />
-              <label htmlFor="isFeatured" className="text-sm font-medium text-gray-700 cursor-pointer flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
-                Feature on Website Homepage
-              </label>
-            </div>
-            {watch('isFeatured') && (
-              <div>
-                <Label>Homepage Position</Label>
-                <Controller name="featuredOrder" control={control} render={({ field }) => (
-                  <input type="number" min={1} step={1} placeholder="1 = lead story, 2-6 = side stories"
-                    value={field.value ?? ''}
-                    onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-                    className="input-field h-10 text-sm" />
-                )} />
+                Two mutually-exclusive checkboxes map onto the same
+                isFeatured/featuredOrder fields under the hood: Main =
+                isFeatured + featuredOrder 1 (sorts first — the lead story);
+                Side = isFeatured + no order (sorts after the lead, by most
+                recently published among the other side picks). Colors match
+                the dots shown on the Articles list (ArticleListPage.tsx) so
+                an admin can tell at a glance what's selected either place. */}
+            <div className="space-y-2 pt-1 pb-0.5">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="homepageLead"
+                  checked={watch('isFeatured') === true && watch('featuredOrder') === 1}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setValue('isFeatured', true);
+                      setValue('featuredOrder', 1);
+                    } else {
+                      setValue('isFeatured', false);
+                      setValue('featuredOrder', undefined);
+                    }
+                  }}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-400 cursor-pointer"
+                />
+                <label htmlFor="homepageLead" className="text-sm font-medium text-gray-700 cursor-pointer flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                  Main Article (Homepage Lead)
+                </label>
               </div>
-            )}
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="homepageSide"
+                  checked={watch('isFeatured') === true && watch('featuredOrder') !== 1}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setValue('isFeatured', true);
+                      setValue('featuredOrder', undefined);
+                    } else {
+                      setValue('isFeatured', false);
+                      setValue('featuredOrder', undefined);
+                    }
+                  }}
+                  className="w-4 h-4 rounded border-gray-300 text-emerald-500 focus:ring-emerald-400 cursor-pointer"
+                />
+                <label htmlFor="homepageSide" className="text-sm font-medium text-gray-700 cursor-pointer flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                  Side Story (Homepage, up to 5)
+                </label>
+              </div>
+            </div>
 
             {/* Feed Card Style picker removed — the reader app now renders every
                 article with the single standard card (Full-bleed/Newsprint/

@@ -243,16 +243,30 @@ export default function ArticleListPage() {
                     </td>
                     <td className="td">
                       <div className="flex items-center gap-3">
-                        {article.thumbnailUrl ? (
-                          <MediaThumbnail
-                            url={article.thumbnailUrl}
-                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-border"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg bg-page border border-border flex items-center justify-center flex-shrink-0">
-                            <Newspaper size={16} className="text-text-muted" />
-                          </div>
-                        )}
+                        <div className="relative flex-shrink-0">
+                          {article.thumbnailUrl ? (
+                            <MediaThumbnail
+                              url={article.thumbnailUrl}
+                              className="w-10 h-10 rounded-lg object-cover border border-border"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-page border border-border flex items-center justify-center">
+                              <Newspaper size={16} className="text-text-muted" />
+                            </div>
+                          )}
+                          {/* Homepage curation indicator — same blue/green
+                              colors as the "Main Article"/"Side Story"
+                              checkboxes on the article editor, so this and
+                              that read as the same thing at a glance. */}
+                          {article.isFeatured && (
+                            <span
+                              className={`absolute -top-1 -left-1 w-3 h-3 rounded-full border-2 border-white ${
+                                article.featuredOrder === 1 ? 'bg-blue-500' : 'bg-emerald-500'
+                              }`}
+                              title={article.featuredOrder === 1 ? 'Homepage Lead' : 'Homepage Side Story'}
+                            />
+                          )}
+                        </div>
                         <div className="min-w-0">
                           <p className="font-semibold text-text-primary truncate max-w-[220px] text-sm">{article.titleTa}</p>
                           <p className="text-2xs text-text-muted truncate max-w-[220px] mt-0.5">{article.titleEn}</p>
