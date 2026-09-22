@@ -15,6 +15,7 @@ import { useCategories } from '../hooks/useCategories';
 import { useAuthStore } from '../store/auth.store';
 import ArticlePreviewModal from '../components/ArticlePreviewModal';
 import MediaThumbnail from '../components/MediaThumbnail';
+import { apiPost } from '../lib/api';
 import type { ArticleStatus } from '../types';
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
@@ -159,10 +160,13 @@ export default function ArticleFormPage({ mode }: Props) {
       const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
       const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`, { method: 'POST', body: fd });
       if (!res.ok) throw new Error();
-      const data = await res.json() as { secure_url: string };
+      const data = await res.json() as { secure_url: string; public_id: string };
       setValue('thumbnailUrl', data.secure_url);
       setThumbnailPreview(data.secure_url);
       toast.success(resourceType === 'video' ? 'Video thumbnail uploaded' : 'Thumbnail uploaded');
+      // Bake the brand watermark into the actual stored file (best-effort —
+      // the thumbnail is already usable even if this fails).
+      apiPost('/media/bake-watermark', { publicId: data.public_id, resourceType }).catch(() => {});
     } catch {
       toast.error('Upload failed — paste URL below instead');
     } finally {
@@ -186,8 +190,10 @@ export default function ArticleFormPage({ mode }: Props) {
         const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
         const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`, { method: 'POST', body: fd });
         if (!res.ok) continue;
-        const data = await res.json() as { secure_url: string };
+        const data = await res.json() as { secure_url: string; public_id: string };
         uploaded.push(data.secure_url);
+        // Bake the brand watermark into the actual stored file (best-effort).
+        apiPost('/media/bake-watermark', { publicId: data.public_id, resourceType }).catch(() => {});
       }
       if (uploaded.length) {
         setValue('mediaUrls', [...mediaUrls, ...uploaded]);

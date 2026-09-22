@@ -1,7 +1,7 @@
 // src/media/media.controller.ts
 import {
   Controller, Post, Get, Delete, UseInterceptors,
-  UploadedFile, UseGuards, Param, Query,
+  UploadedFile, UseGuards, Param, Query, Body,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiBody, ApiOperation, ApiTags, ApiQuery } from '@nestjs/swagger';
@@ -11,6 +11,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Reflector } from '@nestjs/core';
+import { BakeWatermarkDto } from './media.dto';
 
 const reflector = new Reflector();
 
@@ -52,6 +53,12 @@ export class MediaController {
       page:  page  ? Number(page)  : 1,
       limit: limit ? Number(limit) : 50,
     });
+  }
+
+  @Post('bake-watermark')
+  @ApiOperation({ summary: 'Bake the brand watermark into an already-uploaded Cloudinary asset (survives direct download/screenshot)' })
+  bakeWatermark(@Body() dto: BakeWatermarkDto) {
+    return this.mediaService.bakeWatermark(dto.publicId, dto.resourceType);
   }
 
   @Delete(':id')

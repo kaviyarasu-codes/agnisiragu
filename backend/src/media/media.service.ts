@@ -13,6 +13,10 @@ const VIDEO_TYPES = ['video/mp4'];
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
 
+// Uploaded once via scripts/upload-watermark-logo.ts — see that file for how
+// to (re)create this asset. bakeWatermark() below references it.
+const WATERMARK_PUBLIC_ID = 'agnisiragu/watermark-logo';
+
 @Injectable()
 export class MediaService {
   private readonly logger = new Logger(MediaService.name);
@@ -89,6 +93,52 @@ export class MediaService {
     } catch (err) {
       this.logger.error('Upload failed', err.message);
       throw new InternalServerErrorException('Failed to upload file');
+    }
+  }
+
+  // ─── Watermark ─────────────────────────────────────────────────────────
+  // Called right after the admin panel's own direct-to-Cloudinary unsigned
+  // upload (article thumbnail + additional media — see ArticleFormPage.tsx)
+  // completes. That upload never touches the backend, so this is a separate
+  // follow-up step: fetch the asset Cloudinary already has at `publicId`,
+  // re-upload it to that SAME public_id with the brand logo composited on
+  // top and `overwrite: true` — this bakes the watermark into the actual
+  // stored file (not a page/DOM overlay), so it's still there no matter how
+  // someone gets the image/video: right-click-save, a direct Cloudinary
+  // link, a download button, or a screenshot of the raw file. The URL the
+  // browser already has doesn't need to change — Cloudinary just starts
+  // serving the watermarked version at that same URL (invalidate: true
+  // busts any CDN cache of the pre-watermark version).
+  async bakeWatermark(publicId: string, resourceType: 'image' | 'video') {
+    if (!this.cloudinaryConfigured) {
+      throw new ServiceUnavailableException('Media upload not configured. Set CLOUDINARY_* env vars.');
+    }
+    try {
+      const sourceUrl = cloudinary.url(publicId, { resource_type: resourceType, secure: true });
+      await cloudinary.uploader.upload(sourceUrl, {
+        public_id: publicId,
+        resource_type: resourceType,
+        overwrite: true,
+        invalidate: true,
+        transformation: [
+          {
+            overlay: { resource_type: 'image', public_id: WATERMARK_PUBLIC_ID },
+            gravity: 'south_east',
+            x: 14,
+            y: 14,
+            width: resourceType === 'video' ? 130 : 90,
+            opacity: 75,
+            flags: 'layer_apply',
+          },
+        ],
+      });
+      return { data: { ok: true } };
+    } catch (err) {
+      // Non-fatal from the caller's point of view — the admin panel already
+      // has a usable (un-watermarked) URL from the original upload, so a
+      // failure here shouldn't block publishing. Logged so it's visible.
+      this.logger.error(`Watermark bake failed for ${publicId}`, err?.message ?? err);
+      throw new InternalServerErrorException('Failed to apply watermark');
     }
   }
 

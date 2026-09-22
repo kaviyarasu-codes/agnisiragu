@@ -12,7 +12,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "seed": "ts-node prisma/seed.ts",
-    "backfill:search": "ts-node prisma/backfill-search-text.ts"
+    "backfill:search": "ts-node prisma/backfill-search-text.ts",
+    "upload:watermark": "ts-node scripts/upload-watermark-logo.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
