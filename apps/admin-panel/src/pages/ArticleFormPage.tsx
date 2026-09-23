@@ -16,6 +16,7 @@ import { useAuthStore } from '../store/auth.store';
 import ArticlePreviewModal from '../components/ArticlePreviewModal';
 import MediaThumbnail from '../components/MediaThumbnail';
 import { withBakedWatermark } from '../lib/media';
+import { getErrorMessage } from '../lib/api';
 import type { ArticleStatus } from '../types';
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
@@ -268,7 +269,7 @@ export default function ArticleFormPage({ mode }: Props) {
       if (mode === 'create') { await createMutation.mutateAsync(payload); toast.success('Article created'); }
       else { await updateMutation.mutateAsync(payload); toast.success('Article updated'); }
       navigate('/articles');
-    } catch { toast.error('Failed to save article'); }
+    } catch (err) { toast.error(getErrorMessage(err, 'Failed to save article')); }
   };
 
   if (mode === 'edit' && articleLoading) {

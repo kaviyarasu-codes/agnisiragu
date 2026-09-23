@@ -12,6 +12,7 @@ import ArticlePreviewModal from '../components/ArticlePreviewModal';
 import MediaThumbnail from '../components/MediaThumbnail';
 import { useArticles, useDeleteArticle, usePublishArticle, useUnpublishArticle, useBulkAction } from '../hooks/useArticles';
 import { useCategories } from '../hooks/useCategories';
+import { getErrorMessage } from '../lib/api';
 import type { ArticleStatus, Article } from '../types';
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -67,8 +68,8 @@ export default function ArticleListPage() {
       await deleteMutation.mutateAsync(deleteTarget);
       toast.success('Article deleted');
       setDeleteTarget(null);
-    } catch {
-      toast.error('Failed to delete article');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to delete article'));
     }
   };
 
@@ -81,8 +82,8 @@ export default function ArticleListPage() {
         await publishMutation.mutateAsync(article.id);
         toast.success('Article published');
       }
-    } catch {
-      toast.error('Action failed');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Action failed'));
     }
   };
 
@@ -105,8 +106,8 @@ export default function ArticleListPage() {
       await bulkMutation.mutateAsync({ ids: Array.from(selected), action });
       toast.success(`Bulk ${action} complete`);
       setSelected(new Set());
-    } catch {
-      toast.error(`Bulk ${action} failed`);
+    } catch (err) {
+      toast.error(getErrorMessage(err, `Bulk ${action} failed`));
     }
   };
 
