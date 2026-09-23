@@ -105,7 +105,12 @@ export class NewsController {
   @Patch(':id/publish')
   @ApiBearerAuth()
   @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))
-  @Roles('SUPER_ADMIN', 'ADMIN', 'EDITOR', 'EDITOR_MANAGER')
+  // EDITOR_MEMBER can already update/create any article (see PATCH :id
+  // above) — excluding just this one endpoint wasn't a working review gate
+  // (nothing enforced a review step before this), it just meant a Member
+  // could edit an article all the way up to publish and then silently hit
+  // a 403 on the final click. Matches update's allow-list now.
+  @Roles('SUPER_ADMIN', 'ADMIN', 'EDITOR', 'EDITOR_MANAGER', 'EDITOR_MEMBER')
   @ApiOperation({ summary: 'Publish article' })
   publish(@Param('id') id: string, @CurrentUser('id') adminId: string, @Req() req: Request) {
     return this.newsService.publish(id, adminId, extractIp(req), extractDevice(req));
@@ -123,7 +128,10 @@ export class NewsController {
   @Patch(':id/unpublish')
   @ApiBearerAuth()
   @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))
-  @Roles('SUPER_ADMIN', 'ADMIN', 'EDITOR', 'EDITOR_MANAGER')
+  // Same reasoning as publish above — a Member who can publish should be
+  // able to undo it too, otherwise "can publish but can't unpublish" is
+  // just a different flavor of the same confusing dead end.
+  @Roles('SUPER_ADMIN', 'ADMIN', 'EDITOR', 'EDITOR_MANAGER', 'EDITOR_MEMBER')
   @ApiOperation({ summary: 'Unpublish article' })
   unpublish(@Param('id') id: string, @CurrentUser('id') adminId: string, @Req() req: Request) {
     return this.newsService.unpublish(id, adminId, extractIp(req), extractDevice(req));
