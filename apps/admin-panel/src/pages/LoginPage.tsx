@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import { Loader2, ArrowRight, ShieldCheck } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { apiPost } from '../lib/api';
-import { setToken } from '../lib/auth';
+import { setToken, setRefreshToken } from '../lib/auth';
 import { useAuthStore } from '../store/auth.store';
 import ConfirmModal from '../components/ConfirmModal';
 import type { Admin } from '../types';
@@ -54,10 +54,11 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      const response = await apiPost<{ data: { accessToken: string; admin: Admin } }>(
+      const response = await apiPost<{ data: { accessToken: string; refreshToken: string; admin: Admin } }>(
         '/auth/admin/login', forceLogout ? { ...values, forceLogout: true } : values
       );
       setToken(response.data.accessToken);
+      setRefreshToken(response.data.refreshToken);
       setAdmin(response.data.admin);
       toast.success(`Welcome, ${response.data.admin.name}`);
       navigate('/');

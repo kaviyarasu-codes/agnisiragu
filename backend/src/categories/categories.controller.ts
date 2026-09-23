@@ -31,21 +31,36 @@ export class CategoriesController {
   }
 
   // ── Admin: ALL categories including inactive ──────────────────────────────
+  // Every team needs to browse categories to tag their own content (articles,
+  // local ads, etc.) — this used to be SUPER_ADMIN/ADMIN only, which silently
+  // 403'd the list for every Manager/Member. Matches the broader allow-list
+  // pattern used for news/articles read access (see news.controller.ts).
   @Get('admin/all')
   @ApiBearerAuth()
   @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))
-  @Roles('SUPER_ADMIN', 'ADMIN')
-  @ApiOperation({ summary: 'Get all categories including inactive (admin only)' })
+  @Roles(
+    'SUPER_ADMIN', 'ADMIN', 'EDITOR', 'EDITOR_MANAGER', 'EDITOR_MEMBER',
+    'VERIFICATION_MANAGER', 'VERIFICATION_MEMBER', 'REPORTER_APP_MANAGER', 'REPORTER_APP_MEMBER',
+    'REPORTERS_MANAGER', 'REPORTERS_MEMBER', 'ADVERTISEMENT_MANAGER', 'LOCAL_ADS_MANAGER', 'ADMOB_MANAGER',
+  )
+  @ApiOperation({ summary: 'Get all categories including inactive (any admin role)' })
   findAllAdmin() {
     return this.categoriesService.findAllAdmin();
   }
 
   // ── Create ────────────────────────────────────────────────────────────────
+  // Same broadened allow-list as above — any team can add a category their
+  // content needs, not just Super Admin/Admin. Editing/reordering/deleting
+  // an existing (possibly someone else's) category stays admin-only below.
   @Post()
   @ApiBearerAuth()
   @UseGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector))
-  @Roles('SUPER_ADMIN', 'ADMIN')
-  @ApiOperation({ summary: 'Create category (admin only)' })
+  @Roles(
+    'SUPER_ADMIN', 'ADMIN', 'EDITOR', 'EDITOR_MANAGER', 'EDITOR_MEMBER',
+    'VERIFICATION_MANAGER', 'VERIFICATION_MEMBER', 'REPORTER_APP_MANAGER', 'REPORTER_APP_MEMBER',
+    'REPORTERS_MANAGER', 'REPORTERS_MEMBER', 'ADVERTISEMENT_MANAGER', 'LOCAL_ADS_MANAGER', 'ADMOB_MANAGER',
+  )
+  @ApiOperation({ summary: 'Create category (any admin role)' })
   create(@Body() dto: CreateCategoryDto, @CurrentUser('id') adminId: string) {
     return this.categoriesService.create(dto, adminId);
   }

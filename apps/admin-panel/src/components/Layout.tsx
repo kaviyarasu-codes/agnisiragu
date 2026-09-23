@@ -5,8 +5,8 @@ import { Menu, LogOut, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Sidebar from './Sidebar';
 import { useAuthStore } from '../store/auth.store';
-import { clearToken } from '../lib/auth';
-import { apiGet } from '../lib/api';
+import { clearToken, getRefreshToken } from '../lib/auth';
+import { apiGet, apiPost } from '../lib/api';
 import { useAttendanceHeartbeat } from '../hooks/useAttendanceHeartbeat';
 import type { Admin } from '../types';
 
@@ -42,6 +42,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { admin, setAdmin, logout } = useAuthStore();
 
   const handleLogout = useCallback(() => {
+    // Tell the backend too — this is what clears Admin.activeSessionId
+    // (see AuthService.logout). Without it, "logout" was purely local:
+    // the account still looked signed-in server-side, so the next login
+    // attempt (from anywhere, even the same browser) falsely reported
+    // "already signed in on another device". Fire-and-forget: local
+    // state clears either way, so a failed call here never traps someone
+    // signed in.
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      apiPost('/auth/logout', { refreshToken }).catch(() => {});
+    }
     logout();
     clearToken();
     navigate('/login');
