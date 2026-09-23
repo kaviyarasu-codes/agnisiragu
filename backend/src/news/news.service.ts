@@ -112,23 +112,18 @@ export class NewsService {
 
   async homepagePicks() {
     const HERO_SLOTS = 6;
+    // Only ever returns what the admin actually curated (isFeatured=true,
+    // via the Lead/Side Story checkboxes) — no auto-fill from the newest
+    // published articles. If fewer than 6 are picked, the homepage just
+    // shows fewer hero slots; the website's "Recent News" grid (fed
+    // separately from the full article list, see app/page.tsx) still
+    // surfaces everything else, curated or not.
     const featured = await this.prisma.article.findMany({
       where: { status: 'PUBLISHED', isFeatured: true },
       take: HERO_SLOTS,
       orderBy: [{ featuredOrder: 'asc' }, { publishedAt: 'desc' }],
       include: { category: true, admin: { select: { id: true, name: true, avatarUrl: true } } },
     });
-
-    const remaining = HERO_SLOTS - featured.length;
-    if (remaining > 0) {
-      const filler = await this.prisma.article.findMany({
-        where: { status: 'PUBLISHED', id: { notIn: featured.map((a) => a.id) } },
-        take: remaining,
-        orderBy: { publishedAt: 'desc' },
-        include: { category: true, admin: { select: { id: true, name: true, avatarUrl: true } } },
-      });
-      return { data: [...featured, ...filler] };
-    }
 
     return { data: featured };
   }
