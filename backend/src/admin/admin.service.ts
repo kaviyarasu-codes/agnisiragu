@@ -388,11 +388,12 @@ export class AdminService {
   }
 
   // ─── Force-logout a stuck/suspicious session (Super Admin only) ──────────
-  // Clears the session pointer so that admin's current token(s) stop
-  // validating on their next request (see AuthService.validateJwtPayload) —
-  // the same effect as them logging out themselves, just triggered remotely
-  // for when they've lost access to the device that's still "logged in"
-  // (lost phone, crashed laptop, shared computer they walked away from).
+  // Sets sessionRevokedAt so that admin's current token(s) — and any refresh
+  // attempt using their current refresh token — stop validating on their
+  // next request (see AuthService.validateJwtPayload / refresh). This is
+  // the ONLY thing that invalidates a session early; logging in from
+  // another device never does (see schema.prisma's Admin model comments).
+  // Use case: lost phone, crashed laptop, shared computer walked away from.
 
   async forceLogoutSession(adminId: string, requesterId: string) {
     const admin = await this.prisma.admin.findUnique({ where: { id: adminId } });
@@ -400,7 +401,10 @@ export class AdminService {
 
     await this.prisma.admin.update({
       where: { id: adminId },
-      data: { activeSessionId: null, activeSessionDevice: null, activeSessionIp: null, activeSessionAt: null },
+      data: {
+        sessionRevokedAt: new Date(),
+        activeSessionId: null, activeSessionDevice: null, activeSessionIp: null, activeSessionAt: null,
+      },
     });
 
     await this.prisma.auditLog.create({

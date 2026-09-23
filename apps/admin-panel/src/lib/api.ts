@@ -32,8 +32,10 @@ api.interceptors.request.use((config) => {
 // they were doing. Now a plain expired-token 401 is handled transparently:
 // swap it for a fresh access token via the stored refresh token and replay
 // the original request once. Only fall through to a forced logout if that
-// refresh itself fails (refresh token also expired/revoked, or this session
-// was superseded by a login elsewhere — see validateJwtPayload).
+// refresh itself fails (refresh token also expired, or this session was
+// explicitly revoked by a Super Admin's Force Logout — see
+// validateJwtPayload/refresh in auth.service.ts). Signing in on another
+// device/tab never revokes anything on its own.
 let refreshPromise: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -51,9 +53,10 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 // Requests to /auth/* (login, refresh itself, send-otp, ...) manage their
-// own error handling in their callers (e.g. LoginPage's 409-conflict
-// handling) — they should never trigger a silent refresh attempt or a
-// forced redirect away from the page that's already showing the real error.
+// own error handling in their callers (e.g. LoginPage shows its own
+// "Invalid email or password" message) — they should never trigger a
+// silent refresh attempt or a forced redirect away from the page that's
+// already showing the real error.
 function isAuthEndpoint(url?: string): boolean {
   return !!url && url.includes('/auth/');
 }
@@ -79,16 +82,15 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401 && !isAuthEndpoint(original?.url)) {
-      // AuthService.validateJwtPayload throws this specific message (rather
-      // than the generic "Unauthorized") when this token's session id no
-      // longer matches the account's active one — i.e. someone signed in
-      // on another device and this session got superseded. Worth a clearer
-      // message than "please log in again", since the person didn't do
-      // anything wrong here.
-      const superseded = error.response?.data?.message === 'SESSION_SUPERSEDED';
+      // AuthService.validateJwtPayload/refresh throw this specific message
+      // (rather than the generic "Unauthorized") when a Super Admin has
+      // explicitly force-logged this account out — the only thing that
+      // revokes a session early. Worth a clearer message than "please log
+      // in again", since the person didn't do anything wrong here.
+      const revoked = error.response?.data?.message === 'SESSION_REVOKED';
       clearToken();
-      if (superseded) {
-        toast.error('You were signed out because this account was signed in on another device.', { duration: 6000 });
+      if (revoked) {
+        toast.error('You were signed out by an administrator.', { duration: 6000 });
       }
       window.location.href = '/login';
     }

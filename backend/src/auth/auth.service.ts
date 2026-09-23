@@ -4,7 +4,6 @@ import {
   BadRequestException,
   UnauthorizedException,
   InternalServerErrorException,
-  ConflictException,
   Logger,
   OnModuleInit,
 } from '@nestjs/common';
@@ -183,9 +182,18 @@ export class AuthService implements OnModuleInit {
         throw new UnauthorizedException('Refresh token revoked');
       }
 
-      // Carry the session id (sid) forward if this refresh token has one —
-      // dropping it here would let a refreshed access token bypass the
-      // single-active-session check in validateJwtPayload below.
+      // Without this, a Force Logout wouldn't actually be "force": the
+      // signed-out device could just call /auth/refresh and mint a brand
+      // new access token with a fresh `iat`, sailing straight past the
+      // sessionRevokedAt check in validateJwtPayload. Reject the refresh
+      // itself if this refresh token predates the revocation.
+      if (payload.type === 'admin') {
+        const admin = await this.prisma.admin.findUnique({ where: { id: payload.sub }, select: { sessionRevokedAt: true } });
+        if (admin?.sessionRevokedAt && payload.iat && payload.iat * 1000 <= admin.sessionRevokedAt.getTime()) {
+          throw new UnauthorizedException('Session revoked');
+        }
+      }
+
       const accessToken = this.jwtService.sign(
         { sub: payload.sub, type: payload.type, role: payload.role, ...(payload.sid ? { sid: payload.sid } : {}) },
         {
@@ -256,7 +264,7 @@ export class AuthService implements OnModuleInit {
 
   // ─── Admin Login ─────────────────────────────────────────────────────────
 
-  async adminLogin(email: string, password: string, ip?: string, device?: string, forceLogout?: boolean) {
+  async adminLogin(email: string, password: string, ip?: string, device?: string) {
     const admin = await this.prisma.admin.findUnique({ where: { email } });
     if (!admin) throw new UnauthorizedException('Invalid credentials');
     if (admin.isActive === false) throw new UnauthorizedException('Account is deactivated');
@@ -274,20 +282,9 @@ export class AuthService implements OnModuleInit {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Single-active-session check: correct password proven above, so this
-    // only ever surfaces the conflict to someone who could already get in —
-    // never a way to fingerprint accounts. Skipped when forceLogout is set
-    // (the person already saw and confirmed this prompt once) or when
-    // there's simply no other session recorded.
-    if (admin.activeSessionId && !forceLogout) {
-      throw new ConflictException({
-        conflict: true,
-        message: 'This account is already signed in on another device.',
-        device: admin.activeSessionDevice,
-        since: admin.activeSessionAt,
-      });
-    }
-
+    // Logging in never blocks or signs out another session — see the
+    // Admin.sessionRevokedAt comment in schema.prisma. These fields are
+    // purely for display now (Admin Accounts page "online on X since Y").
     const sid = randomUUID();
     await this.prisma.admin.update({
       where: { id: admin.id },
@@ -305,7 +302,7 @@ export class AuthService implements OnModuleInit {
       action: 'ADMIN_LOGIN',
       entityType: 'admin',
       entityId: admin.id,
-      metadata: { role: admin.adminRole, team: admin.teamType, ...(forceLogout ? { forcedOtherDeviceLogout: true } : {}) },
+      metadata: { role: admin.adminRole, team: admin.teamType },
       ip,
       device,
     });
@@ -322,21 +319,16 @@ export class AuthService implements OnModuleInit {
     if (payload.type === 'admin') {
       const admin = await this.prisma.admin.findUnique({ where: { id: payload.sub } });
       if (!admin) return null;
-      // Single-active-session enforcement: a token issued by an OLDER login
-      // carries the old sid, which no longer matches once a newer login
-      // (this device or another) has overwritten activeSessionId — that
-      // token is now stale and gets rejected, which is what actually signs
-      // the previous device out. admin.activeSessionId is null for any
-      // admin who hasn't logged in again since this feature shipped (and
-      // for a token that predates the sid claim entirely), so existing
-      // sessions from before this deploy keep working until they naturally
-      // expire rather than being force-logged-out by the rollout itself.
-      // Thrown (not just returned null) with a distinct message so the
-      // admin panel's response interceptor can tell "signed in elsewhere"
-      // apart from an ordinary expired/invalid token and show the right
-      // message instead of a silent redirect (see lib/api.ts).
-      if (admin.activeSessionId && payload.sid !== admin.activeSessionId) {
-        throw new UnauthorizedException('SESSION_SUPERSEDED');
+      // Only an explicit Force Logout (see AdminService.forceLogoutSession)
+      // ever invalidates a token early — a token issued (payload.iat, in
+      // seconds) before that action is rejected; anything issued after it
+      // (i.e. every normal login, including a concurrent one elsewhere)
+      // keeps working. Thrown (not just returned null) with a distinct
+      // message so the admin panel's response interceptor can show "you
+      // were signed out by an administrator" instead of a silent redirect
+      // (see lib/api.ts).
+      if (admin.sessionRevokedAt && payload.iat && payload.iat * 1000 <= admin.sessionRevokedAt.getTime()) {
+        throw new UnauthorizedException('SESSION_REVOKED');
       }
       const { passwordHash, ...safe } = admin;
       return { ...safe, _type: 'admin' };

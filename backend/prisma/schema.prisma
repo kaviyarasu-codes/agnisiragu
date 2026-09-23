@@ -168,19 +168,24 @@ model Admin {
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
 
-  // Single-active-session enforcement — see AuthService.adminLogin. A fresh
-  // random id is written here on every successful/confirmed login and
-  // embedded in that login's JWTs as the `sid` claim; validateJwtPayload
-  // rejects any token whose `sid` no longer matches, which is what actually
-  // signs the *previous* device out the next time it makes a request.
-  // Cleared (set to null) on an explicit logout. Device/IP/At are purely
-  // informational — shown to the person logging in ("already signed in on
-  // Chrome on Windows since 2:30 PM") and to a Super Admin on the Admin
-  // Accounts page (with a Force Logout action that just clears these).
+  // Session visibility (NOT an enforcement gate — logging in on a second
+  // device/tab no longer blocks or signs anyone out; that turned out to be
+  // more disruptive than useful for people who legitimately keep multiple
+  // tabs/devices open). A fresh id + device/IP/timestamp is written here on
+  // every login purely for display — the Admin Accounts page shows "online
+  // on Chrome since 2:30 PM" from these fields. Cleared on explicit logout.
   activeSessionId     String?
   activeSessionDevice String?
   activeSessionIp     String?
   activeSessionAt     DateTime?
+
+  // Set only by a Super Admin's explicit "Force Logout" action (see
+  // AdminService.forceLogoutSession) — never by an ordinary login. Any
+  // access token issued before this timestamp (`payload.iat`) is rejected
+  // by validateJwtPayload, which is what actually signs that device out.
+  // A normal second login never touches this field, so it can't cascade
+  // into signing out a device that didn't ask to be.
+  sessionRevokedAt DateTime?
 
   articles     Article[]
   auditLogs    AuditLog[]

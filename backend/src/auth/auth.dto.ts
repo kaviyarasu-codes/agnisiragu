@@ -1,6 +1,6 @@
 // src/auth/auth.dto.ts
-import { IsString, IsPhoneNumber, IsOptional, IsBoolean, Length, Matches } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsPhoneNumber, Length, Matches } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class SendOtpDto {
   @ApiProperty({ example: '+919876543210', description: 'Phone number with country code' })
@@ -36,12 +36,4 @@ export class AdminLoginDto {
   @ApiProperty({ example: 'Admin@123456' })
   @IsString()
   password: string;
-
-  // Sent only on a resubmitted login after the person has already seen and
-  // confirmed the "already signed in on <device>" prompt (see
-  // AuthService.adminLogin) — signs the other device out and proceeds.
-  @ApiPropertyOptional({ default: false })
-  @IsOptional()
-  @IsBoolean()
-  forceLogout?: boolean;
 }
