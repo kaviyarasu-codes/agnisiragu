@@ -106,24 +106,33 @@ export class NewsService {
 
   // ─── Public: homepage hero picks (website only) ───────────────────────────
   // Up to 6 articles for the homepage's lead story + 5 side stories. Admin-
-  // curated ones (isFeatured, ordered by featuredOrder — nulls last) come
-  // first; any remaining slots are filled with the newest published articles
-  // not already picked, so the hero never looks empty even with 0 featured.
+  // curated ones (isFeatured, via the Lead/Side Story checkboxes — ordered
+  // by featuredOrder, nulls last) always come first and always win their
+  // slot. Any slot the admin HASN'T checked a box for is filled with the
+  // newest published article not already picked, purely so the homepage
+  // is never sitting empty while nothing's been curated yet — the moment
+  // someone checks a box for an article, that pick takes over its slot on
+  // the next load, no auto-filled article ever displaces an explicit pick.
 
   async homepagePicks() {
     const HERO_SLOTS = 6;
-    // Only ever returns what the admin actually curated (isFeatured=true,
-    // via the Lead/Side Story checkboxes) — no auto-fill from the newest
-    // published articles. If fewer than 6 are picked, the homepage just
-    // shows fewer hero slots; the website's "Recent News" grid (fed
-    // separately from the full article list, see app/page.tsx) still
-    // surfaces everything else, curated or not.
     const featured = await this.prisma.article.findMany({
       where: { status: 'PUBLISHED', isFeatured: true },
       take: HERO_SLOTS,
       orderBy: [{ featuredOrder: 'asc' }, { publishedAt: 'desc' }],
       include: { category: true, admin: { select: { id: true, name: true, avatarUrl: true } } },
     });
+
+    const remaining = HERO_SLOTS - featured.length;
+    if (remaining > 0) {
+      const filler = await this.prisma.article.findMany({
+        where: { status: 'PUBLISHED', id: { notIn: featured.map((a) => a.id) } },
+        take: remaining,
+        orderBy: { publishedAt: 'desc' },
+        include: { category: true, admin: { select: { id: true, name: true, avatarUrl: true } } },
+      });
+      return { data: [...featured, ...filler] };
+    }
 
     return { data: featured };
   }
