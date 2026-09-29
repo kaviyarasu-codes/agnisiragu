@@ -66,12 +66,22 @@ export default function PushNotificationPage() {
   });
   const articleResults = articleSearchEnabled ? (articleSearchData?.data ?? []) : [];
 
+  // Standalone image — only used when there's no linked article (a linked
+  // article's own thumbnailUrl always wins, so this field is hidden once
+  // one's picked, matching how "Link to Article" already replaces its own
+  // search box with a summary chip).
+  const [imageUrl, setImageUrl] = useState('');
+
   const sendMutation = useMutation({
     mutationFn: (payload: FormValues) =>
       apiPost<{ data: { successCount: number; failureCount: number; message?: string } }>('/notifications/send', {
         ...payload,
         ...(linkedArticle ? { data: { articleId: linkedArticle.id } } : {}),
-        ...(linkedArticle?.thumbnailUrl ? { imageUrl: linkedArticle.thumbnailUrl } : {}),
+        ...(linkedArticle?.thumbnailUrl
+          ? { imageUrl: linkedArticle.thumbnailUrl }
+          : imageUrl.trim()
+            ? { imageUrl: imageUrl.trim() }
+            : {}),
       }),
     onSuccess: (res) => {
       // The endpoint returns 200 even when nothing was actually delivered
@@ -89,6 +99,7 @@ export default function PushNotificationPage() {
       reset();
       setLinkedArticle(null);
       setArticleQuery('');
+      setImageUrl('');
       void queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
     onError: (error: any) => {
@@ -204,6 +215,23 @@ export default function PushNotificationPage() {
             )}
             <p className="text-2xs text-text-muted mt-1.5">Leave blank to open the app's default screen on tap.</p>
           </div>
+
+          {/* Standalone image — hidden once an article is linked, since the
+              linked article's own thumbnail is used instead (see
+              sendMutation above). Lets an admin still show a big-picture
+              image on a push that isn't tied to a specific story. */}
+          {!linkedArticle && (
+            <div>
+              <label className="label">Image URL (optional)</label>
+              <input
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                className="input"
+                placeholder="https://..."
+              />
+              <p className="text-2xs text-text-muted mt-1.5">Shown as a big-picture image in the notification (Android). Ignored if you link an article above.</p>
+            </div>
+          )}
 
           {/* Target */}
           <div>

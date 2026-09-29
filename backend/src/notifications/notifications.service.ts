@@ -172,6 +172,17 @@ export class NotificationsService {
         // vibration configured on-device — see notificationsCompat.ts)
         // instead of Android's generic auto-created "Default" one.
         channelId: 'news-alerts',
+        // A rapid run of breaking-news pushes (or an admin re-sending) used
+        // to stack up as separate banners in the notification shade forever
+        // — `tag` tells Android to replace any currently-showing
+        // notification with the same tag instead of adding a new one, and
+        // `collapseId` does the equivalent for messages still in transit
+        // (e.g. the device was briefly offline). One shared tag for the
+        // whole app is intentional: only the single latest alert needs to
+        // stay visible, same as most news apps — tapping it (or the app)
+        // still shows the full notification history either way.
+        tag: 'agnisiragu-alert',
+        collapseId: 'agnisiragu-alert',
         ...(dto.imageUrl && showArticleImage
           ? { richContent: { image: dto.imageUrl } }
           : {}),
