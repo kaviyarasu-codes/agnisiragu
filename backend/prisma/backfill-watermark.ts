@@ -12,11 +12,21 @@
 // This rewrites thumbnailUrl and every mediaUrls entry in place using the
 // exact same URL-transform as new uploads (no re-upload, no Cloudinary
 // fetch quota involved — just inserting a transformation segment into the
-// existing delivery URL), then flips thumbnailWatermarked to true so the
-// website/app stop drawing the redundant overlay for these articles too.
+// existing delivery URL), then flips thumbnailWatermarked to true ONLY for
+// articles where the thumbnail is now actually protected (baked, already
+// contained the watermark, or there's no thumbnailUrl at all to protect).
 //
-// Safe to re-run — skips any URL that isn't a plain Cloudinary /upload/ URL
-// and any URL that already contains the watermark transform segment.
+// An earlier version of this script set thumbnailWatermarked: true for
+// EVERY legacy article regardless of whether thumbnailUrl was actually a
+// bakeable Cloudinary /upload/ URL — for an article whose thumbnailUrl
+// isn't Cloudinary-hosted (or is some other unrecognized shape), that left
+// it with neither a baked watermark NOR the on-screen ImageWatermark
+// overlay (which is gated by !thumbnailWatermarked), i.e. completely
+// unprotected. This version checks every article (not just
+// thumbnailWatermarked: false ones) so a re-run also repairs any article
+// that got wrongly flagged by that earlier run.
+//
+// Safe to re-run.
 //
 //   npx ts-node prisma/backfill-watermark.ts
 
@@ -44,40 +54,54 @@ function withBakedWatermark(secureUrl: string): string {
 }
 
 async function main() {
+  // Check every article, not just thumbnailWatermarked: false ones, so a
+  // re-run also repairs any article an earlier buggy run mis-flagged.
   const articles = await prisma.article.findMany({
-    where: { thumbnailWatermarked: false },
-    select: { id: true, thumbnailUrl: true, mediaUrls: true },
+    select: { id: true, thumbnailUrl: true, mediaUrls: true, thumbnailWatermarked: true },
   });
 
-  console.log(`Found ${articles.length} legacy (unwatermarked) article(s).`);
+  console.log(`Checking ${articles.length} article(s).`);
 
-  let updated = 0;
-  let skipped = 0;
+  let baked = 0;
+  let repaired = 0;
+  let untouched = 0;
 
   for (const a of articles) {
     const newThumbnailUrl = a.thumbnailUrl ? withBakedWatermark(a.thumbnailUrl) : a.thumbnailUrl;
     const newMediaUrls = a.mediaUrls.map(withBakedWatermark);
 
-    // Only worth touching if we actually have a thumbnail to bake — an
-    // article with neither thumbnailUrl nor mediaUrls has nothing to
-    // watermark, but we still flip the flag so it's not picked up again.
     const changedThumbnail = newThumbnailUrl !== a.thumbnailUrl;
     const changedMedia = newMediaUrls.some((u, i) => u !== a.mediaUrls[i]);
+
+    // Actually protected once baked — either there's no thumbnail at all
+    // (nothing to protect, overlay wouldn't render anyway), or the
+    // thumbnail's URL (after the attempted bake above) does contain the
+    // watermark transform. If it's some other URL shape that couldn't be
+    // baked, this stays false so the fallback on-screen overlay keeps
+    // showing instead of leaving the image unprotected either way.
+    const isProtected = !newThumbnailUrl || newThumbnailUrl.includes(WATERMARK_PUBLIC_ID);
+
+    const flagNeedsFix = a.thumbnailWatermarked !== isProtected;
+
+    if (!changedThumbnail && !changedMedia && !flagNeedsFix) {
+      untouched += 1;
+      continue;
+    }
 
     await prisma.article.update({
       where: { id: a.id },
       data: {
         thumbnailUrl: newThumbnailUrl,
         mediaUrls: newMediaUrls,
-        thumbnailWatermarked: true,
+        thumbnailWatermarked: isProtected,
       },
     });
 
-    if (changedThumbnail || changedMedia) updated += 1;
-    else skipped += 1;
+    if (changedThumbnail || changedMedia) baked += 1;
+    else repaired += 1;
   }
 
-  console.log(`✅ Done. Rewrote URLs for ${updated} article(s); ${skipped} had nothing to bake (flag still set).`);
+  console.log(`✅ Done. Baked ${baked} article(s); repaired the flag on ${repaired} more; ${untouched} needed nothing.`);
 }
 
 main()
