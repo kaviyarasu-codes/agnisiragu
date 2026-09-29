@@ -98,9 +98,14 @@ interface Props {
   mediaUrls?: string[];
   thumbnailUrl?: string;
   watermarkCorner?: 'top-right' | 'bottom-right';
+  // 'cover' (default) crops to fill — right for a fixed-height feed-card
+  // thumbnail. The Full Story hero (ArticleDetailScreen) passes 'contain'
+  // instead so the actual photo is never cropped, matching how video
+  // already behaves here and how the website's article hero was fixed.
+  imageFit?: 'cover' | 'contain';
 }
 
-export default function MediaCarousel({ mediaUrls, thumbnailUrl, watermarkCorner = 'bottom-right' }: Props) {
+export default function MediaCarousel({ mediaUrls, thumbnailUrl, watermarkCorner = 'bottom-right', imageFit = 'cover' }: Props) {
   const t = useTheme();
   const [width, setWidth] = useState(0);
   const [index, setIndex] = useState(0);
@@ -122,7 +127,12 @@ export default function MediaCarousel({ mediaUrls, thumbnailUrl, watermarkCorner
         isVideoUrl(items[0]) ? (
           <VideoTile uri={items[0]} style={[StyleSheet.absoluteFill, styles.videoTile, { backgroundColor: t.bgAlt }]} />
         ) : (
-          <Image source={{ uri: items[0] }} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
+          <Image
+            source={{ uri: items[0] }}
+            style={[StyleSheet.absoluteFill, imageFit === 'contain' && { backgroundColor: t.bgAlt }]}
+            contentFit={imageFit}
+            transition={250}
+          />
         )
       ) : width > 0 ? (
         <FlatList
@@ -137,7 +147,12 @@ export default function MediaCarousel({ mediaUrls, thumbnailUrl, watermarkCorner
             isVideoUrl(item) ? (
               <VideoTile uri={item} style={[styles.videoTile, { width, backgroundColor: t.bgAlt }]} />
             ) : (
-              <Image source={{ uri: item }} style={{ width, height: '100%' }} contentFit="cover" transition={250} />
+              <Image
+                source={{ uri: item }}
+                style={[{ width, height: '100%' }, imageFit === 'contain' && { backgroundColor: t.bgAlt }]}
+                contentFit={imageFit}
+                transition={250}
+              />
             )
           )}
           getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}

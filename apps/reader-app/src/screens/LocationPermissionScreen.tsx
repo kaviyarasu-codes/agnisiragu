@@ -49,7 +49,14 @@ async function detectDistrictId(districts: { id: string; nameEn: string }[]): Pr
     const place = results[0];
     if (!place) return null;
 
-    const candidates = [place.subregion, place.city, place.region]
+    // subregion/city/region alone miss on some devices/OS versions where
+    // Android's Geocoder reports the district under `district` instead (or
+    // only under a locality-level `name`/`street`) — widening the candidate
+    // set catches more real devices without changing what's actually being
+    // matched against (still the same admin-configured district list; this
+    // doesn't introduce a new finer-grained "area" concept, just a more
+    // resilient match against the district names that already exist).
+    const candidates = [place.subregion, place.district, place.city, place.region, place.name]
       .filter((v): v is string => !!v)
       .map((v) => v.toLowerCase());
 
