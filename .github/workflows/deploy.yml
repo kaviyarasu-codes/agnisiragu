@@ -1,8 +1,12 @@
 # .github/workflows/deploy.yml
-# CI/CD Pipeline — Agnisiragu News Platform
-# Triggers on push to master branch
+# CI Pipeline — Agnisiragu News Platform
+# Triggers on push to master branch. Runs tests only — deploys are manual
+# over SSH (see infra/scripts for the commands): cd /docker/agnisiragu/repo
+# && git fetch/reset && cd ../backend && docker compose up -d --build backend.
+# A "Deploy to Production" job existed here but needed SSH secrets that were
+# never set up; removed rather than leave a job that always fails red.
 
-name: Build & Deploy
+name: Run Tests
 
 on:
   push:
@@ -77,56 +81,3 @@ jobs:
       - name: Run lint
         working-directory: backend
         run: npm run lint || true
-
-  # ── 2. Deploy to production server ─────────────────────────────────────────
-  # Production (Hostinger VPS, Traefik + a self-hosted Postgres container)
-  # does NOT run infra/docker-compose.prod.yml or pull from GHCR — that
-  # setup was written but never actually put into production. The real
-  # deploy is a plain git clone at /docker/agnisiragu/repo on the server,
-  # with a separate, server-local compose file at
-  # /docker/agnisiragu/backend/docker-compose.yml (and its own .env,
-  # outside this repo) that builds the backend image directly from that
-  # clone. So "deploy" here is just: update the clone, rebuild, restart —
-  # matching how this was always done by hand over SSH.
-  deploy:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    environment:
-      name: production
-      url: https://api.agnisiragu.com
-
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
-          script: |
-            set -e
-
-            cd /docker/agnisiragu/repo
-            git fetch origin master
-            git reset --hard origin/master
-
-            cd /docker/agnisiragu/backend
-            docker compose up -d --build backend
-
-            echo "Waiting for the container to come up..."
-            sleep 5
-            docker ps --filter "name=agnisiragu-backend" --format "{{.Names}}: {{.Status}}"
-
-            docker image prune -f
-
-            echo "🚀 Deployment complete"
-
-      - name: Notify on success
-        if: success()
-        run: echo "✅ Deployed successfully to production"
-
-      - name: Notify on failure
-        if: failure()
-        run: echo "❌ Deployment failed — check GitHub Actions logs"
