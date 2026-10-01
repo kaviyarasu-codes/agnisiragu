@@ -88,6 +88,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    # GITHUB_TOKEN defaults to read-only for packages unless a workflow
+    # explicitly asks for write access — without this, docker push to
+    # ghcr.io is denied ("installation not allowed to Create organization
+    # package") regardless of the repo's own Settings > Actions toggle.
+    permissions:
+      contents: read
+      packages: write
     outputs:
       image_tag: ${{ steps.meta.outputs.version }}
 
