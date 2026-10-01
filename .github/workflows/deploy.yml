@@ -1,20 +1,20 @@
 # .github/workflows/deploy.yml
 # CI/CD Pipeline — Agnisiragu News Platform
-# Triggers on push to main branch
+# Triggers on push to master branch
 
 name: Build & Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
-      - 'agnisiragu/backend/**'
+      - 'backend/**'
       - 'infra/**'
       - '.github/workflows/deploy.yml'
   pull_request:
-    branches: [main]
+    branches: [master]
     paths:
-      - 'agnisiragu/backend/**'
+      - 'backend/**'
 
 env:
   REGISTRY: ghcr.io

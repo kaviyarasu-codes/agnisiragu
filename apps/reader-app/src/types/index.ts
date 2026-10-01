@@ -27,6 +27,13 @@ export interface Article {
   bodyEn: string;
   excerpt?: string;
   thumbnailUrl?: string;
+  // True once thumbnailUrl's file already has the brand logo baked into its
+  // pixels (see admin-panel/src/lib/media.ts withBakedWatermark). Every
+  // feed card / hero that overlays its own ImageWatermark chip must gate on
+  // `!thumbnailWatermarked`, or a baked image shows the logo twice. This
+  // field was missing from the app's Article type entirely, which is why
+  // every reader-app card below draws the overlay unconditionally.
+  thumbnailWatermarked?: boolean;
   mediaUrls?: string[];
   byline?: string;
   admin?: { id: string; name: string; avatarUrl?: string | null } | null;

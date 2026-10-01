@@ -97,6 +97,10 @@ function VideoTile({ uri, style }: { uri: string; style: object }) {
 interface Props {
   mediaUrls?: string[];
   thumbnailUrl?: string;
+  // When the thumbnail/media already has the brand logo baked into its
+  // pixels (admin-panel's withBakedWatermark), skip drawing this overlay
+  // too — otherwise the logo shows twice in the same corner.
+  thumbnailWatermarked?: boolean;
   watermarkCorner?: 'top-right' | 'bottom-right';
   // 'cover' (default) crops to fill — right for a fixed-height feed-card
   // thumbnail. The Full Story hero (ArticleDetailScreen) passes 'contain'
@@ -105,7 +109,7 @@ interface Props {
   imageFit?: 'cover' | 'contain';
 }
 
-export default function MediaCarousel({ mediaUrls, thumbnailUrl, watermarkCorner = 'bottom-right', imageFit = 'cover' }: Props) {
+export default function MediaCarousel({ mediaUrls, thumbnailUrl, thumbnailWatermarked, watermarkCorner = 'bottom-right', imageFit = 'cover' }: Props) {
   const t = useTheme();
   const [width, setWidth] = useState(0);
   const [index, setIndex] = useState(0);
@@ -172,7 +176,7 @@ export default function MediaCarousel({ mediaUrls, thumbnailUrl, watermarkCorner
         </>
       )}
 
-      <ImageWatermark corner={watermarkCorner} />
+      {!thumbnailWatermarked && <ImageWatermark corner={watermarkCorner} />}
     </View>
   );
 }

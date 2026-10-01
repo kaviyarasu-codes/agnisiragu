@@ -48,7 +48,7 @@ export default function NewsprintArticleCard({ article, language, width, onOpen,
           ) : (
             <View style={[StyleSheet.absoluteFill, { backgroundColor: t.bgAlt }]} />
           )}
-          <ImageWatermark />
+          {!article.thumbnailWatermarked && <ImageWatermark />}
         </View>
 
         <Text style={[styles.desc, { color: t.inkSub }]} numberOfLines={5}>{body}</Text>

@@ -116,8 +116,28 @@ export default function ArticleFormPage({ mode }: Props) {
   const mediaUrls = watch('mediaUrls') || [];
   const byline = watch('byline');
 
-  const tamilEditor = useEditor({ extensions: [StarterKit, Image, Link], content: '' });
-  const englishEditor = useEditor({ extensions: [StarterKit, Image, Link], content: '' });
+  // autolink/linkOnPaste: a bare URL typed or pasted into the body (e.g. a
+  // WhatsApp group link) becomes a real <a href> automatically, instead of
+  // sitting there as plain unclickable text — that gap was the reason links
+  // inside article bodies weren't tappable on the website or in the app.
+  const linkExtension = Link.configure({ autolink: true, linkOnPaste: true, openOnClick: false });
+  const tamilEditor = useEditor({ extensions: [StarterKit, Image, linkExtension], content: '' });
+  const englishEditor = useEditor({ extensions: [StarterKit, Image, linkExtension], content: '' });
+
+  // ── 50-minute post-publish edit lock ─────────────────────────────────
+  // Mirrors the backend's NewsService.update() guard (EDIT_WINDOW_MS) —
+  // this is UI messaging only, the backend is what actually enforces it.
+  const EDIT_WINDOW_MINUTES = 50;
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => forceTick((n) => n + 1), 15000);
+    return () => clearInterval(t);
+  }, []);
+  const publishedAt = mode === 'edit' ? articleData?.data?.publishedAt : null;
+  const articleStatus = mode === 'edit' ? articleData?.data?.status : null;
+  const minutesSincePublish = publishedAt ? (Date.now() - new Date(publishedAt).getTime()) / 60000 : 0;
+  const isEditLocked = articleStatus === 'PUBLISHED' && !!publishedAt && minutesSincePublish > EDIT_WINDOW_MINUTES;
+  const minutesLeftToEdit = Math.max(0, Math.ceil(EDIT_WINDOW_MINUTES - minutesSincePublish));
 
   useEffect(() => {
     if (mode === 'edit' && articleData?.data) {
@@ -294,6 +314,18 @@ export default function ArticleFormPage({ mode }: Props) {
 
   return (
     <form onSubmit={handleSubmit((v) => onSubmit(v))} className="space-y-4 max-w-6xl">
+
+      {isEditLocked && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          This article was published more than {EDIT_WINDOW_MINUTES} minutes ago and is now locked —
+          further changes aren't allowed. Unpublish it from the Articles list first if it needs correcting.
+        </div>
+      )}
+      {!isEditLocked && articleStatus === 'PUBLISHED' && publishedAt && (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+          Published — editable for {minutesLeftToEdit} more minute{minutesLeftToEdit === 1 ? '' : 's'}.
+        </div>
+      )}
 
       {/* ══ CONTENT (Language tabs) ══════════════════════════════════ */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -625,13 +657,13 @@ export default function ArticleFormPage({ mode }: Props) {
               className="btn-secondary w-full justify-center">
               <Eye size={15} /> Preview
             </button>
-            <button type="button" disabled={isSubmitting}
+            <button type="button" disabled={isSubmitting || isEditLocked}
               onClick={handleSubmit((v) => onSubmit(v, true))}
               className="btn-primary w-full justify-center">
               {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : null}
               Publish Now
             </button>
-            <button type="submit" disabled={isSubmitting}
+            <button type="submit" disabled={isSubmitting || isEditLocked}
               className="btn-secondary w-full justify-center">
               {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : null}
               Save Draft

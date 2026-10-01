@@ -141,8 +141,13 @@ export class MediaService {
               gravity: 'south_east',
               x: 14,
               y: 14,
-              width: resourceType === 'video' ? 130 : 90,
-              opacity: 75,
+              // Kept in sync with admin-panel/src/lib/media.ts's
+              // withBakedWatermark (the live path — see that file's
+              // comment on why this bakeWatermark API call isn't the one
+              // normally hit anymore). Bumped from 130/90/o_75 — too
+              // small/faint on larger images.
+              width: resourceType === 'video' ? 170 : 130,
+              opacity: 90,
               flags: 'layer_apply',
             },
           ],

@@ -53,7 +53,7 @@ export default function ArticleCard({ article, onPress, language }: ArticleCardP
               <Icon name="play" size={11} color="#fff" />
             </View>
           )}
-          <ImageWatermark size="xs" />
+          {!article.thumbnailWatermarked && <ImageWatermark size="xs" />}
         </View>
       ) : (
         <View style={[styles.img, { backgroundColor: t.bgAlt }]} />

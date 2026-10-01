@@ -93,7 +93,7 @@ export function ArticleFeedCard({ article, language, index, total, width, action
           (left/right halves, see MediaCarousel) still work for stories with
           more than one photo/video. */}
       <View style={styles.imageWrap}>
-        <MediaCarousel mediaUrls={article.mediaUrls} thumbnailUrl={article.thumbnailUrl} />
+        <MediaCarousel mediaUrls={article.mediaUrls} thumbnailUrl={article.thumbnailUrl} thumbnailWatermarked={article.thumbnailWatermarked} />
       </View>
 
       {/* Everything below the image scrolls on its own — the image above

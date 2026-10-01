@@ -38,6 +38,52 @@ function cleanInnerText(s: string): string {
   return decodeEntities(s.replace(/<[^>]+>/g, ''));
 }
 
+// Catches two things the Tiptap editor's toolbar never produces, but that
+// show up constantly when a reporter pastes WhatsApp-authored text straight
+// into the body instead of using the Bold button / "insert link" dialog:
+//   - a bare URL (http/https/www) sitting in plain text — previously just
+//     inert text, now tappable like a real <a> link
+//   - WhatsApp-style *bold*/**bold** markers — previously shown as literal
+//     asterisks, now rendered bold like the editor's own <strong> output
+// Runs only over the plain-text leftovers from INLINE_RE below, so it never
+// double-processes text that's already inside a real <a>/<strong>/<em> tag.
+const PLAIN_RE = /(https?:\/\/[^\s<]+|www\.[^\s<]+)|\*\*([^*\n]+)\*\*|\*([^*\n]+)\*/gi;
+
+function renderPlainText(text: string, keyPrefix: string, linkColor: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let idx = 0;
+  let m: RegExpExecArray | null;
+  PLAIN_RE.lastIndex = 0;
+
+  while ((m = PLAIN_RE.exec(text))) {
+    if (m.index > lastIndex) nodes.push(decodeEntities(text.slice(lastIndex, m.index)));
+
+    if (m[1] !== undefined) {
+      const href = m[1].startsWith('www.') ? `https://${m[1]}` : m[1];
+      nodes.push(
+        <Text
+          key={`${keyPrefix}-u-${idx++}`}
+          style={{ color: linkColor, textDecorationLine: 'underline' }}
+          onPress={() => { Linking.openURL(href).catch(() => {}); }}
+        >
+          {decodeEntities(m[1])}
+        </Text>,
+      );
+    } else {
+      const boldText = m[2] ?? m[3];
+      nodes.push(
+        <Text key={`${keyPrefix}-b-${idx++}`} style={{ fontWeight: '700' }}>{decodeEntities(boldText)}</Text>,
+      );
+    }
+
+    lastIndex = PLAIN_RE.lastIndex;
+  }
+
+  if (lastIndex < text.length) nodes.push(decodeEntities(text.slice(lastIndex)));
+  return nodes;
+}
+
 const INLINE_RE = /<a\b([^>]*)>([\s\S]*?)<\/a>|<(strong|b)>([\s\S]*?)<\/\3>|<(em|i)>([\s\S]*?)<\/\5>|<br\s*\/?>/gi;
 
 function renderInline(html: string, keyPrefix: string, linkColor: string): React.ReactNode[] {
@@ -49,7 +95,7 @@ function renderInline(html: string, keyPrefix: string, linkColor: string): React
 
   while ((m = INLINE_RE.exec(html))) {
     if (m.index > lastIndex) {
-      nodes.push(decodeEntities(html.slice(lastIndex, m.index)));
+      nodes.push(...renderPlainText(html.slice(lastIndex, m.index), `${keyPrefix}-pre${idx}`, linkColor));
     }
 
     if (m[1] !== undefined) {
@@ -83,7 +129,7 @@ function renderInline(html: string, keyPrefix: string, linkColor: string): React
   }
 
   if (lastIndex < html.length) {
-    nodes.push(decodeEntities(html.slice(lastIndex)));
+    nodes.push(...renderPlainText(html.slice(lastIndex), `${keyPrefix}-post${idx}`, linkColor));
   }
 
   return nodes;

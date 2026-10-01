@@ -35,8 +35,12 @@ export function isVideoUrl(url?: string | null): boolean {
 const WATERMARK_PUBLIC_ID = 'agnisiragu:watermark-logo'; // '/' -> ':' for inline URL use
 
 export function withBakedWatermark(secureUrl: string, resourceType: 'image' | 'video'): string {
-  const width = resourceType === 'video' ? 130 : 90;
-  const transform = `l_${WATERMARK_PUBLIC_ID},g_south_east,x_14,y_14,w_${width},o_75,fl_layer_apply`;
+  // Bumped from w_90/o_75 (image) and w_130 (video) — too small/faint to
+  // read clearly on the website's larger hero/gallery images (readers
+  // reported the mark being hard to make out there). Keep in sync with
+  // media.service.ts's legacy bakeWatermark() transformation.
+  const width = resourceType === 'video' ? 170 : 130;
+  const transform = `l_${WATERMARK_PUBLIC_ID},g_south_east,x_14,y_14,w_${width},o_90,fl_layer_apply`;
   if (!secureUrl.includes('/upload/')) return secureUrl; // unexpected shape — leave untouched
   return secureUrl.replace('/upload/', `/upload/${transform}/`);
 }

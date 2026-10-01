@@ -47,7 +47,7 @@ export default function CinemaFeedCard({ article, language, width, onOpen, actio
           ) : (
             <View style={[StyleSheet.absoluteFill, { backgroundColor: t.bgAlt }]} />
           )}
-          <ImageWatermark />
+          {!article.thumbnailWatermarked && <ImageWatermark />}
         </View>
         <View style={styles.body}>
           <Text style={[styles.cat, { color: '#6C3483' }]} numberOfLines={1}>

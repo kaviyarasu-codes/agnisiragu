@@ -9,6 +9,7 @@ import ArticleActions from '@/components/ArticleActions';
 import ViewTracker from '@/components/ViewTracker';
 import CommentsSection from '@/components/CommentsSection';
 import MediaGallery from '@/components/MediaGallery';
+import { enrichArticleHtml } from '@/lib/richText';
 
 export const revalidate = 60;
 
@@ -115,10 +116,12 @@ export default async function ArticlePage({ params }: { params: { id: string } }
 
       {/* bodyTa is rich text authored in the admin panel (Tiptap editor) —
           trusted CMS content, not user input, so rendering it as HTML here
-          mirrors how the admin panel itself displays it. */}
+          mirrors how the admin panel itself displays it. enrichArticleHtml
+          auto-links any bare URL left as plain text and fixes leftover
+          WhatsApp-style asterisk-bold markup (see src/lib/richText.ts). */}
       <div
         className="article-body mt-8 font-tamil text-[17px] leading-8 text-black/85"
-        dangerouslySetInnerHTML={{ __html: article.bodyTa }}
+        dangerouslySetInnerHTML={{ __html: enrichArticleHtml(article.bodyTa) }}
       />
 
       <div className="mt-8">

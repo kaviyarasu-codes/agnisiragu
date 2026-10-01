@@ -190,7 +190,7 @@ export default function ArticleDetailScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView ref={scrollRef} style={[styles.container, { backgroundColor: t.surface }]} showsVerticalScrollIndicator={false}>
         <View style={styles.heroWrap}>
-          <MediaCarousel mediaUrls={article.mediaUrls} thumbnailUrl={article.thumbnailUrl} imageFit="contain" />
+          <MediaCarousel mediaUrls={article.mediaUrls} thumbnailUrl={article.thumbnailUrl} thumbnailWatermarked={article.thumbnailWatermarked} imageFit="contain" />
         </View>
 
         <View style={styles.content}>

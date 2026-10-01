@@ -13,6 +13,13 @@ import { buildArticleSearchText, canonicalizeForSearch } from '../common/utils/t
 
 type ReactionType = 'LIKE' | 'DISLIKE';
 
+// Once a PUBLISHED article is older than this, content edits are locked —
+// keeps a reporter/editor from quietly rewriting a story readers have
+// already seen, while still allowing a quick correction window right after
+// going live. Doesn't apply to drafts/unpublished articles, and doesn't
+// block unpublish or breaking-flag toggle (separate endpoints/decisions).
+const EDIT_WINDOW_MS = 50 * 60 * 1000;
+
 @Injectable()
 export class NewsService {
   private readonly logger = new Logger(NewsService.name);
@@ -341,6 +348,15 @@ export class NewsService {
   async update(id: string, dto: UpdateArticleDto, adminId?: string, ip?: string, device?: string) {
     const existing = await this.prisma.article.findUnique({ where: { id } });
     if (!existing || existing.status === 'DELETED') throw new NotFoundException('Article not found');
+
+    if (existing.status === 'PUBLISHED' && existing.publishedAt) {
+      const elapsedMs = Date.now() - existing.publishedAt.getTime();
+      if (elapsedMs > EDIT_WINDOW_MS) {
+        throw new ForbiddenException(
+          'This article was published more than 50 minutes ago and can no longer be edited.',
+        );
+      }
+    }
 
     // Recompute the search index whenever any of its source fields change,
     // using existing values as the fallback for whatever this PATCH omits.
