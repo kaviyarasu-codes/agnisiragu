@@ -10,6 +10,20 @@ const nextConfig = {
       { protocol: 'https', hostname: '**' },
     ],
   },
+  // Mounts the admin panel (a separate Vite/React app + Vercel project) at
+  // agnisiragu.com/admin/* and agnisiragu.in/admin/* instead of its own
+  // vercel.app / admin.agnisiragu.com address. This is a server-side proxy
+  // rewrite (Vercel/Next support rewriting to an external origin) — the
+  // browser's URL bar stays on agnisiragu.com, it just transparently fetches
+  // from the admin panel's deployment behind the scenes. Keep the
+  // destination host in sync with wherever the admin-panel Vercel project's
+  // domain actually is.
+  async rewrites() {
+    return [
+      { source: '/admin', destination: 'https://admin.agnisiragu.com/admin' },
+      { source: '/admin/:path*', destination: 'https://admin.agnisiragu.com/admin/:path*' },
+    ];
+  },
 };
 
 module.exports = nextConfig;

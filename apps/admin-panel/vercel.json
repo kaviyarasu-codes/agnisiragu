@@ -1,3 +1,9 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/admin/assets/:path*", "destination": "/assets/:path*" },
+    { "source": "/admin/favicon.svg", "destination": "/favicon.svg" },
+    { "source": "/admin/contact.html", "destination": "/contact.html" },
+    { "source": "/admin/privacy.html", "destination": "/privacy.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

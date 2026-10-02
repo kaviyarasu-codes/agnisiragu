@@ -140,9 +140,9 @@ export default function LoginPage() {
             Agnisiragu News Platform · Admin Portal
           </p>
           <p className="text-center text-xs text-text-muted mt-2">
-            <a href="/contact.html" className="underline hover:text-text-primary">Contact Us</a>
+            <a href="/admin/contact.html" className="underline hover:text-text-primary">Contact Us</a>
             {' · '}
-            <a href="/privacy.html" className="underline hover:text-text-primary">Privacy Policy</a>
+            <a href="/admin/privacy.html" className="underline hover:text-text-primary">Privacy Policy</a>
           </p>
         </div>
       </div>

@@ -19,7 +19,9 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      {/* basename matches vite.config.ts's base — the app is served at
+          agnisiragu.com/admin/*, not domain root. */}
+      <BrowserRouter basename="/admin">
         <App />
         <Toaster
           position="top-right"

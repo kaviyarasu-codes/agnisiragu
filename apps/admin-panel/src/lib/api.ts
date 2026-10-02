@@ -92,7 +92,9 @@ api.interceptors.response.use(
       if (revoked) {
         toast.error('You were signed out by an administrator.', { duration: 6000 });
       }
-      window.location.href = '/login';
+      // Raw browser nav (bypasses React Router, so the basename isn't
+      // auto-applied) — needs the /admin prefix spelled out.
+      window.location.href = '/admin/login';
     }
     return Promise.reject(error);
   }
