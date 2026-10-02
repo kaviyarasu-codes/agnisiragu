@@ -39,8 +39,17 @@ export function withBakedWatermark(secureUrl: string, resourceType: 'image' | 'v
   // read clearly on the website's larger hero/gallery images (readers
   // reported the mark being hard to make out there). Keep in sync with
   // media.service.ts's legacy bakeWatermark() transformation.
+  //
+  // bo_4px_solid_black + r_6: the logo asset already renders as a white
+  // card (not just a transparent icon), but on a busy/flyer-style image
+  // that already has light-colored regions near the bottom-right corner,
+  // a plain white card can still blend straight into the background. A
+  // solid dark border gives it a contrast edge against ANY background —
+  // confirmed visually against a real busy promotional image before
+  // shipping this (see chat history — the un-bordered version was nearly
+  // invisible there, the bordered one reads clearly).
   const width = resourceType === 'video' ? 170 : 130;
-  const transform = `l_${WATERMARK_PUBLIC_ID},g_south_east,x_14,y_14,w_${width},o_90,fl_layer_apply`;
+  const transform = `l_${WATERMARK_PUBLIC_ID},g_south_east,x_14,y_14,w_${width},bo_4px_solid_black,r_6,o_95,fl_layer_apply`;
   if (!secureUrl.includes('/upload/')) return secureUrl; // unexpected shape — leave untouched
   return secureUrl.replace('/upload/', `/upload/${transform}/`);
 }

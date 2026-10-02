@@ -145,9 +145,15 @@ export class MediaService {
               // withBakedWatermark (the live path — see that file's
               // comment on why this bakeWatermark API call isn't the one
               // normally hit anymore). Bumped from 130/90/o_75 — too
-              // small/faint on larger images.
+              // small/faint on larger images. Border+radius added on top
+              // of that: the logo's own white card background still blends
+              // into light-colored regions of busy/flyer-style images, so
+              // a dark border gives it a contrast edge against any
+              // background (verified against a real failing image).
               width: resourceType === 'video' ? 170 : 130,
-              opacity: 90,
+              border: '4px_solid_black',
+              radius: 6,
+              opacity: 95,
               flags: 'layer_apply',
             },
           ],

@@ -2,36 +2,47 @@
 //
 // The brand watermark baked into thumbnails/media (see admin-panel's
 // withBakedWatermark) is a Cloudinary transformation string embedded
-// directly in the stored URL — so bumping the size/opacity in code only
-// affects new uploads going forward. Every article saved before that change
-// still has the old, smaller/fainter "w_90,o_75" (image) / "w_130,o_75"
-// (video) transform baked into its thumbnailUrl / mediaUrls, which is why
-// the logo reads as hard to see on already-published articles.
+// directly in the stored URL — so bumping it in code only affects new
+// uploads going forward. Every article saved before a given bump still
+// has the older transform baked into its thumbnailUrl / mediaUrls.
 //
-// This does a straight string substitution of the old transform segment
-// for the new one (w_130,o_90 / w_170,o_90) across thumbnailUrl and every
-// entry in mediaUrls, for every article that has it. Cloudinary renders the
-// new transform the next time the (now-different) URL is requested — no
-// re-upload needed, same as the original bake.
+// This has gone through two generations so far:
+//   1. original:        w_90,o_75                  (image) / w_130,o_75  (video)
+//   2. first upsize:     w_130,o_90                 (image) / w_170,o_90  (video)
+//   3. current (bordered): w_130,bo_4px_solid_black,r_6,o_95 (image) /
+//                          w_170,bo_4px_solid_black,r_6,o_95 (video)
+// (3) added a solid dark border + rounded corners on top of (2)'s
+// size/opacity bump — the logo's own white card background still blended
+// into light-colored regions of busy/flyer-style article images, so a
+// border gives it a contrast edge against any background.
 //
-// Safe to re-run: only touches rows that still contain the old transform
+// This does a straight string substitution of whichever older transform
+// segment is present for the current one, across thumbnailUrl and every
+// entry in mediaUrls. Cloudinary renders the new transform the next time
+// the (now-different) URL is requested — no re-upload needed.
+//
+// Safe to re-run: only touches rows that still contain an older transform
 // string, so a second run is a no-op.
 //   node dist/scripts/upsize-watermark.js
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const OLD_IMAGE = 'w_90,o_75,fl_layer_apply';
-const NEW_IMAGE = 'w_130,o_90,fl_layer_apply';
-const OLD_VIDEO = 'w_130,o_75,fl_layer_apply';
-const NEW_VIDEO = 'w_170,o_90,fl_layer_apply';
+const NEW_IMAGE = 'w_130,bo_4px_solid_black,r_6,o_95,fl_layer_apply';
+const NEW_VIDEO = 'w_170,bo_4px_solid_black,r_6,o_95,fl_layer_apply';
+
+const OLD_IMAGE_VARIANTS = ['w_90,o_75,fl_layer_apply', 'w_130,o_90,fl_layer_apply'];
+const OLD_VIDEO_VARIANTS = ['w_130,o_75,fl_layer_apply', 'w_170,o_90,fl_layer_apply'];
 
 function upsize(url: string): string {
-  return url.replaceAll(OLD_IMAGE, NEW_IMAGE).replaceAll(OLD_VIDEO, NEW_VIDEO);
+  let out = url;
+  for (const old of OLD_IMAGE_VARIANTS) out = out.replaceAll(old, NEW_IMAGE);
+  for (const old of OLD_VIDEO_VARIANTS) out = out.replaceAll(old, NEW_VIDEO);
+  return out;
 }
 
 function needsUpsize(url: string): boolean {
-  return url.includes(OLD_IMAGE) || url.includes(OLD_VIDEO);
+  return [...OLD_IMAGE_VARIANTS, ...OLD_VIDEO_VARIANTS].some((v) => url.includes(v));
 }
 
 async function main() {
@@ -39,7 +50,7 @@ async function main() {
     select: { id: true, titleTa: true, thumbnailUrl: true, mediaUrls: true },
   });
 
-  console.log(`Checking ${articles.length} articles for the old watermark size.`);
+  console.log(`Checking ${articles.length} articles for an older watermark transform.`);
 
   let fixed = 0;
   for (const a of articles) {
