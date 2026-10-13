@@ -12,7 +12,7 @@
 // hardcoded Tamil copy if the backend is unreachable on first launch.
 
 import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -22,9 +22,10 @@ import { FONT_FAMILIES } from '@/constants';
 import { SkeletonBlock } from '@/components/ui/Skeleton';
 import Button from '@/components/ui/Button';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 export default function OnboardingScreen() {
+  // Live window width (not a module-level snapshot) so slides stay correctly
+  // sized on tablets, foldables and after display-size changes.
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const [slide, setSlide] = useState(0);
   const t = useTheme();
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
   skipRow: { alignItems: 'flex-end', paddingHorizontal: 20, paddingTop: 16 },
   skip: { fontFamily: FONT_FAMILIES.condensedBold, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
   slide: { flex: 1, padding: 20 },
-  illustration: { flex: 1, borderRadius: 14, marginVertical: 14 },
+  illustration: { flex: 1, minHeight: 140, borderRadius: 14, marginVertical: 14 },
   title: { fontFamily: FONT_FAMILIES.displayExtraBold, fontSize: 26, lineHeight: 33, letterSpacing: -0.4 },
   desc: { fontFamily: FONT_FAMILIES.bodyRegular, fontSize: 14.5, lineHeight: 26, marginTop: 10 },
   footer: { padding: 24, paddingTop: 4 },

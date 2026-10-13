@@ -80,7 +80,7 @@ export default function Footer({
                 </li>
               )}
               <li>
-                <a href={ process.env.NEXT_PUBLIC_ADMIN_URL ?? 'https://agnisiragu-admin-panel.vercel.app' } target="_blank" rel="noopener noreferrer" className="hover:text-white">
+                <a href="/admin/login" target="_blank" rel="noopener noreferrer" className="hover:text-white">
                   நிருபர்/நிர்வாகி Login
                 </a>
               </li>

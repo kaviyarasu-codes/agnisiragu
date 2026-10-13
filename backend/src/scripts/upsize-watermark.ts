@@ -28,11 +28,21 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const NEW_IMAGE = 'w_130,bo_4px_solid_black,r_6,o_95,fl_layer_apply';
-const NEW_VIDEO = 'w_170,bo_4px_solid_black,r_6,o_95,fl_layer_apply';
+// Generation 4 (current): plain logo, NO border — the bordered version (3)
+// was rolled back at the brand's request.
+const NEW_IMAGE = 'w_130,fl_layer_apply';
+const NEW_VIDEO = 'w_170,fl_layer_apply';
 
-const OLD_IMAGE_VARIANTS = ['w_90,o_75,fl_layer_apply', 'w_130,o_90,fl_layer_apply'];
-const OLD_VIDEO_VARIANTS = ['w_130,o_75,fl_layer_apply', 'w_170,o_90,fl_layer_apply'];
+const OLD_IMAGE_VARIANTS = [
+  'w_90,o_75,fl_layer_apply',
+  'w_130,o_90,fl_layer_apply',
+  'w_130,bo_4px_solid_black,r_6,o_95,fl_layer_apply',
+];
+const OLD_VIDEO_VARIANTS = [
+  'w_130,o_75,fl_layer_apply',
+  'w_170,o_90,fl_layer_apply',
+  'w_170,bo_4px_solid_black,r_6,o_95,fl_layer_apply',
+];
 
 function upsize(url: string): string {
   let out = url;

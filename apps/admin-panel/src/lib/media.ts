@@ -49,7 +49,9 @@ export function withBakedWatermark(secureUrl: string, resourceType: 'image' | 'v
   // shipping this (see chat history — the un-bordered version was nearly
   // invisible there, the bordered one reads clearly).
   const width = resourceType === 'video' ? 170 : 130;
-  const transform = `l_${WATERMARK_PUBLIC_ID},g_south_east,x_14,y_14,w_${width},bo_4px_solid_black,r_6,o_95,fl_layer_apply`;
+  // The dark border was tried and removed — the brand wants the plain logo
+  // only, no outline. Keep it clean: size + corner offset, nothing else.
+  const transform = `l_${WATERMARK_PUBLIC_ID},g_south_east,x_14,y_14,w_${width},fl_layer_apply`;
   if (!secureUrl.includes('/upload/')) return secureUrl; // unexpected shape — leave untouched
   return secureUrl.replace('/upload/', `/upload/${transform}/`);
 }

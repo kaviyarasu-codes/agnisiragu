@@ -150,10 +150,9 @@ export class MediaService {
               // into light-colored regions of busy/flyer-style images, so
               // a dark border gives it a contrast edge against any
               // background (verified against a real failing image).
+              // Plain logo, no border/opacity — keep in sync with
+              // admin-panel/src/lib/media.ts.
               width: resourceType === 'video' ? 170 : 130,
-              border: '4px_solid_black',
-              radius: 6,
-              opacity: 95,
               flags: 'layer_apply',
             },
           ],

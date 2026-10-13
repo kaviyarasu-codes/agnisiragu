@@ -7,7 +7,11 @@ const PLAY_STORE_URL =
   process.env.NEXT_PUBLIC_PLAY_STORE_URL ??
   'https://play.google.com/store/apps/details?id=com.agnisiragu.reader';
 
-const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL ?? 'https://agnisiragu-admin-panel.vercel.app';
+// Relative on purpose: the admin panel is mounted at /admin on both
+// agnisiragu.com and agnisiragu.in (see next.config.js rewrites), so the link
+// stays on whichever domain the visitor is on. Deliberately NOT read from
+// NEXT_PUBLIC_ADMIN_URL — that Vercel env var still holds the old vercel.app URL.
+const ADMIN_URL = '/admin/login';
 
 export default function TopBar() {
   // Full date for desktop; a short "17 செப்", "17 Sep"-style date for

@@ -15,7 +15,7 @@
 // app's version).
 
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, AppState } from 'react-native';
+import { View, Text, TextInput, AppState } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
@@ -43,6 +43,25 @@ import {
 } from '@/lib/notificationsCompat';
 
 SplashScreenNative.preventAutoHideAsync();
+
+// Layout broke on phones with a large system font size / display size (text
+// grew past what fixed-size cards, buttons and headers were designed for —
+// see the cut-off "permission-location" screen reports). Cap how far the OS
+// font scale can enlarge any <Text>/<TextInput> to 1.2x: still respects the
+// user's setting for readability, but keeps every screen inside its layout.
+// React 19 ignores Text.defaultProps, so patch the forwardRef render instead;
+// per-component maxFontSizeMultiplier props still win via the spread order.
+const MAX_FONT_SCALE = 1.2;
+function capFontScale(Component: any) {
+  const orig = Component?.render;
+  if (typeof orig !== 'function' || Component.__fontScaleCapped) return;
+  Component.render = function (props: any, ref: any) {
+    return orig.call(this, { maxFontSizeMultiplier: MAX_FONT_SCALE, ...props }, ref);
+  };
+  Component.__fontScaleCapped = true;
+}
+capFontScale(Text);
+capFontScale(TextInput);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -258,6 +277,9 @@ function RootStack() {
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="language-district" options={{ headerShown: false }} />
       <Stack.Screen name="permission" options={{ headerShown: false }} />
+      {/* Was missing — without this the native header rendered the raw route
+          name ("permission-location") above the screen. */}
+      <Stack.Screen name="permission-location" options={{ headerShown: false }} />
       <Stack.Screen name="report/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="deep-link" options={{ headerShown: false }} />
 
