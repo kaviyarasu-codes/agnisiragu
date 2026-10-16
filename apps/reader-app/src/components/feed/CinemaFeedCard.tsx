@@ -11,6 +11,7 @@ import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
 import ImageWatermark from './ImageWatermark';
+import { isWatermarkBaked } from '@/lib/watermark';
 import ActionBar, { type ActionBarProps } from './ActionBar';
 import { stripHtmlToPlainText } from '@/lib/richText';
 import type { Article, Language } from '@/types';
@@ -47,7 +48,7 @@ export default function CinemaFeedCard({ article, language, width, onOpen, actio
           ) : (
             <View style={[StyleSheet.absoluteFill, { backgroundColor: t.bgAlt }]} />
           )}
-          {!article.thumbnailWatermarked && <ImageWatermark />}
+          {!isWatermarkBaked(article.thumbnailUrl) && <ImageWatermark />}
         </View>
         <View style={styles.body}>
           <Text style={[styles.cat, { color: '#6C3483' }]} numberOfLines={1}>

@@ -12,6 +12,7 @@ import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
 import ImageWatermark from './ImageWatermark';
+import { isWatermarkBaked } from '@/lib/watermark';
 import ActionBar, { type ActionBarProps } from './ActionBar';
 import { stripHtmlToPlainText } from '@/lib/richText';
 import type { Article, Language } from '@/types';
@@ -48,7 +49,7 @@ export default function NewsprintArticleCard({ article, language, width, onOpen,
           ) : (
             <View style={[StyleSheet.absoluteFill, { backgroundColor: t.bgAlt }]} />
           )}
-          {!article.thumbnailWatermarked && <ImageWatermark />}
+          {!isWatermarkBaked(article.thumbnailUrl) && <ImageWatermark />}
         </View>
 
         <Text style={[styles.desc, { color: t.inkSub }]} numberOfLines={5}>{body}</Text>

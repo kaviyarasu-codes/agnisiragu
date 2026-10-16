@@ -20,6 +20,11 @@ const nextConfig = {
   // domain actually is.
   async rewrites() {
     return [
+      // Short share links produced by the mobile app
+      // (https://agnisiragu.com/a/<id>) — served by the article page itself
+      // (rewrite, not redirect, so WhatsApp/Facebook link previews read the
+      // article's own OG tags from the same URL that was shared).
+      { source: '/a/:id', destination: '/article/:id' },
       { source: '/admin', destination: 'https://admin.agnisiragu.com/admin' },
       { source: '/admin/:path*', destination: 'https://admin.agnisiragu.com/admin/:path*' },
     ];

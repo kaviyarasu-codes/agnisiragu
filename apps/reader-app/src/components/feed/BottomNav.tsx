@@ -12,21 +12,23 @@ import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
 import Icon, { IconName } from '@/components/icons/Icon';
 
-export type NavTab = 'archive' | 'jobs' | 'post' | 'lives' | 'saved';
+export type NavTab = 'home' | 'jobs' | 'post' | 'lives' | 'archive';
 
 interface BottomNavProps {
   active?: NavTab;
 }
 
+// Order per product owner: Home / Jobs / Post / Lives / Archive.
+// (Saved articles remain reachable from the side menu.)
 const ITEMS: { key: NavTab; label: string; route: string; icon: IconName }[] = [
-  { key: 'archive', label: 'Archive', route: '/archive', icon: 'archiveBox' },
+  { key: 'home', label: 'Home', route: '/', icon: 'home' },
   { key: 'jobs', label: 'Jobs', route: '/jobs', icon: 'jobsBriefcase' },
   { key: 'post', label: 'Post', route: '/post', icon: 'postPlus' },
   { key: 'lives', label: 'Lives', route: '/reels', icon: 'live' },
-  { key: 'saved', label: 'Saved', route: '/bookmarks', icon: 'bookmarkNav' },
+  { key: 'archive', label: 'Archive', route: '/archive', icon: 'archiveBox' },
 ];
 
-export default function BottomNav({ active }: BottomNavProps) {
+export default function BottomNav({ active = 'home' }: BottomNavProps) {
   const t = useTheme();
 
   return (

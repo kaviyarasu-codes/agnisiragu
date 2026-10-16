@@ -19,8 +19,8 @@ interface Props {
 }
 
 const LOGO_SIZES = {
-  xs: { width: 30, height: 13 },
-  md: { width: 50, height: 22 },
+  xs: { width: 38, height: 17 },
+  md: { width: 68, height: 30 }, // enlarged from 50x22 — was hard to see on busy photos
 };
 
 export default function ImageWatermark({ corner = 'bottom-right', size = 'md', style }: Props) {

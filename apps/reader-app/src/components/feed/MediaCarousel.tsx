@@ -24,6 +24,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
 import Icon from '@/components/icons/Icon';
 import ImageWatermark from './ImageWatermark';
+import { isWatermarkBaked } from '@/lib/watermark';
 
 function isVideoUrl(url: string): boolean {
   return /\.(mp4|mov|webm|m3u8)(\?|$)/i.test(url);
@@ -176,7 +177,9 @@ export default function MediaCarousel({ mediaUrls, thumbnailUrl, thumbnailWaterm
         </>
       )}
 
-      {!thumbnailWatermarked && <ImageWatermark corner={watermarkCorner} />}
+      {/* Per visible item: overlay unless THAT image already has the logo
+          baked into its URL (see lib/watermark.ts). */}
+      {!isWatermarkBaked(items[index] ?? items[0]) && <ImageWatermark corner={watermarkCorner} />}
     </View>
   );
 }

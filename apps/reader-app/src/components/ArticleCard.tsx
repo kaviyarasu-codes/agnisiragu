@@ -20,6 +20,7 @@ import { CAT_COLORS } from '@/theme';
 import { FONT_FAMILIES } from '@/constants';
 import type { Article, Language } from '@/types';
 import ImageWatermark from '@/components/feed/ImageWatermark';
+import { isWatermarkBaked } from '@/lib/watermark';
 import Icon from '@/components/icons/Icon';
 import { isVideoUrl, posterOrImage } from '@/lib/media';
 
@@ -53,7 +54,7 @@ export default function ArticleCard({ article, onPress, language }: ArticleCardP
               <Icon name="play" size={11} color="#fff" />
             </View>
           )}
-          {!article.thumbnailWatermarked && <ImageWatermark size="xs" />}
+          {!isWatermarkBaked(article.thumbnailUrl) && <ImageWatermark size="xs" />}
         </View>
       ) : (
         <View style={[styles.img, { backgroundColor: t.bgAlt }]} />

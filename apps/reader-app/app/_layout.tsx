@@ -16,7 +16,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, AppState } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
 import * as SplashScreenNative from 'expo-splash-screen';
@@ -221,12 +221,26 @@ function AppBootstrap({ children }: { children: React.ReactNode }) {
     }
   }, [isReady]);
 
+  // FIRST-LAUNCH CRASH FIX. On a fresh install onboardingDone is false, so
+  // this redirect fires on the very first launch — and it used to fire as
+  // soon as storage hydrated, which can be BEFORE the root <Stack> has
+  // mounted (it is withheld until fonts load, see the early return below).
+  // expo-router throws "Attempted to navigate before mounting the Root
+  // Layout component" in that case; in a release build that uncaught error
+  // closes the app immediately, and only on first install (returning users
+  // have onboardingDone = true, so they never hit it). Wait for the
+  // navigator to actually exist, and never let a failed navigation crash.
+  const rootNavState = useRootNavigationState();
+  const navigatorMounted = !!rootNavState?.key && ((fontsLoaded && hydrated) || forceReady);
   useEffect(() => {
-    if (hydrated && !onboardingDone) {
+    if (!navigatorMounted || !hydrated || onboardingDone) return;
+    try {
       router.replace('/onboarding');
+    } catch (err) {
+      console.warn('[nav] onboarding redirect failed:', err instanceof Error ? err.message : err);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, onboardingDone]);
+  }, [navigatorMounted, hydrated, onboardingDone]);
 
   // Don't mount the navigable screens until fonts are ready — every screen
   // uses Anek Tamil / Noto Sans Tamil / Barlow. SplashOverlay (rendered by

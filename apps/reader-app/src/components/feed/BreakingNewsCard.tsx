@@ -13,6 +13,7 @@ import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/useTheme';
 import { FONT_FAMILIES } from '@/constants';
 import ImageWatermark from './ImageWatermark';
+import { isWatermarkBaked } from '@/lib/watermark';
 import ActionBar, { type ActionBarProps } from './ActionBar';
 import { stripHtmlToPlainText } from '@/lib/richText';
 import type { Article, Language } from '@/types';
@@ -45,7 +46,7 @@ export default function BreakingNewsCard({ article, language, width, onOpen, act
       <View style={[styles.scrimBand, { height: '55%', bottom: 0, backgroundColor: 'rgba(28,25,23,0.45)' }]} />
       <View style={[styles.scrimBand, { height: '78%', bottom: 0, backgroundColor: 'rgba(28,25,23,0.18)' }]} />
 
-      {!article.thumbnailWatermarked && <ImageWatermark corner="top-right" />}
+      {!isWatermarkBaked(article.thumbnailUrl) && <ImageWatermark corner="top-right" />}
 
       {article.isBreaking && (
         <View style={styles.topRow}>
